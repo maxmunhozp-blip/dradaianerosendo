@@ -1,6 +1,7 @@
 import { StatusBadge } from "./StatusBadge";
-import { Download, MoreHorizontal } from "lucide-react";
+import { Download, MoreHorizontal, Scale } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 interface DocumentRowProps {
   doc: {
@@ -25,7 +26,15 @@ export function DocumentRow({ doc }: DocumentRowProps) {
   return (
     <div className="flex items-center justify-between py-3 border-b border-border last:border-0">
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-foreground truncate">{doc.name}</p>
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-medium text-foreground truncate">{doc.name}</p>
+          {doc.category === "processo" && (
+            <Badge className="bg-primary/10 text-primary border-primary/20 text-[10px] px-1.5 py-0 font-medium gap-1">
+              <Scale className="w-2.5 h-2.5" />
+              Petição Inicial
+            </Badge>
+          )}
+        </div>
         <div className="flex items-center gap-2 mt-1">
           <span className="text-xs text-muted-foreground">{categoryLabels[doc.category] || doc.category}</span>
           <span className="text-xs text-muted-foreground">·</span>
