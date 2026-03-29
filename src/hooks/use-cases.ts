@@ -27,7 +27,7 @@ export function useCase(id: string) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("cases")
-        .select("*, clients(name)")
+        .select("*, clients(name, cpf, email)")
         .eq("id", id)
         .single();
       if (error) throw error;
