@@ -51,6 +51,7 @@ export interface SyncConfig {
   sync_attachments: boolean;
   sync_attachments_pdf_only: boolean;
   sync_period_days: number;
+  sync_import_all?: boolean;
 }
 
 interface SyncConfigModalProps {
@@ -59,14 +60,17 @@ interface SyncConfigModalProps {
   onSave: (config: SyncConfig) => void;
   saving?: boolean;
   initialConfig?: Partial<SyncConfig>;
+  provider?: string;
 }
 
-export function SyncConfigModal({ open, onOpenChange, onSave, saving, initialConfig }: SyncConfigModalProps) {
+export function SyncConfigModal({ open, onOpenChange, onSave, saving, initialConfig, provider }: SyncConfigModalProps) {
+  const isCorporate = provider === "hostinger" || provider === "imap";
+  const [importAll, setImportAll] = useState(initialConfig?.sync_import_all ?? isCorporate);
   const [limit, setLimit] = useState(initialConfig?.sync_limit ?? 100);
   const [subjectFilters, setSubjectFilters] = useState<string[]>(
     (initialConfig?.sync_subject_filters as string[]) ?? [...DEFAULT_SUBJECT_FILTERS]
   );
-  const [judicialOnly, setJudicialOnly] = useState(initialConfig?.sync_judicial_only ?? true);
+  const [judicialOnly, setJudicialOnly] = useState(initialConfig?.sync_judicial_only ?? !isCorporate);
   const [extraSenders, setExtraSenders] = useState(initialConfig?.sync_extra_senders ?? "");
   const [attachments, setAttachments] = useState(initialConfig?.sync_attachments ?? false);
   const [pdfOnly, setPdfOnly] = useState(initialConfig?.sync_attachments_pdf_only ?? true);
@@ -81,12 +85,13 @@ export function SyncConfigModal({ open, onOpenChange, onSave, saving, initialCon
   const handleSave = () => {
     onSave({
       sync_limit: limit,
-      sync_subject_filters: subjectFilters,
-      sync_judicial_only: judicialOnly,
+      sync_subject_filters: importAll ? [] : subjectFilters,
+      sync_judicial_only: importAll ? false : judicialOnly,
       sync_extra_senders: extraSenders,
       sync_attachments: attachments,
       sync_attachments_pdf_only: pdfOnly,
       sync_period_days: parseInt(periodDays),
+      sync_import_all: importAll,
     });
   };
 
@@ -132,52 +137,72 @@ export function SyncConfigModal({ open, onOpenChange, onSave, saving, initialCon
             </div>
           </div>
 
+          {/* Section - Importar todos (corporate) */}
+          {isCorporate && (
+            <div className="space-y-3 bg-muted/50 border border-border rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">Importar todos os e-mails</p>
+                  <p className="text-xs text-muted-foreground">
+                    E-mails corporativos não possuem os mesmos filtros do Gmail.
+                    Ative para importar tudo sem filtros de assunto ou remetente.
+                  </p>
+                </div>
+                <Switch checked={importAll} onCheckedChange={setImportAll} />
+              </div>
+            </div>
+          )}
+
           {/* Section 2 - Filtros de assunto */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Filter className="w-4 h-4 text-muted-foreground" />
-              <Label className="text-sm font-medium">Filtros de assunto</Label>
+          {!importAll && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Filter className="w-4 h-4 text-muted-foreground" />
+                <Label className="text-sm font-medium">Filtros de assunto</Label>
+              </div>
+              <p className="text-xs text-muted-foreground">Quais tipos de e-mails importar:</p>
+              <div className="grid grid-cols-3 gap-2">
+                {DEFAULT_SUBJECT_FILTERS.map((filter) => (
+                  <label
+                    key={filter}
+                    className="flex items-center gap-2 text-sm cursor-pointer"
+                  >
+                    <Checkbox
+                      checked={subjectFilters.includes(filter)}
+                      onCheckedChange={() => toggleFilter(filter)}
+                    />
+                    {filter}
+                  </label>
+                ))}
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground">Quais tipos de e-mails importar:</p>
-            <div className="grid grid-cols-3 gap-2">
-              {DEFAULT_SUBJECT_FILTERS.map((filter) => (
-                <label
-                  key={filter}
-                  className="flex items-center gap-2 text-sm cursor-pointer"
-                >
-                  <Checkbox
-                    checked={subjectFilters.includes(filter)}
-                    onCheckedChange={() => toggleFilter(filter)}
-                  />
-                  {filter}
-                </label>
-              ))}
-            </div>
-          </div>
+          )}
 
           {/* Section 3 - Filtros de remetente */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Mail className="w-4 h-4 text-muted-foreground" />
-              <Label className="text-sm font-medium">Filtros de remetente</Label>
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm">Apenas remetentes judiciais (@*.jus.br)</p>
-                <p className="text-xs text-muted-foreground">Filtra apenas e-mails de domínios judiciais</p>
+          {!importAll && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Mail className="w-4 h-4 text-muted-foreground" />
+                <Label className="text-sm font-medium">Filtros de remetente</Label>
               </div>
-              <Switch checked={judicialOnly} onCheckedChange={setJudicialOnly} />
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm">Apenas remetentes judiciais (@*.jus.br)</p>
+                  <p className="text-xs text-muted-foreground">Filtra apenas e-mails de domínios judiciais</p>
+                </div>
+                <Switch checked={judicialOnly} onCheckedChange={setJudicialOnly} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Remetentes adicionais (separados por vírgula)</Label>
+                <Input
+                  value={extraSenders}
+                  onChange={(e) => setExtraSenders(e.target.value)}
+                  placeholder="ex: noreply@pje.jus.br, intimacao@tjsp.jus.br"
+                  className="text-sm"
+                />
+              </div>
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Remetentes adicionais (separados por vírgula)</Label>
-              <Input
-                value={extraSenders}
-                onChange={(e) => setExtraSenders(e.target.value)}
-                placeholder="ex: noreply@pje.jus.br, intimacao@tjsp.jus.br"
-                className="text-sm"
-              />
-            </div>
-          </div>
+          )}
 
           {/* Section 4 - Attachments */}
           <div className="space-y-3">
