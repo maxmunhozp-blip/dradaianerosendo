@@ -146,8 +146,6 @@ async function syncAccount(admin: any, account: ImapAccount): Promise<number> {
       }
     }
 
-    // Mark as SEEN
-    await imapCommand(conn, `S${uid}`, `STORE ${uid} +FLAGS (\\Seen)`);
     newCount++;
   }
 
