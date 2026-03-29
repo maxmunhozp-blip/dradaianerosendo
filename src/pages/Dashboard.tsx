@@ -214,3 +214,57 @@ function UpcomingHearings() {
     </div>
   );
 }
+
+function UrgentIntimacoes() {
+  const { data: intimacoes = [], isLoading } = useUrgentIntimacoes(7);
+
+  return (
+    <div className="mt-8">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-sm font-medium text-foreground">Intimações urgentes</h2>
+        <Button variant="ghost" size="sm" asChild>
+          <Link to="/intimacoes">
+            <Bell className="w-3.5 h-3.5 mr-1.5" />
+            Ver todas
+          </Link>
+        </Button>
+      </div>
+      <div className="border border-border rounded-lg divide-y divide-border">
+        {isLoading ? (
+          Array.from({ length: 2 }).map((_, i) => (
+            <div key={i} className="px-4 py-3">
+              <Skeleton className="h-4 w-48" />
+              <Skeleton className="h-3 w-24 mt-1.5" />
+            </div>
+          ))
+        ) : intimacoes.length === 0 ? (
+          <div className="px-4 py-6 text-center">
+            <AlertTriangle className="w-5 h-5 text-muted-foreground mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">Nenhuma intimação com prazo urgente</p>
+          </div>
+        ) : (
+          intimacoes.map((item: any) => {
+            const days = item.deadline_date ? differenceInDays(new Date(item.deadline_date), new Date()) : null;
+            return (
+              <Link key={item.id} to="/intimacoes" className="flex items-center justify-between px-4 py-3 hover:bg-muted/50 transition-colors">
+                <div>
+                  <p className="text-sm font-medium text-foreground">
+                    {item.process_number || "Processo não identificado"} — {item.movement_type || "Movimentação"}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {item.tribunal || ""} {item.cases ? `— ${item.cases.case_type} — ${item.cases.clients?.name}` : ""}
+                  </p>
+                </div>
+                {days !== null && (
+                  <Badge variant={days <= 3 ? "destructive" : "outline"} className="text-[10px]">
+                    {days <= 0 ? "Vencido" : `${days}d restantes`}
+                  </Badge>
+                )}
+              </Link>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
