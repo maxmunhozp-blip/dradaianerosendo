@@ -69,7 +69,7 @@ function WhatsAppActionBlock({ actions }: { actions: WhatsAppAction[] }) {
     return (
       <div className="mt-3 rounded-md border border-border bg-muted/50 p-3 space-y-1.5">
         <div className="flex items-center gap-2 text-xs font-medium text-foreground">
-          <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
+          <CheckCircle2 className="w-3.5 h-3.5 text-accent" />
           Envio concluído
         </div>
         {results.map((r, i) => (
