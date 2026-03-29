@@ -284,14 +284,27 @@ export default function CaseDetail() {
         />
       </div>
 
+      {/* Toggle chat button */}
+      <Button
+        variant="ghost"
+        size="icon"
+        className="absolute top-3 right-3 z-10 h-8 w-8"
+        onClick={() => setShowChat(!showChat)}
+        title={showChat ? "Fechar LARA" : "Abrir LARA"}
+      >
+        {showChat ? <PanelRightClose className="w-4 h-4" /> : <PanelRightOpen className="w-4 h-4" />}
+      </Button>
+
       {/* Right column - LARA chat */}
-      <div className="border-l border-border" style={{ flex: "0 0 40%" }}>
-        <LaraChat
-          messages={chatMessages}
-          onSend={sendMessage}
-          isLoading={chatLoading}
-        />
-      </div>
+      {showChat && (
+        <div className="border-l border-border" style={{ flex: "0 0 40%" }}>
+          <LaraChat
+            messages={chatMessages}
+            onSend={sendMessage}
+            isLoading={chatLoading}
+          />
+        </div>
+      )}
     </div>
   );
 }
