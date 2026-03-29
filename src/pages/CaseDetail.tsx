@@ -135,7 +135,7 @@ export default function CaseDetail() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-3rem)]">
+    <div className="relative flex h-[calc(100vh-3rem)]">
       {/* Left column */}
       <div className="flex-1 overflow-y-auto p-6 min-w-0" style={{ flex: showChat ? "0 0 60%" : "1 1 100%" }}>
         <Button variant="ghost" size="sm" asChild className="mb-4">
