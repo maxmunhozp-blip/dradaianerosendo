@@ -62,8 +62,12 @@ async function syncAccount(admin: any, account: ImapAccount): Promise<number> {
   // SELECT INBOX
   await imapCommand(conn, "A002", "SELECT INBOX");
 
-  // SEARCH for unseen judicial emails
-  const searchResp = await imapCommand(conn, "A003", 'SEARCH UNSEEN FROM "jus.br"');
+  // SEARCH for recent emails (last 7 days)
+  const since = new Date();
+  since.setDate(since.getDate() - 7);
+  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const imapDate = `${since.getUTCDate()}-${months[since.getUTCMonth()]}-${since.getUTCFullYear()}`;
+  const searchResp = await imapCommand(conn, "A003", `SEARCH SINCE ${imapDate}`);
 
   // Parse UIDs from SEARCH response
   const searchLine = searchResp.split("\r\n").find(l => l.startsWith("* SEARCH"));
@@ -142,8 +146,6 @@ async function syncAccount(admin: any, account: ImapAccount): Promise<number> {
       }
     }
 
-    // Mark as SEEN
-    await imapCommand(conn, `S${uid}`, `STORE ${uid} +FLAGS (\\Seen)`);
     newCount++;
   }
 
@@ -165,7 +167,7 @@ Deno.serve(async (req) => {
     let accountId: string | undefined;
     try {
       const body = await req.json();
-      accountId = body.account_id;
+      accountId = body.accountId || body.account_id;
     } catch { /* no body */ }
 
     // Fetch IMAP accounts
