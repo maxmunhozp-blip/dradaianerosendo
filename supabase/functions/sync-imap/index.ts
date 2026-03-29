@@ -71,81 +71,74 @@ function decodeQuotedPrintable(str: string): string {
 }
 
 // Parse MIME parts from raw email
-function parseMimeParts(raw: string, depth = 0): { html: string | null; text: string } {
-  if (depth > 5) return { html: null, text: "" };
-  // Find boundary
-  const boundaryMatch = raw.match(/boundary="?([^"\s;]+)"?/i);
-  
-  if (!boundaryMatch) {
-    // Not multipart — check Content-Transfer-Encoding of the whole message
-    const cteMatch = raw.match(/^Content-Transfer-Encoding:\s*(.+)$/im);
-    const cte = (cteMatch?.[1] || "").trim().toLowerCase();
-    const ctMatch = raw.match(/^Content-Type:\s*([^;\s]+)/im);
-    const ct = (ctMatch?.[1] || "").toLowerCase();
-    
-    // Split headers from body
-    const bodyStart = raw.search(/\r?\n\r?\n/);
-    if (bodyStart === -1) return { html: null, text: "" };
-    let body = raw.substring(bodyStart).replace(/^\r?\n\r?\n/, "");
-    
-    if (cte.includes("base64")) {
-      body = decodeBase64(body);
-    } else if (cte.includes("quoted-printable")) {
-      body = decodeQuotedPrintable(body);
+// Simple body extractor - avoids recursive MIME parsing issues
+function extractEmailBody(raw: string): { html: string | null; text: string } {
+  try {
+    // Try to find text/plain or text/html parts
+    let htmlContent: string | null = null;
+    let textContent = "";
+
+    // Find boundary
+    const boundaryMatch = raw.match(/boundary="?([^"\s;]+)"?/i);
+
+    if (!boundaryMatch) {
+      // Single-part message
+      const cteMatch = raw.match(/^Content-Transfer-Encoding:\s*(.+)$/im);
+      const cte = (cteMatch?.[1] || "").trim().toLowerCase();
+      const ctMatch = raw.match(/^Content-Type:\s*([^;\s]+)/im);
+      const ct = (ctMatch?.[1] || "").toLowerCase();
+
+      const bodyStart = raw.search(/\r?\n\r?\n/);
+      if (bodyStart === -1) return { html: null, text: "" };
+      let body = raw.substring(bodyStart).replace(/^\r?\n\r?\n/, "");
+
+      if (cte.includes("base64")) body = decodeBase64(body);
+      else if (cte.includes("quoted-printable")) body = decodeQuotedPrintable(body);
+
+      if (ct.includes("text/html")) {
+        return { html: body, text: body.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() };
+      }
+      return { html: null, text: body.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() };
     }
-    
-    if (ct.includes("text/html")) {
-      return { html: body, text: body.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() };
+
+    // Multipart - split by boundary (non-recursive, flat scan)
+    const escapedBoundary = boundaryMatch[1].replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const parts = raw.split(new RegExp(`--${escapedBoundary}`));
+
+    for (const part of parts.slice(1, 10)) { // skip preamble, max 10 parts
+      if (part.trim() === "--" || part.trim() === "") continue;
+
+      const ctMatch = part.match(/Content-Type:\s*([^;\s]+)/i);
+      const cteMatch = part.match(/Content-Transfer-Encoding:\s*(\S+)/i);
+      const ct = (ctMatch?.[1] || "").toLowerCase();
+      const cte = (cteMatch?.[1] || "").toLowerCase();
+
+      // Skip attachments and nested multipart
+      if (ct.includes("multipart/") || ct.includes("image/") || ct.includes("application/")) continue;
+
+      const bodyIdx = part.search(/\r?\n\r?\n/);
+      if (bodyIdx === -1) continue;
+      let body = part.substring(bodyIdx).replace(/^\r?\n\r?\n/, "");
+
+      if (cte.includes("base64")) body = decodeBase64(body);
+      else if (cte.includes("quoted-printable")) body = decodeQuotedPrintable(body);
+
+      if (ct.includes("text/html") && !htmlContent) {
+        htmlContent = body;
+      } else if (ct.includes("text/plain") && !textContent) {
+        textContent = body;
+      }
     }
-    return { html: null, text: body.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() };
+
+    if (!textContent && htmlContent) {
+      textContent = htmlContent.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+    }
+
+    return { html: htmlContent, text: textContent };
+  } catch (e) {
+    console.error("Error parsing email body:", e);
+    return { html: null, text: "" };
   }
-
-  const boundary = boundaryMatch[1];
-  const parts = raw.split(new RegExp(`--${boundary.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`));
-  
-  let htmlContent: string | null = null;
-  let textContent = "";
-
-  for (const part of parts) {
-    if (part.trim() === "--" || part.trim() === "") continue;
-    
-    const ctMatch = part.match(/Content-Type:\s*([^;\s]+)/i);
-    const cteMatch = part.match(/Content-Transfer-Encoding:\s*(\S+)/i);
-    const ct = (ctMatch?.[1] || "").toLowerCase();
-    const cte = (cteMatch?.[1] || "").toLowerCase();
-    
-    // Check for nested multipart
-    const nestedBoundary = part.match(/boundary="?([^"\s;]+)"?/i);
-    if (nestedBoundary) {
-      const nested = parseMimeParts(part, depth + 1);
-      if (nested.html) htmlContent = nested.html;
-      if (nested.text && !textContent) textContent = nested.text;
-      continue;
-    }
-    
-    // Get body of this part (after blank line)
-    const bodyIdx = part.search(/\r?\n\r?\n/);
-    if (bodyIdx === -1) continue;
-    let body = part.substring(bodyIdx).replace(/^\r?\n\r?\n/, "");
-    
-    if (cte.includes("base64")) {
-      body = decodeBase64(body);
-    } else if (cte.includes("quoted-printable")) {
-      body = decodeQuotedPrintable(body);
-    }
-    
-    if (ct.includes("text/html")) {
-      htmlContent = body;
-    } else if (ct.includes("text/plain") && !textContent) {
-      textContent = body;
-    }
-  }
-
-  if (!textContent && htmlContent) {
-    textContent = htmlContent.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-  }
-
-  return { html: htmlContent, text: textContent };
 }
 
 const legalKeywords = [
