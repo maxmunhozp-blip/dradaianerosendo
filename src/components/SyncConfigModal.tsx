@@ -85,12 +85,13 @@ export function SyncConfigModal({ open, onOpenChange, onSave, saving, initialCon
   const handleSave = () => {
     onSave({
       sync_limit: limit,
-      sync_subject_filters: subjectFilters,
-      sync_judicial_only: judicialOnly,
+      sync_subject_filters: importAll ? [] : subjectFilters,
+      sync_judicial_only: importAll ? false : judicialOnly,
       sync_extra_senders: extraSenders,
       sync_attachments: attachments,
       sync_attachments_pdf_only: pdfOnly,
       sync_period_days: parseInt(periodDays),
+      sync_import_all: importAll,
     });
   };
 
