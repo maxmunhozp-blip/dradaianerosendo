@@ -183,6 +183,12 @@ export default function EmailAccountsSection() {
   const [hostPassword, setHostPassword] = useState("");
   const [imapHost, setImapHost] = useState("imap.hostinger.com");
   const [imapPort, setImapPort] = useState("993");
+  const [smtpHost, setSmtpHost] = useState("smtp.hostinger.com");
+  const [smtpPort, setSmtpPort] = useState("465");
+
+  // Edit SMTP fields
+  const [editSmtpHost, setEditSmtpHost] = useState("");
+  const [editSmtpPort, setEditSmtpPort] = useState("");
 
   const resetForm = () => {
     setNewLabel("");
@@ -191,6 +197,8 @@ export default function EmailAccountsSection() {
     setHostPassword("");
     setImapHost("imap.hostinger.com");
     setImapPort("993");
+    setSmtpHost("smtp.hostinger.com");
+    setSmtpPort("465");
     setProviderTab("gmail");
     setTestResult(null);
   };
