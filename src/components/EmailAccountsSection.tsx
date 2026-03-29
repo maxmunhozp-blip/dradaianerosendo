@@ -183,6 +183,12 @@ export default function EmailAccountsSection() {
   const [hostPassword, setHostPassword] = useState("");
   const [imapHost, setImapHost] = useState("imap.hostinger.com");
   const [imapPort, setImapPort] = useState("993");
+  const [smtpHost, setSmtpHost] = useState("smtp.hostinger.com");
+  const [smtpPort, setSmtpPort] = useState("465");
+
+  // Edit SMTP fields
+  const [editSmtpHost, setEditSmtpHost] = useState("");
+  const [editSmtpPort, setEditSmtpPort] = useState("");
 
   const resetForm = () => {
     setNewLabel("");
@@ -191,6 +197,8 @@ export default function EmailAccountsSection() {
     setHostPassword("");
     setImapHost("imap.hostinger.com");
     setImapPort("993");
+    setSmtpHost("smtp.hostinger.com");
+    setSmtpPort("465");
     setProviderTab("gmail");
     setTestResult(null);
   };
@@ -405,7 +413,9 @@ export default function EmailAccountsSection() {
         imap_host: imapHost,
         imap_port: parseInt(imapPort),
         imap_user: hostEmail,
-        imap_password: btoa(hostPassword), // base64 encode
+        imap_password: btoa(hostPassword),
+        smtp_host: smtpHost,
+        smtp_port: parseInt(smtpPort),
       });
 
       if (insertError) throw insertError;
@@ -427,6 +437,8 @@ export default function EmailAccountsSection() {
     setEditPassword("");
     setEditHost(account.imap_host || "imap.hostinger.com");
     setEditPort(String(account.imap_port || 993));
+    setEditSmtpHost((account as any).smtp_host || "smtp.hostinger.com");
+    setEditSmtpPort(String((account as any).smtp_port || 465));
     setShowEditPassword(false);
     setEditDialogOpen(true);
   };
@@ -443,6 +455,8 @@ export default function EmailAccountsSection() {
       if (editingAccount.provider !== "gmail") {
         updates.imap_host = editHost;
         updates.imap_port = parseInt(editPort);
+        updates.smtp_host = editSmtpHost;
+        updates.smtp_port = parseInt(editSmtpPort);
 
         // If password changed, test and update
         if (editPassword.trim()) {
@@ -595,6 +609,23 @@ export default function EmailAccountsSection() {
                         type="number"
                         value={imapPort}
                         onChange={(e) => setImapPort(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label className="text-xs">SMTP Host</Label>
+                      <Input
+                        value={smtpHost}
+                        onChange={(e) => setSmtpHost(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">SMTP Porta</Label>
+                      <Input
+                        type="number"
+                        value={smtpPort}
+                        onChange={(e) => setSmtpPort(e.target.value)}
                       />
                     </div>
                   </div>
@@ -770,6 +801,16 @@ export default function EmailAccountsSection() {
                   <div className="space-y-1">
                     <Label className="text-xs">Porta</Label>
                     <Input type="number" value={editPort} onChange={(e) => setEditPort(e.target.value)} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Host SMTP</Label>
+                    <Input value={editSmtpHost} onChange={(e) => setEditSmtpHost(e.target.value)} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Porta SMTP</Label>
+                    <Input type="number" value={editSmtpPort} onChange={(e) => setEditSmtpPort(e.target.value)} />
                   </div>
                 </div>
                 <div className="space-y-1">
