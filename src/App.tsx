@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { PortalProtectedRoute } from "@/components/PortalProtectedRoute";
 import AdminLayout from "@/components/AdminLayout";
 import Dashboard from "@/pages/Dashboard";
 import Clients from "@/pages/Clients";
@@ -13,6 +14,7 @@ import CaseDetail from "@/pages/CaseDetail";
 import LaraPage from "@/pages/LaraPage";
 import Documents from "@/pages/Documents";
 import PortalDashboard from "@/pages/PortalDashboard";
+import PortalLogin from "@/pages/PortalLogin";
 import Login from "@/pages/Login";
 import NotFound from "./pages/NotFound.tsx";
 
@@ -28,6 +30,7 @@ const App = () => (
           <Routes>
             {/* Public */}
             <Route path="/login" element={<Login />} />
+            <Route path="/portal/login" element={<PortalLogin />} />
 
             {/* Protected admin routes */}
             <Route element={<ProtectedRoute />}>
@@ -41,8 +44,10 @@ const App = () => (
               </Route>
             </Route>
 
-            {/* Client portal */}
-            <Route path="/portal" element={<PortalDashboard />} />
+            {/* Client portal (protected) */}
+            <Route element={<PortalProtectedRoute />}>
+              <Route path="/portal" element={<PortalDashboard />} />
+            </Route>
 
             <Route path="*" element={<NotFound />} />
           </Routes>
