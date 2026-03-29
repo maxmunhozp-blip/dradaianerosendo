@@ -184,7 +184,18 @@ export default function CaseDetail() {
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-xl font-semibold text-foreground">{caseData.case_type}</h1>
-              <StatusBadge status={caseData.status} />
+              <Select value={caseData.status} onValueChange={handleStatusChange}>
+                <SelectTrigger className="w-auto h-7 text-xs border-none p-0">
+                  <StatusBadge status={caseData.status} />
+                </SelectTrigger>
+                <SelectContent>
+                  {statusSteps.map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {s === "documentacao" ? "Documentação" : s === "montagem" ? "Montagem" : s === "protocolo" ? "Protocolo" : s === "andamento" ? "Em andamento" : "Encerrado"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Button
                 variant="ghost"
                 size="icon"
