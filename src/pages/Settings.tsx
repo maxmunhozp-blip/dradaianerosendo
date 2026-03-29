@@ -235,7 +235,11 @@ export default function Settings() {
               placeholder="OAB/SP 123456"
               value={val("office_oab")}
               onChange={(e) => set("office_oab", e.target.value)}
+              className={errors.office_oab ? "border-destructive" : ""}
             />
+            {errors.office_oab && (
+              <p className="text-[10px] text-destructive">{errors.office_oab}</p>
+            )}
           </div>
           <div className="space-y-2">
             <Label className="text-xs">Telefone</Label>
@@ -243,7 +247,11 @@ export default function Settings() {
               placeholder="(11) 99999-9999"
               value={val("office_phone")}
               onChange={(e) => set("office_phone", e.target.value)}
+              className={errors.office_phone ? "border-destructive" : ""}
             />
+            {errors.office_phone && (
+              <p className="text-[10px] text-destructive">{errors.office_phone}</p>
+            )}
           </div>
           <div className="space-y-2">
             <Label className="text-xs">E-mail</Label>
@@ -251,7 +259,11 @@ export default function Settings() {
               placeholder="contato@escritorio.com"
               value={val("office_email")}
               onChange={(e) => set("office_email", e.target.value)}
+              className={errors.office_email ? "border-destructive" : ""}
             />
+            {errors.office_email && (
+              <p className="text-[10px] text-destructive">{errors.office_email}</p>
+            )}
           </div>
           <div className="col-span-2 space-y-2">
             <Label className="text-xs">Endereço</Label>
