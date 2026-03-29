@@ -162,7 +162,6 @@ const legalKeywords = [
   "previdenciário", "previdenciario", "inss", "benefício", "beneficio",
   "honorários", "honorarios", "custas", "emolumentos",
   "acórdão", "acordao", "jurisprudência", "jurisprudencia",
-  "escavador",
 ];
 
 async function imapCommand(

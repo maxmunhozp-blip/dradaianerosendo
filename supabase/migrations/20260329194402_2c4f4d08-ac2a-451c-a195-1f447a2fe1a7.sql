@@ -1,0 +1,1 @@
+DELETE FROM email_messages WHERE from_email = 'nao-responder@escavador.com';
