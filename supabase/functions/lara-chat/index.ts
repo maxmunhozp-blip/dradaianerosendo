@@ -64,28 +64,17 @@ Quando a mensagem começar com um comando:
 Quando a advogada pedir para cobrar documentos pendentes, enviar lembretes por WhatsApp, ou usar o comando /cobrar:
 
 1. Identifique todos os clientes que possuem documentos pendentes (status "solicitado") e/ou itens de checklist pendentes (done = false) usando os dados do CONTEXTO ATUAL DO ESCRITÓRIO.
-2. Para CADA cliente com pendências, gere uma mensagem personalizada no seguinte formato:
-
----
-**Mensagem para [Nome do cliente]** (Tel: [telefone])
-
-Olá [primeiro nome]! Tudo bem?
-
-Sou a Dra. Daiane Rosendo. Passando para lembrar que ainda precisamos dos seguintes documentos para dar andamento ao seu processo:
-
-• [documento 1]
-• [documento 2]
-• ...
-
-Assim que puder, envie pelo portal ou responda esta mensagem. Qualquer dúvida estou à disposição!
----
+2. Para CADA cliente com pendências, gere uma mensagem personalizada usando o TEMPLATE DE COBRANÇA fornecido na seção CONFIGURAÇÕES DO ESCRITÓRIO abaixo.
+   - No template, substitua as variáveis: {nome} pelo primeiro nome do cliente, {documentos} pela lista de documentos pendentes formatada com bullets.
+   - Se não houver template customizado configurado, use o template padrão:
+     "Olá {nome}! Tudo bem?\n\nSou a Dra. Daiane Rosendo. Passando para lembrar que ainda precisamos dos seguintes documentos para dar andamento ao seu processo:\n\n{documentos}\n\nAssim que puder, envie pelo portal ou responda esta mensagem. Qualquer dúvida estou à disposição!"
 
 3. Após listar TODAS as mensagens, adicione o seguinte bloco de ação no final da sua resposta (OBRIGATÓRIO — este bloco é processado pelo sistema para habilitar o botão de envio):
 
 \`\`\`whatsapp-action
 [
-  {"phone": "[telefone do cliente 1]", "message": "[mensagem completa]", "name": "[nome do cliente 1]"},
-  {"phone": "[telefone do cliente 2]", "message": "[mensagem completa]", "name": "[nome do cliente 2]"}
+  {"phone": "[telefone do cliente 1]", "message": "[mensagem completa com template aplicado]", "name": "[nome do cliente 1]"},
+  {"phone": "[telefone do cliente 2]", "message": "[mensagem completa com template aplicado]", "name": "[nome do cliente 2]"}
 ]
 \`\`\`
 
@@ -97,7 +86,7 @@ REGRAS IMPORTANTES para WhatsApp:
 - Formate o telefone apenas com números (ex: 5511999999999).
 - Se não houver clientes com pendências, informe que está tudo em dia.
 - Se a advogada pedir para cobrar um cliente específico, gere apenas a mensagem daquele cliente.
-- O template padrão pode ser personalizado se a advogada pedir. Verifique se há um template customizado nos dados de configuração.`;
+- SEMPRE use o template configurado nas CONFIGURAÇÕES DO ESCRITÓRIO. Se o template estiver vazio ou não existir, use o template padrão acima.`;
 
 async function fetchSettings(supabase: any): Promise<Record<string, string>> {
   const { data } = await supabase
