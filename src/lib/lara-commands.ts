@@ -13,6 +13,14 @@ const COMMAND_EXPANSIONS: Record<string, string> = {
     "/cobrar — Por favor, identifique todos os clientes com documentos pendentes e gere mensagens personalizadas de WhatsApp para cobrança. Inclua o bloco whatsapp-action com os dados para envio.",
   "/agenda":
     "/agenda — Por favor, liste todas as audiências e prazos futuros, agrupados por semana, indicando caso, cliente, data, hora e local. Destaque os que estão próximos (48h) ou atrasados.",
+  "/jurisprudencia":
+    "/jurisprudencia — Por favor, pesquise e apresente jurisprudências relevantes e recentes dos tribunais superiores (STF, STJ) e tribunais estaduais sobre o tema deste caso. Inclua número do processo, relator, data, ementa resumida e tese firmada. Organize por tribunal e relevância.",
+  "/resumo":
+    "/resumo — Por favor, gere um resumo executivo completo deste caso, incluindo: partes envolvidas, tipo de ação, status atual, documentos já reunidos, documentos pendentes, próximas audiências, pontos fortes e fracos, e recomendações de próximos passos.",
+  "/prazos":
+    "/prazos — Por favor, calcule e liste todos os prazos processuais aplicáveis a este tipo de ação, considerando o status atual do caso. Indique prazos já vencidos, em andamento e futuros, com datas estimadas e fundamentação legal.",
+  "/modelo":
+    "/modelo — Por favor, gere um modelo de documento jurídico adequado para a fase atual deste caso (contestação, recurso, manifestação, etc.), preenchido com os dados disponíveis do caso e do cliente.",
 };
 
 /**

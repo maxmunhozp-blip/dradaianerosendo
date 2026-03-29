@@ -20,6 +20,10 @@ const shortcuts = [
   { cmd: "/analise", desc: "Analisar documento" },
   { cmd: "/cobrar", desc: "Cobrar documentos pendentes" },
   { cmd: "/lei", desc: "Consultar legislação" },
+  { cmd: "/jurisprudencia", desc: "Buscar jurisprudências" },
+  { cmd: "/resumo", desc: "Resumo executivo do caso" },
+  { cmd: "/prazos", desc: "Calcular prazos processuais" },
+  { cmd: "/modelo", desc: "Gerar modelo de documento" },
 ];
 
 export default function LaraPage() {
