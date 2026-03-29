@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Mail, Plus, RefreshCw, Trash2, Loader2, CheckCircle2, XCircle, Server } from "lucide-react";
+import { Mail, Plus, RefreshCw, Trash2, Loader2, CheckCircle2, XCircle, Server, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { lovable } from "@/integrations/lovable/index";
 import { Input } from "@/components/ui/input";
@@ -116,6 +116,7 @@ export default function EmailAccountsSection() {
   const [newLabel, setNewLabel] = useState("");
   const [newPlatform, setNewPlatform] = useState("Todos");
   const [saving, setSaving] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   // Hostinger fields
   const [hostEmail, setHostEmail] = useState("");
@@ -336,11 +337,22 @@ export default function EmailAccountsSection() {
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs">Senha</Label>
-                    <Input
-                      type="password"
-                      placeholder="Senha do e-mail"
-                      value={hostPassword}
-                      onChange={(e) => setHostPassword(e.target.value)}
+                    <div className="relative">
+                      <Input
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Senha do e-mail"
+                        value={hostPassword}
+                        onChange={(e) => setHostPassword(e.target.value)}
+                        className="pr-9"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
