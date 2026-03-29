@@ -1,9 +1,20 @@
 import { StatusBadge } from "./StatusBadge";
 import { Download, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { Document } from "@/lib/types";
 
-export function DocumentRow({ doc }: { doc: Document }) {
+interface DocumentRowProps {
+  doc: {
+    id: string;
+    name: string;
+    category: string;
+    status: string;
+    file_url: string | null;
+    uploaded_by: string;
+    notes: string | null;
+  };
+}
+
+export function DocumentRow({ doc }: DocumentRowProps) {
   const categoryLabels: Record<string, string> = {
     pessoal: "Pessoal",
     assinado: "Assinado",
@@ -16,7 +27,7 @@ export function DocumentRow({ doc }: { doc: Document }) {
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-foreground truncate">{doc.name}</p>
         <div className="flex items-center gap-2 mt-1">
-          <span className="text-xs text-muted-foreground">{categoryLabels[doc.category]}</span>
+          <span className="text-xs text-muted-foreground">{categoryLabels[doc.category] || doc.category}</span>
           <span className="text-xs text-muted-foreground">·</span>
           <span className="text-xs text-muted-foreground">
             {doc.uploaded_by === "advogada" ? "Advogada" : "Cliente"}
@@ -26,8 +37,10 @@ export function DocumentRow({ doc }: { doc: Document }) {
       <div className="flex items-center gap-3">
         <StatusBadge status={doc.status} />
         {doc.file_url && doc.file_url !== "" && (
-          <Button variant="ghost" size="icon" className="h-7 w-7">
-            <Download className="w-3.5 h-3.5" />
+          <Button variant="ghost" size="icon" className="h-7 w-7" asChild>
+            <a href={doc.file_url} target="_blank" rel="noopener noreferrer">
+              <Download className="w-3.5 h-3.5" />
+            </a>
           </Button>
         )}
         <Button variant="ghost" size="icon" className="h-7 w-7">
