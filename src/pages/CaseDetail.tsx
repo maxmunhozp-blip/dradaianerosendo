@@ -63,7 +63,9 @@ export default function CaseDetail() {
 
   const { messages: chatMessages, isLoading: chatLoading, sendMessage, loadHistory } = useLaraChat(id);
 
+  const navigate = useNavigate();
   const updateCase = useUpdateCase();
+  const deleteCase = useDeleteCase();
   const createDoc = useCreateDocument();
   const uploadDoc = useUploadDocument();
   const createChecklistItem = useCreateChecklistItem();
