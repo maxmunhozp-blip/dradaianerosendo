@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useTimeline, useCreateTimelineEntry, useUpdateTimelineEntry, useDeleteTimelineEntry, type TimelineEntry } from "@/hooks/use-timeline";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,9 +34,14 @@ import {
   CheckCircle2,
   Loader2,
   ListFilter,
+  Upload,
+  Paperclip,
+  X,
+  Download,
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const TIMELINE_STATUSES = [
   { value: "atualização_recebida", label: "Atualização recebida", color: "bg-blue-100 text-blue-800" },
