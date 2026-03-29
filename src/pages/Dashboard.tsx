@@ -76,7 +76,7 @@ export default function Dashboard() {
         {isLoading
           ? Array.from({ length: 4 }).map((_, i) => <StatCardSkeleton key={i} />)
           : stats.map((stat) => (
-              <div key={stat.label} className="border border-border rounded-lg p-4">
+              <div key={stat.label} className="border border-border rounded-lg p-4 hover:border-t-amber-500 hover:border-t-2 transition-all">
                 <div className="flex items-center justify-between mb-3">
                   <stat.icon className="w-4 h-4 text-muted-foreground" />
                 </div>
