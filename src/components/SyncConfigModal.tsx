@@ -52,6 +52,8 @@ export interface SyncConfig {
   sync_attachments_pdf_only: boolean;
   sync_period_days: number;
   sync_import_all?: boolean;
+  sync_financial?: boolean;
+  sync_extra_domains?: string;
 }
 
 interface SyncConfigModalProps {
@@ -75,6 +77,8 @@ export function SyncConfigModal({ open, onOpenChange, onSave, saving, initialCon
   const [attachments, setAttachments] = useState(initialConfig?.sync_attachments ?? false);
   const [pdfOnly, setPdfOnly] = useState(initialConfig?.sync_attachments_pdf_only ?? true);
   const [periodDays, setPeriodDays] = useState(String(initialConfig?.sync_period_days ?? 30));
+  const [syncFinancial, setSyncFinancial] = useState(initialConfig?.sync_financial ?? false);
+  const [extraDomains, setExtraDomains] = useState(initialConfig?.sync_extra_domains ?? "");
 
   const toggleFilter = (filter: string) => {
     setSubjectFilters((prev) =>
@@ -92,6 +96,8 @@ export function SyncConfigModal({ open, onOpenChange, onSave, saving, initialCon
       sync_attachments_pdf_only: pdfOnly,
       sync_period_days: parseInt(periodDays),
       sync_import_all: importAll,
+      sync_financial: syncFinancial,
+      sync_extra_domains: extraDomains,
     });
   };
 
