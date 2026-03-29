@@ -210,6 +210,33 @@ export function SyncConfigModal({ open, onOpenChange, onSave, saving, initialCon
             </div>
           )}
 
+          {/* Section - Outros remetentes */}
+          {!importAll && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Server className="w-4 h-4 text-muted-foreground" />
+                <Label className="text-sm font-medium">Outros remetentes</Label>
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm">Importar e-mails financeiros</p>
+                  <p className="text-xs text-muted-foreground">Boletos, faturas, honorários, notas fiscais</p>
+                </div>
+                <Switch checked={syncFinancial} onCheckedChange={setSyncFinancial} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Domínios adicionais permitidos</Label>
+                <Input
+                  value={extraDomains}
+                  onChange={(e) => setExtraDomains(e.target.value)}
+                  placeholder="ex: hostinger.com, contabilidade.com.br"
+                  className="text-sm"
+                />
+                <p className="text-[10px] text-muted-foreground">Separados por vírgula. E-mails desses domínios serão importados mesmo com filtro judicial ativo.</p>
+              </div>
+            </div>
+          )}
+
           {/* Section 4 - Attachments */}
           <div className="space-y-3">
             <div className="flex items-center gap-2">
