@@ -948,6 +948,8 @@ export default function EmailAccountsSection() {
           sync_attachments_pdf_only: syncConfigAccount.sync_attachments_pdf_only ?? true,
           sync_period_days: syncConfigAccount.sync_period_days ?? 30,
           sync_import_all: syncConfigAccount.sync_import_all ?? false,
+          sync_financial: (syncConfigAccount as any).sync_financial ?? false,
+          sync_extra_domains: (syncConfigAccount as any).sync_extra_domains ?? "",
         } : undefined}
       />
     </div>
