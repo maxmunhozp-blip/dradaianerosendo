@@ -149,6 +149,14 @@ export default function EmailAccountsSection() {
   const [newPlatform, setNewPlatform] = useState("Todos");
   const [saving, setSaving] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [editingAccount, setEditingAccount] = useState<EmailAccount | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editPassword, setEditPassword] = useState("");
+  const [editHost, setEditHost] = useState("");
+  const [editPort, setEditPort] = useState("");
+  const [editLabel, setEditLabel] = useState("");
+  const [editPlatform, setEditPlatform] = useState("Todos");
+  const [showEditPassword, setShowEditPassword] = useState(false);
 
   // Hostinger fields
   const [hostEmail, setHostEmail] = useState("");
