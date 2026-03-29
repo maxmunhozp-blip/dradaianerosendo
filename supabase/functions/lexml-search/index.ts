@@ -14,52 +14,47 @@ interface LexMLResult {
   url: string;
 }
 
-function parseXmlTag(xml: string, tag: string): string {
+function extractTag(xml: string, tag: string): string {
   const regex = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`, "i");
   const match = xml.match(regex);
   return match ? match[1].trim() : "";
 }
 
-function parseAllTags(xml: string, tag: string): string[] {
-  const regex = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`, "gi");
-  const results: string[] = [];
-  let match;
-  while ((match = regex.exec(xml)) !== null) {
-    results.push(match[1].trim());
-  }
-  return results;
-}
-
-function parseSRUResponse(xml: string): LexMLResult[] {
-  const records = parseAllTags(xml, "srw:record");
+function parseSearchResponse(xml: string): LexMLResult[] {
+  // LexML uses crossQueryResult with docHit elements
+  const docHitRegex = /<docHit[^>]*>([\s\S]*?)<\/docHit>/gi;
   const results: LexMLResult[] = [];
+  let match;
 
-  for (const record of records) {
-    const recordData = parseXmlTag(record, "srw:recordData");
-    
-    // Extract from Dublin Core or LexML metadata
-    const title = parseXmlTag(recordData, "dc:title") || 
-                  parseXmlTag(recordData, "title") ||
-                  parseXmlTag(recordData, "oai_dc:title") || 
-                  "Sem título";
-    
-    const identifier = parseXmlTag(recordData, "dc:identifier") || 
-                       parseXmlTag(recordData, "identifier") || "";
-    
-    const date = parseXmlTag(recordData, "dc:date") || 
-                 parseXmlTag(recordData, "date") || "";
-    
-    const description = parseXmlTag(recordData, "dc:description") || 
-                        parseXmlTag(recordData, "description") || "";
-    
-    const urn = identifier.startsWith("urn:lex:") ? identifier : "";
+  while ((match = docHitRegex.exec(xml)) !== null && results.length < 5) {
+    const hit = match[1];
+    const meta = extractTag(hit, "meta");
+    if (!meta) continue;
+
+    const urn = extractTag(meta, "urn");
+    const tipoDocumento = extractTag(meta, "tipoDocumento");
+    const descritor = extractTag(meta, "descritor");
+    const localidade = extractTag(meta, "localidade");
+    const autoridade = extractTag(meta, "autoridade");
+    const date = extractTag(meta, "date");
+    const dataRepr = extractTag(meta, "dataRepresentativa");
+
+    // Build a readable title
+    let title = "";
+    if (tipoDocumento && descritor) {
+      title = `${tipoDocumento} nº ${descritor}`;
+    } else if (tipoDocumento) {
+      title = tipoDocumento;
+    }
+    if (localidade) title += ` — ${localidade}`;
+
     const url = urn ? `https://www.lexml.gov.br/urn/${encodeURIComponent(urn)}` : "";
 
     results.push({
-      title: title.replace(/<[^>]+>/g, "").trim(),
-      urn,
-      date,
-      summary: description.replace(/<[^>]+>/g, "").trim(),
+      title: title || "Documento legislativo",
+      urn: urn || "",
+      date: dataRepr || date || "",
+      summary: `${tipoDocumento || "Norma"} ${autoridade ? `(${autoridade})` : ""}`.trim(),
       url,
     });
   }
@@ -85,18 +80,15 @@ Deno.serve(async (req: Request) => {
     let results: LexMLResult[] = [];
 
     if (urn) {
-      // Fetch exact law by URN
       const url = `https://www.lexml.gov.br/urn/${encodeURIComponent(urn)}`;
       try {
-        const resp = await fetch(url, {
-          headers: { Accept: "text/html,application/xml" },
-        });
+        const resp = await fetch(url, { headers: { Accept: "text/html,application/xml" } });
         if (resp.ok) {
           results = [{
-            title: urn.split(":").pop()?.replace(/;/g, " ") || urn,
+            title: urn.split(";").pop()?.replace(/[_:]/g, " ") || urn,
             urn,
             date: "",
-            summary: `Norma encontrada no LexML.`,
+            summary: "Norma encontrada no LexML.",
             url,
           }];
         }
@@ -104,17 +96,18 @@ Deno.serve(async (req: Request) => {
         console.error("LexML URN fetch error:", e);
       }
     } else {
-      // Search by query
-      const searchUrl = `https://www.lexml.gov.br/busca/SRU?operation=searchRetrieve&version=1.1&query=${encodeURIComponent(query)}&maximumRecords=5`;
-      
+      // Use the working search endpoint with raw=true for XML
+      const encoded = encodeURIComponent(query);
+      const searchUrl = `https://www.lexml.gov.br/busca/search?keyword=${encoded}&raw=true`;
+
       try {
         const resp = await fetch(searchUrl, {
-          headers: { Accept: "application/xml,text/xml" },
+          headers: { Accept: "application/xml,text/xml,text/html" },
         });
-        
+
         if (resp.ok) {
           const xml = await resp.text();
-          results = parseSRUResponse(xml);
+          results = parseSearchResponse(xml);
         } else {
           console.error("LexML search error:", resp.status);
         }
@@ -124,7 +117,11 @@ Deno.serve(async (req: Request) => {
     }
 
     return new Response(
-      JSON.stringify({ results, source: "LexML - Portal de Legislação Brasileira", timestamp: new Date().toISOString() }),
+      JSON.stringify({
+        results,
+        source: "LexML - Portal de Legislação Brasileira",
+        timestamp: new Date().toISOString(),
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (e) {
