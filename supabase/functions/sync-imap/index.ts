@@ -118,10 +118,40 @@ async function syncAccount(admin: any, account: ImapAccount): Promise<number> {
     const htmlMatch = fullBody.match(/<html[\s\S]*<\/html>/i);
     if (htmlMatch) {
       bodyHtml = htmlMatch[0].substring(0, 50000);
-      // Strip tags for text version
       bodyText = htmlMatch[0].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().substring(0, 10000);
     } else {
       bodyText = fullBody.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().substring(0, 10000);
+    }
+
+    // Filter: only import emails related to law/legal/processes
+    const textToCheck = `${subject} ${fromEmail} ${fromName} ${bodyText}`.toLowerCase();
+    const legalKeywords = [
+      "processo", "intimação", "intimacao", "citação", "citacao",
+      "audiência", "audiencia", "sentença", "sentenca", "despacho",
+      "mandado", "alvará", "alvara", "petição", "peticao",
+      "recurso", "agravo", "apelação", "apelacao", "embargo",
+      "jus.br", "pje", "esaj", "projudi", "tjsp", "tjrj", "tjmg",
+      "tribunal", "vara", "juiz", "juízo", "juizo", "comarca",
+      "réu", "reu", "autor", "advogad", "oab", "procuração", "procuracao",
+      "diligência", "diligencia", "prazo", "contestação", "contestacao",
+      "cnj", "distribuição", "distribuicao", "protocolo",
+      "oficial de justiça", "oficial de justica",
+      "carta precatória", "carta precatoria",
+      "execução", "execucao", "penhora", "leilão", "leilao",
+      "inventário", "inventario", "divórcio", "divorcio",
+      "pensão", "pensao", "alimentos", "guarda", "tutela",
+      "habeas corpus", "mandamus", "liminar", "tutela antecipada",
+      "indenização", "indenizacao", "dano moral", "dano material",
+      "trabalhista", "reclamação", "reclamacao", "trt", "tst",
+      "previdenciário", "previdenciario", "inss", "benefício", "beneficio",
+      "honorários", "honorarios", "custas", "emolumentos",
+      "acórdão", "acordao", "jurisprudência", "jurisprudencia",
+    ];
+    const isLegal = isJudicial || legalKeywords.some(kw => textToCheck.includes(kw));
+
+    if (!isLegal) {
+      console.log(`Skipping non-legal email: "${subject}" from ${fromEmail}`);
+      continue;
     }
 
     // Save to email_messages
