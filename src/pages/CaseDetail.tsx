@@ -12,8 +12,9 @@ import { ChecklistItemRow } from "@/components/ChecklistItemRow";
 import { LaraChat } from "@/components/LaraChat";
 import { EmptyState } from "@/components/EmptyState";
 import { DetailSkeleton } from "@/components/Skeletons";
-import { ArrowLeft, Upload, Plus, FileText, ClipboardList, FolderOpen, FileDown } from "lucide-react";
+import { ArrowLeft, Upload, Plus, FileText, ClipboardList, FolderOpen, FileDown, Scale } from "lucide-react";
 import { GenerateDocumentsModal } from "@/components/GenerateDocumentsModal";
+import { PeticaoModal } from "@/components/PeticaoModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -47,6 +48,7 @@ export default function CaseDetail() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const [showDocGen, setShowDocGen] = useState(false);
+  const [showPeticao, setShowPeticao] = useState(false);
 
   useEffect(() => {
     if (dbMessages.length > 0 && !historyLoaded) {
@@ -156,6 +158,10 @@ export default function CaseDetail() {
             )}
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setShowPeticao(true)}>
+              <Scale className="w-3.5 h-3.5 mr-1.5" />
+              Montar Petição
+            </Button>
             <Button variant="outline" size="sm" onClick={() => setShowDocGen(true)}>
               <FileDown className="w-3.5 h-3.5 mr-1.5" />
               Gerar documentos
@@ -183,6 +189,16 @@ export default function CaseDetail() {
           clientName={clientName}
           clientCpf={(caseData as any).clients?.cpf || null}
           clientEmail={(caseData as any).clients?.email || null}
+        />
+
+        <PeticaoModal
+          open={showPeticao}
+          onOpenChange={setShowPeticao}
+          caseId={id!}
+          caseData={caseData}
+          clientData={(caseData as any).clients || {}}
+          documents={documents}
+          checklist={checklist}
         />
 
         <div className="mb-8 border border-border rounded-lg p-4">

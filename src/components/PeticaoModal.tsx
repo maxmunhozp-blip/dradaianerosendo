@@ -1,0 +1,458 @@
+import { useState, useRef, useEffect } from "react";
+import {
+  Dialog,
+  DialogContent,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import {
+  FileText,
+  Loader2,
+  Download,
+  Save,
+  RefreshCw,
+  ArrowRight,
+  ArrowLeft,
+  CheckCircle2,
+  Search,
+  Scale,
+  PenTool,
+} from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useCreateDocument, useUploadDocument } from "@/hooks/use-documents";
+import { toast } from "sonner";
+import jsPDF from "jspdf";
+
+interface PeticaoModalProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  caseId: string;
+  caseData: any;
+  clientData: any;
+  documents: any[];
+  checklist: any[];
+}
+
+const GENERATION_STEPS = [
+  { label: "Lendo documentos...", icon: FileText },
+  { label: "Analisando fatos...", icon: Search },
+  { label: "Pesquisando fundamentos jurídicos...", icon: Scale },
+  { label: "Redigindo petição...", icon: PenTool },
+];
+
+export function PeticaoModal({
+  open,
+  onOpenChange,
+  caseId,
+  caseData,
+  clientData,
+  documents,
+  checklist,
+}: PeticaoModalProps) {
+  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [selectedDocs, setSelectedDocs] = useState<Set<string>>(new Set());
+  const [additionalContext, setAdditionalContext] = useState("");
+  const [generatedText, setGeneratedText] = useState("");
+  const [genStep, setGenStep] = useState(0);
+  const [saving, setSaving] = useState(false);
+  const editorRef = useRef<HTMLDivElement>(null);
+  const createDoc = useCreateDocument();
+  const uploadDoc = useUploadDocument();
+
+  // Initialize all docs as selected
+  useEffect(() => {
+    if (open) {
+      setSelectedDocs(new Set(documents.map((d) => d.id)));
+      setStep(1);
+      setGeneratedText("");
+      setAdditionalContext("");
+      setGenStep(0);
+    }
+  }, [open, documents]);
+
+  const toggleDoc = (docId: string) => {
+    setSelectedDocs((prev) => {
+      const next = new Set(prev);
+      if (next.has(docId)) next.delete(docId);
+      else next.add(docId);
+      return next;
+    });
+  };
+
+  const handleGenerate = async () => {
+    setStep(2);
+    setGeneratedText("");
+    setGenStep(0);
+
+    // Animate generation steps
+    const stepInterval = setInterval(() => {
+      setGenStep((prev) => {
+        if (prev >= GENERATION_STEPS.length - 1) {
+          clearInterval(stepInterval);
+          return prev;
+        }
+        return prev + 1;
+      });
+    }, 2000);
+
+    try {
+      const selectedDocData = documents
+        .filter((d) => selectedDocs.has(d.id))
+        .map((d) => ({
+          name: d.name,
+          category: d.category,
+          file_url: d.file_url,
+        }));
+
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-peticao`;
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({
+          caseData: {
+            case_type: caseData.case_type,
+            status: caseData.status,
+            court: caseData.court,
+            cnj_number: caseData.cnj_number,
+            description: caseData.description,
+          },
+          clientData: {
+            name: clientData.name,
+            cpf: clientData.cpf,
+            email: clientData.email,
+            phone: clientData.phone,
+          },
+          documentUrls: selectedDocData,
+          additionalContext,
+        }),
+      });
+
+      clearInterval(stepInterval);
+      setGenStep(GENERATION_STEPS.length - 1);
+
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ error: "Erro desconhecido" }));
+        throw new Error(err.error || `Erro ${resp.status}`);
+      }
+
+      // Stream the response
+      const reader = resp.body!.getReader();
+      const decoder = new TextDecoder();
+      let fullText = "";
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        let newlineIndex: number;
+        while ((newlineIndex = buffer.indexOf("\n")) !== -1) {
+          let line = buffer.slice(0, newlineIndex);
+          buffer = buffer.slice(newlineIndex + 1);
+          if (line.endsWith("\r")) line = line.slice(0, -1);
+          if (!line.startsWith("data: ")) continue;
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === "[DONE]") continue;
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const content = parsed.choices?.[0]?.delta?.content;
+            if (content) {
+              fullText += content;
+              setGeneratedText(fullText);
+            }
+          } catch {
+            buffer = line + "\n" + buffer;
+            break;
+          }
+        }
+      }
+
+      setStep(3);
+    } catch (err: any) {
+      clearInterval(stepInterval);
+      toast.error("Erro ao gerar petição: " + err.message);
+      setStep(1);
+    }
+  };
+
+  const handleDownloadPdf = () => {
+    const text = editorRef.current?.innerText || generatedText;
+    const doc = new jsPDF();
+    const margin = 20;
+    const pageWidth = doc.internal.pageSize.getWidth() - margin * 2;
+    const lines = doc.splitTextToSize(text, pageWidth);
+    let y = margin;
+
+    for (const line of lines) {
+      if (y > doc.internal.pageSize.getHeight() - margin) {
+        doc.addPage();
+        y = margin;
+      }
+      doc.setFontSize(11);
+      doc.text(line, margin, y);
+      y += 6;
+    }
+
+    const clientFirstName = clientData.name?.split(" ")[0] || "cliente";
+    doc.save(`peticao-inicial-${clientFirstName}.pdf`);
+    toast.success("PDF baixado com sucesso");
+  };
+
+  const handleSaveToCase = async () => {
+    setSaving(true);
+    try {
+      const text = editorRef.current?.innerText || generatedText;
+      const blob = new Blob([text], { type: "text/plain" });
+      const file = new File([blob], `peticao-inicial-${Date.now()}.txt`, { type: "text/plain" });
+
+      const fileUrl = await uploadDoc.mutateAsync({ file, caseId });
+      await createDoc.mutateAsync({
+        case_id: caseId,
+        name: "Petição Inicial",
+        file_url: fileUrl,
+        category: "processo",
+        status: "usado",
+        uploaded_by: "advogada",
+      });
+
+      toast.success("Petição salva no caso com sucesso");
+      onOpenChange(false);
+    } catch (err: any) {
+      toast.error("Erro ao salvar: " + err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const doneChecklist = checklist.filter((i) => i.done);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0 gap-0">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
+          <div className="flex items-center gap-3">
+            <Scale className="w-5 h-5 text-primary" />
+            <div>
+              <h2 className="text-base font-semibold text-foreground">Montar Petição Inicial</h2>
+              <p className="text-xs text-muted-foreground">
+                {caseData.case_type} — {clientData.name}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {[1, 2, 3].map((s) => (
+              <div
+                key={s}
+                className={`w-2 h-2 rounded-full ${
+                  s === step
+                    ? "bg-primary"
+                    : s < step
+                    ? "bg-accent"
+                    : "bg-muted"
+                }`}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto">
+          {/* STEP 1 — Revisão */}
+          {step === 1 && (
+            <div className="p-6 space-y-6">
+              {/* Case summary */}
+              <div>
+                <h3 className="text-sm font-medium text-foreground mb-3">Resumo do caso</h3>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="bg-muted/50 rounded-md p-3">
+                    <p className="text-xs text-muted-foreground">Cliente</p>
+                    <p className="font-medium text-foreground">{clientData.name}</p>
+                    {clientData.cpf && (
+                      <p className="text-xs text-muted-foreground mt-0.5">CPF: {clientData.cpf}</p>
+                    )}
+                  </div>
+                  <div className="bg-muted/50 rounded-md p-3">
+                    <p className="text-xs text-muted-foreground">Tipo de ação</p>
+                    <p className="font-medium text-foreground">{caseData.case_type}</p>
+                    {caseData.court && (
+                      <p className="text-xs text-muted-foreground mt-0.5">Vara: {caseData.court}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Documents */}
+              <div>
+                <h3 className="text-sm font-medium text-foreground mb-2">
+                  Documentos ({selectedDocs.size}/{documents.length} selecionados)
+                </h3>
+                {documents.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">Nenhum documento neste caso.</p>
+                ) : (
+                  <div className="border border-border rounded-md divide-y divide-border">
+                    {documents.map((doc) => (
+                      <label
+                        key={doc.id}
+                        className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted/30 cursor-pointer"
+                      >
+                        <Checkbox
+                          checked={selectedDocs.has(doc.id)}
+                          onCheckedChange={() => toggleDoc(doc.id)}
+                        />
+                        <FileText className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                        <span className="text-sm text-foreground flex-1">{doc.name}</span>
+                        <Badge variant="secondary" className="text-[10px]">
+                          {doc.category}
+                        </Badge>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Done checklist */}
+              {doneChecklist.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-medium text-foreground mb-2">
+                    Checklist concluído ({doneChecklist.length})
+                  </h3>
+                  <div className="space-y-1">
+                    {doneChecklist.map((item) => (
+                      <div key={item.id} className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <CheckCircle2 className="w-3 h-3 text-accent" />
+                        {item.label}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Additional context */}
+              <div>
+                <h3 className="text-sm font-medium text-foreground mb-2">Informações adicionais</h3>
+                <Textarea
+                  value={additionalContext}
+                  onChange={(e) => setAdditionalContext(e.target.value)}
+                  placeholder="Descreva os fatos, argumentos específicos, valores, nomes de partes adversárias, endereços, ou qualquer contexto que ajude a LARA redigir a petição..."
+                  rows={5}
+                  className="text-sm"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* STEP 2 — Generating */}
+          {step === 2 && (
+            <div className="p-6 flex flex-col items-center justify-center min-h-[400px]">
+              <Loader2 className="w-8 h-8 animate-spin text-primary mb-6" />
+              <p className="text-sm font-medium text-foreground mb-6">Gerando petição inicial...</p>
+              <div className="space-y-3 w-64">
+                {GENERATION_STEPS.map((gs, i) => {
+                  const StepIcon = gs.icon;
+                  const isActive = i === genStep;
+                  const isDone = i < genStep;
+                  return (
+                    <div
+                      key={i}
+                      className={`flex items-center gap-3 text-sm transition-all ${
+                        isActive
+                          ? "text-foreground font-medium"
+                          : isDone
+                          ? "text-muted-foreground"
+                          : "text-muted-foreground/40"
+                      }`}
+                    >
+                      {isDone ? (
+                        <CheckCircle2 className="w-4 h-4 text-accent shrink-0" />
+                      ) : isActive ? (
+                        <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                      ) : (
+                        <StepIcon className="w-4 h-4 shrink-0" />
+                      )}
+                      {gs.label}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Show streaming text preview */}
+              {generatedText && (
+                <div className="mt-6 w-full max-h-40 overflow-y-auto bg-muted/30 rounded-md p-3">
+                  <p className="text-xs text-muted-foreground whitespace-pre-wrap line-clamp-6">
+                    {generatedText.slice(0, 500)}...
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* STEP 3 — Result */}
+          {step === 3 && (
+            <div className="p-6">
+              <div
+                ref={editorRef}
+                contentEditable
+                suppressContentEditableWarning
+                className="min-h-[400px] max-h-[60vh] overflow-y-auto border border-border rounded-md p-6 text-sm text-foreground whitespace-pre-wrap leading-relaxed focus:outline-none focus:ring-2 focus:ring-ring"
+                dangerouslySetInnerHTML={{ __html: generatedText.replace(/\n/g, "<br>") }}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-between px-6 py-4 border-t border-border shrink-0">
+          {step === 1 && (
+            <>
+              <div />
+              <Button onClick={handleGenerate}>
+                Gerar Petição
+                <ArrowRight className="w-4 h-4 ml-1.5" />
+              </Button>
+            </>
+          )}
+
+          {step === 2 && (
+            <>
+              <Button variant="ghost" size="sm" onClick={() => setStep(1)}>
+                <ArrowLeft className="w-4 h-4 mr-1.5" />
+                Voltar
+              </Button>
+              <div />
+            </>
+          )}
+
+          {step === 3 && (
+            <>
+              <Button variant="ghost" size="sm" onClick={() => setStep(1)}>
+                <RefreshCw className="w-4 h-4 mr-1.5" />
+                Regenerar
+              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={handleDownloadPdf}>
+                  <Download className="w-4 h-4 mr-1.5" />
+                  Baixar PDF
+                </Button>
+                <Button size="sm" onClick={handleSaveToCase} disabled={saving}>
+                  {saving ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-1.5" />
+                  ) : (
+                    <Save className="w-4 h-4 mr-1.5" />
+                  )}
+                  {saving ? "Salvando..." : "Salvar no caso"}
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
