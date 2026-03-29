@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Mail, Plus, RefreshCw, Trash2, Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { Mail, Plus, RefreshCw, Trash2, Loader2, CheckCircle2, XCircle, Server } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,6 +36,11 @@ interface EmailAccount {
   access_token: string | null;
   refresh_token: string | null;
   gmail_message_id_cursor: string | null;
+  provider: string;
+  imap_host: string | null;
+  imap_port: number | null;
+  imap_user: string | null;
+  imap_password: string | null;
 }
 
 const PLATFORMS = ["PJe", "eSAJ", "PROJUDI", "e-PROC", "Todos"];
@@ -97,6 +102,8 @@ function useSyncGmail() {
 
 export { useSyncGmail };
 
+type ProviderTab = "gmail" | "hostinger";
+
 export default function EmailAccountsSection() {
   const { data: accounts = [], isLoading } = useEmailAccounts();
   const deleteMutation = useDeleteEmailAccount();
@@ -104,11 +111,28 @@ export default function EmailAccountsSection() {
   const qc = useQueryClient();
 
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [providerTab, setProviderTab] = useState<ProviderTab>("gmail");
   const [newLabel, setNewLabel] = useState("");
   const [newPlatform, setNewPlatform] = useState("Todos");
   const [saving, setSaving] = useState(false);
 
-  // Handle OAuth redirect — capture tokens after Google sign-in
+  // Hostinger fields
+  const [hostEmail, setHostEmail] = useState("");
+  const [hostPassword, setHostPassword] = useState("");
+  const [imapHost, setImapHost] = useState("imap.hostinger.com");
+  const [imapPort, setImapPort] = useState("993");
+
+  const resetForm = () => {
+    setNewLabel("");
+    setNewPlatform("Todos");
+    setHostEmail("");
+    setHostPassword("");
+    setImapHost("imap.hostinger.com");
+    setImapPort("993");
+    setProviderTab("gmail");
+  };
+
+  // Handle OAuth redirect
   useEffect(() => {
     const handleOAuthRedirect = async () => {
       const hash = window.location.hash;
@@ -117,7 +141,6 @@ export default function EmailAccountsSection() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.provider_token) return;
 
-      // Get pending account info from localStorage
       const pending = localStorage.getItem("pending_email_account");
       if (!pending) return;
 
@@ -125,17 +148,16 @@ export default function EmailAccountsSection() {
       localStorage.removeItem("pending_email_account");
 
       try {
-        // Get email from Google userinfo
         const res = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
           headers: { Authorization: `Bearer ${session.provider_token}` },
         });
         const userInfo = await res.json();
 
-        // Save account
         const { error } = await (supabase.from("email_accounts") as any).insert({
           label,
           email: userInfo.email,
           platform,
+          provider: "gmail",
           status: "conectado",
           access_token: session.provider_token,
           refresh_token: session.provider_refresh_token || null,
@@ -159,7 +181,6 @@ export default function EmailAccountsSection() {
     }
 
     setSaving(true);
-    // Store pending account info
     localStorage.setItem(
       "pending_email_account",
       JSON.stringify({ label: newLabel, platform: newPlatform })
@@ -181,31 +202,107 @@ export default function EmailAccountsSection() {
     setSaving(false);
   };
 
+  const handleConnectHostinger = async () => {
+    if (!newLabel.trim()) { toast.error("Informe um nome para a conta"); return; }
+    if (!hostEmail.trim()) { toast.error("Informe o e-mail"); return; }
+    if (!hostPassword.trim()) { toast.error("Informe a senha"); return; }
+
+    setSaving(true);
+    try {
+      // Test IMAP connection
+      const { data, error } = await supabase.functions.invoke("test-imap", {
+        body: {
+          host: imapHost,
+          port: parseInt(imapPort),
+          user: hostEmail,
+          password: hostPassword,
+        },
+      });
+
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || "Falha na conexão IMAP");
+
+      // Save account
+      const { error: insertError } = await (supabase.from("email_accounts") as any).insert({
+        label: newLabel,
+        email: hostEmail,
+        platform: newPlatform,
+        provider: "hostinger",
+        status: "conectado",
+        imap_host: imapHost,
+        imap_port: parseInt(imapPort),
+        imap_user: hostEmail,
+        imap_password: btoa(hostPassword), // base64 encode
+      });
+
+      if (insertError) throw insertError;
+      toast.success(`Conta ${hostEmail} conectada com sucesso!`);
+      qc.invalidateQueries({ queryKey: ["email-accounts"] });
+      setDialogOpen(false);
+      resetForm();
+    } catch (err: any) {
+      toast.error("Erro: " + err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-xs text-muted-foreground">
           {accounts.length} conta(s) configurada(s)
         </p>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) resetForm(); }}>
           <DialogTrigger asChild>
             <Button size="sm" variant="outline" className="text-amber-600 border-amber-300 hover:bg-amber-50">
               <Plus className="w-3.5 h-3.5 mr-1" />
-              Adicionar conta Gmail
+              Adicionar conta
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>Conectar conta Gmail</DialogTitle>
+              <DialogTitle>Conectar conta de e-mail</DialogTitle>
               <DialogDescription>
-                Conecte uma conta Gmail para monitorar intimações judiciais automaticamente.
+                Conecte uma conta Gmail ou Hostinger para monitorar intimações.
               </DialogDescription>
             </DialogHeader>
+
+            {/* Provider selector */}
+            <div className="grid grid-cols-2 gap-3 py-2">
+              <button
+                type="button"
+                onClick={() => setProviderTab("gmail")}
+                className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-colors ${
+                  providerTab === "gmail"
+                    ? "border-amber-500 bg-amber-50"
+                    : "border-border hover:border-muted-foreground/30"
+                }`}
+              >
+                <Mail className="w-6 h-6 text-red-500" />
+                <span className="text-sm font-medium">Gmail</span>
+                <span className="text-[10px] text-muted-foreground text-center">Conectar via OAuth Google</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setProviderTab("hostinger")}
+                className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-colors ${
+                  providerTab === "hostinger"
+                    ? "border-amber-500 bg-amber-50"
+                    : "border-border hover:border-muted-foreground/30"
+                }`}
+              >
+                <Server className="w-6 h-6 text-purple-500" />
+                <span className="text-sm font-medium">Hostinger</span>
+                <span className="text-[10px] text-muted-foreground text-center">Configurar com e-mail Hostinger</span>
+              </button>
+            </div>
+
             <div className="space-y-4 py-2">
               <div className="space-y-2">
                 <Label className="text-xs">Nome da conta</Label>
                 <Input
-                  placeholder="Ex: Gmail PJe SP"
+                  placeholder={providerTab === "gmail" ? "Ex: Gmail PJe SP" : "Ex: Hostinger PJe"}
                   value={newLabel}
                   onChange={(e) => setNewLabel(e.target.value)}
                 />
@@ -223,12 +320,60 @@ export default function EmailAccountsSection() {
                   </SelectContent>
                 </Select>
               </div>
+
+              {providerTab === "hostinger" && (
+                <>
+                  <div className="space-y-2">
+                    <Label className="text-xs">E-mail</Label>
+                    <Input
+                      type="email"
+                      placeholder="daiane@escritorio.com.br"
+                      value={hostEmail}
+                      onChange={(e) => setHostEmail(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Senha</Label>
+                    <Input
+                      type="password"
+                      placeholder="Senha do e-mail"
+                      value={hostPassword}
+                      onChange={(e) => setHostPassword(e.target.value)}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label className="text-xs">IMAP Host</Label>
+                      <Input
+                        value={imapHost}
+                        onChange={(e) => setImapHost(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">IMAP Porta</Label>
+                      <Input
+                        type="number"
+                        value={imapPort}
+                        onChange={(e) => setImapPort(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
+
             <DialogFooter>
-              <Button onClick={handleConnectGmail} disabled={saving} className="bg-amber-600 hover:bg-amber-700">
-                {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Mail className="w-4 h-4 mr-1" />}
-                Conectar Gmail
-              </Button>
+              {providerTab === "gmail" ? (
+                <Button onClick={handleConnectGmail} disabled={saving} className="bg-amber-600 hover:bg-amber-700">
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Mail className="w-4 h-4 mr-1" />}
+                  Conectar Gmail
+                </Button>
+              ) : (
+                <Button onClick={handleConnectHostinger} disabled={saving} className="bg-amber-600 hover:bg-amber-700">
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Server className="w-4 h-4 mr-1" />}
+                  Testar e conectar
+                </Button>
+              )}
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -241,8 +386,8 @@ export default function EmailAccountsSection() {
       ) : accounts.length === 0 ? (
         <div className="bg-muted/50 rounded-md p-4 text-center text-xs text-muted-foreground">
           <Mail className="w-8 h-8 mx-auto mb-2 opacity-40" />
-          <p>Nenhuma conta Gmail conectada.</p>
-          <p className="mt-1">Adicione uma conta para monitorar intimações automaticamente.</p>
+          <p>Nenhuma conta de e-mail conectada.</p>
+          <p className="mt-1">Adicione uma conta Gmail ou Hostinger para monitorar intimações.</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -252,12 +397,19 @@ export default function EmailAccountsSection() {
               className="flex items-center justify-between border rounded-lg px-3 py-2.5"
             >
               <div className="flex items-center gap-3 min-w-0">
-                <Mail className="w-4 h-4 text-muted-foreground shrink-0" />
+                {account.provider === "hostinger" ? (
+                  <Server className="w-4 h-4 text-purple-500 shrink-0" />
+                ) : (
+                  <Mail className="w-4 h-4 text-red-500 shrink-0" />
+                )}
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium truncate">{account.label}</span>
                     <Badge variant="outline" className="text-[10px] px-1.5 py-0 shrink-0">
                       {account.platform}
+                    </Badge>
+                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 shrink-0 capitalize">
+                      {account.provider}
                     </Badge>
                   </div>
                   <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
@@ -316,7 +468,7 @@ export default function EmailAccountsSection() {
       <div className="bg-muted/50 rounded-md p-3 text-xs text-muted-foreground space-y-1">
         <p className="font-medium text-foreground">Como funciona:</p>
         <ol className="list-decimal list-inside space-y-0.5">
-          <li>Clique em "Adicionar conta Gmail" e autorize o acesso</li>
+          <li>Clique em "Adicionar conta" e escolha Gmail ou Hostinger</li>
           <li>O sistema buscará e-mails de domínios <code className="bg-background px-1 rounded">*.jus.br</code></li>
           <li>Novas intimações serão processadas automaticamente com IA</li>
           <li>Você receberá notificações push para prazos urgentes</li>
