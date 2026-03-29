@@ -58,23 +58,60 @@ function decodeRfc2047(str: string): string {
   );
 }
 
-function decodeBase64(str: string): string {
+function normalizeCharset(charset: string): string {
+  const c = charset.toLowerCase().replace(/[^a-z0-9-]/g, "");
+  const map: Record<string, string> = {
+    "latin1": "iso-8859-1",
+    "iso88591": "iso-8859-1",
+    "windows1252": "windows-1252",
+    "cp1252": "windows-1252",
+    "ascii": "utf-8",
+    "usascii": "utf-8",
+    "utf8": "utf-8",
+  };
+  return map[c] || charset.toLowerCase();
+}
+
+function extractCharset(headerBlock: string): string {
+  const match = headerBlock.match(/charset\s*=\s*"?([^";\s]+)"?/i);
+  return match ? normalizeCharset(match[1]) : "utf-8";
+}
+
+function decodeBase64WithCharset(str: string, charset = "utf-8"): string {
   try {
     const cleaned = str.replace(/\s/g, "");
     const bin = atob(cleaned);
     const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
-    return new TextDecoder("utf-8").decode(bytes);
+    return new TextDecoder(normalizeCharset(charset)).decode(bytes);
   } catch {
-    return str;
+    try {
+      const cleaned = str.replace(/\s/g, "");
+      const bin = atob(cleaned);
+      const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
+      return new TextDecoder("utf-8").decode(bytes);
+    } catch {
+      return str;
+    }
   }
 }
 
-function decodeQuotedPrintable(str: string): string {
-  return str
-    .replace(/=\r?\n/g, "")
-    .replace(/=([0-9A-Fa-f]{2})/g, (_m, hex) =>
-      String.fromCharCode(parseInt(hex, 16))
-    );
+function decodeQuotedPrintableWithCharset(str: string, charset = "utf-8"): string {
+  try {
+    const decoded = str
+      .replace(/=\r?\n/g, "")
+      .replace(/=([0-9A-Fa-f]{2})/g, (_m, hex) =>
+        String.fromCharCode(parseInt(hex, 16))
+      );
+    // Re-decode bytes with proper charset
+    const bytes = Uint8Array.from(decoded, (c) => c.charCodeAt(0));
+    return new TextDecoder(normalizeCharset(charset)).decode(bytes);
+  } catch {
+    return str
+      .replace(/=\r?\n/g, "")
+      .replace(/=([0-9A-Fa-f]{2})/g, (_m, hex) =>
+        String.fromCharCode(parseInt(hex, 16))
+      );
+  }
 }
 
 function extractEmailBody(raw: string): { html: string | null; text: string } {
@@ -89,13 +126,16 @@ function extractEmailBody(raw: string): { html: string | null; text: string } {
       const cte = (cteMatch?.[1] || "").trim().toLowerCase();
       const ctMatch = raw.match(/^Content-Type:\s*([^;\s]+)/im);
       const ct = (ctMatch?.[1] || "").toLowerCase();
+      const headerEnd = raw.search(/\r?\n\r?\n/);
+      const headerBlock = headerEnd > 0 ? raw.substring(0, headerEnd) : raw;
+      const charset = extractCharset(headerBlock);
 
       const bodyStart = raw.search(/\r?\n\r?\n/);
       if (bodyStart === -1) return { html: null, text: "" };
       let body = raw.substring(bodyStart).replace(/^\r?\n\r?\n/, "");
 
-      if (cte.includes("base64")) body = decodeBase64(body);
-      else if (cte.includes("quoted-printable")) body = decodeQuotedPrintable(body);
+      if (cte.includes("base64")) body = decodeBase64WithCharset(body, charset);
+      else if (cte.includes("quoted-printable")) body = decodeQuotedPrintableWithCharset(body, charset);
 
       if (ct.includes("text/html")) {
         return { html: body, text: body.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() };
@@ -113,6 +153,9 @@ function extractEmailBody(raw: string): { html: string | null; text: string } {
       const cteMatch = part.match(/Content-Transfer-Encoding:\s*(\S+)/i);
       const ct = (ctMatch?.[1] || "").toLowerCase();
       const cte = (cteMatch?.[1] || "").toLowerCase();
+      const partHeaderEnd = part.search(/\r?\n\r?\n/);
+      const partHeader = partHeaderEnd > 0 ? part.substring(0, partHeaderEnd) : part;
+      const charset = extractCharset(partHeader);
 
       if (ct.includes("multipart/") || ct.includes("image/") || ct.includes("application/")) continue;
 
@@ -120,8 +163,8 @@ function extractEmailBody(raw: string): { html: string | null; text: string } {
       if (bodyIdx === -1) continue;
       let body = part.substring(bodyIdx).replace(/^\r?\n\r?\n/, "");
 
-      if (cte.includes("base64")) body = decodeBase64(body);
-      else if (cte.includes("quoted-printable")) body = decodeQuotedPrintable(body);
+      if (cte.includes("base64")) body = decodeBase64WithCharset(body, charset);
+      else if (cte.includes("quoted-printable")) body = decodeQuotedPrintableWithCharset(body, charset);
 
       if (ct.includes("text/html") && !htmlContent) {
         htmlContent = body;
