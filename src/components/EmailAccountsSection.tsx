@@ -166,6 +166,7 @@ export default function EmailAccountsSection() {
   const [newLabel, setNewLabel] = useState("");
   const [newPlatform, setNewPlatform] = useState("Todos");
   const [saving, setSaving] = useState(false);
+  const [oauthStep, setOauthStep] = useState<string | null>(null);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<"success" | "error" | null>(null);
   const [showPassword, setShowPassword] = useState(false);
