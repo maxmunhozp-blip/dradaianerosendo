@@ -16,6 +16,10 @@ import {
   AlertTriangle,
   CheckCircle,
   XCircle,
+  Scale,
+  Pencil,
+  Trash2,
+  Plus,
 } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -280,6 +284,7 @@ export default function Settings() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [openSections, setOpenSections] = useState({
     office: true,
+    caseTypes: false,
     zapi: false,
     emailAccounts: false,
     syncLog: false,
@@ -287,6 +292,71 @@ export default function Settings() {
     hours: false,
     intimacoes: false,
   });
+
+  // Case types management
+  const DEFAULT_CASE_TYPES = ["Divórcio", "Guarda", "Alimentos", "Inventário", "Outro"];
+  const [caseTypes, setCaseTypes] = useState<string[]>(DEFAULT_CASE_TYPES);
+  const [newCaseType, setNewCaseType] = useState("");
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editingValue, setEditingValue] = useState("");
+
+  useEffect(() => {
+    loadCaseTypes();
+  }, []);
+
+  const loadCaseTypes = async () => {
+    const { data } = await (supabase.from("settings" as any).select("value").eq("key", "case_types").single()) as any;
+    if (data?.value) {
+      try {
+        const parsed = JSON.parse(data.value);
+        if (Array.isArray(parsed) && parsed.length > 0) setCaseTypes(parsed);
+      } catch {}
+    }
+  };
+
+  const saveCaseTypes = async (types: string[]) => {
+    setCaseTypes(types);
+    await (supabase.from("settings" as any) as any).upsert(
+      { key: "case_types", value: JSON.stringify(types), updated_at: new Date().toISOString() },
+      { onConflict: "key" }
+    );
+    toast.success("Tipos de ação atualizados!");
+  };
+
+  const addCaseType = () => {
+    const trimmed = newCaseType.trim();
+    if (!trimmed) return;
+    if (caseTypes.includes(trimmed)) {
+      toast.error("Tipo já existe.");
+      return;
+    }
+    saveCaseTypes([...caseTypes, trimmed]);
+    setNewCaseType("");
+  };
+
+  const deleteCaseType = (index: number) => {
+    saveCaseTypes(caseTypes.filter((_, i) => i !== index));
+  };
+
+  const startEdit = (index: number) => {
+    setEditingIndex(index);
+    setEditingValue(caseTypes[index]);
+  };
+
+  const confirmEdit = () => {
+    if (editingIndex === null) return;
+    const trimmed = editingValue.trim();
+    if (!trimmed) return;
+    if (caseTypes.some((t, i) => i !== editingIndex && t === trimmed)) {
+      toast.error("Tipo já existe.");
+      return;
+    }
+    const updated = [...caseTypes];
+    updated[editingIndex] = trimmed;
+    saveCaseTypes(updated);
+    setEditingIndex(null);
+    setEditingValue("");
+  };
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(false);
@@ -474,6 +544,65 @@ export default function Settings() {
               value={val("office_address")}
               onChange={(e) => set("office_address", e.target.value)}
             />
+          </div>
+        </div>
+      </CollapsibleSection>
+
+      {/* Tipos de Ação */}
+      <CollapsibleSection
+        open={openSections.caseTypes}
+        onOpenChange={() => toggle("caseTypes")}
+        icon={Scale}
+        iconBg="bg-primary/10 text-primary"
+        title="Tipos de Ação"
+        description="Gerencie os tipos de ação disponíveis nos casos"
+      >
+        <div className="space-y-3">
+          <div className="border rounded-lg divide-y">
+            {caseTypes.map((type, index) => (
+              <div key={index} className="flex items-center gap-2 px-3 py-2">
+                {editingIndex === index ? (
+                  <>
+                    <Input
+                      className="h-7 text-xs flex-1"
+                      value={editingValue}
+                      onChange={(e) => setEditingValue(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && confirmEdit()}
+                      autoFocus
+                    />
+                    <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={confirmEdit}>
+                      Salvar
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setEditingIndex(null)}>
+                      Cancelar
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <span className="flex-1 text-sm">{type}</span>
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => startEdit(index)}>
+                      <Pencil className="w-3 h-3" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => deleteCaseType(index)}>
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center gap-2">
+            <Input
+              className="h-8 text-xs flex-1"
+              placeholder="Novo tipo de ação..."
+              value={newCaseType}
+              onChange={(e) => setNewCaseType(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && addCaseType()}
+            />
+            <Button variant="outline" size="sm" className="h-8 text-xs gap-1" onClick={addCaseType}>
+              <Plus className="w-3 h-3" />
+              Adicionar
+            </Button>
           </div>
         </div>
       </CollapsibleSection>

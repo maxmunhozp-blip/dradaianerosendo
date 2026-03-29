@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useClient, useUpdateClient, useDeleteClient } from "@/hooks/use-clients";
 import { useCasesByClient, useCreateCase } from "@/hooks/use-cases";
+import { useCaseTypes } from "@/hooks/use-case-types";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyState } from "@/components/EmptyState";
 import { DetailSkeleton } from "@/components/Skeletons";
@@ -46,6 +47,7 @@ export default function ClientDetail() {
   const updateClient = useUpdateClient();
   const deleteClient = useDeleteClient();
   const createCase = useCreateCase();
+  const { data: caseTypesList = ["Divórcio", "Guarda", "Alimentos", "Inventário", "Outro"] } = useCaseTypes();
 
   const [notes, setNotes] = useState<string | null>(null);
   const [caseDialogOpen, setCaseDialogOpen] = useState(false);
@@ -351,11 +353,9 @@ export default function ClientDetail() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Divórcio">Divórcio</SelectItem>
-                        <SelectItem value="Guarda">Guarda</SelectItem>
-                        <SelectItem value="Alimentos">Alimentos</SelectItem>
-                        <SelectItem value="Inventário">Inventário</SelectItem>
-                        <SelectItem value="Outro">Outro</SelectItem>
+                        {caseTypesList.map((t) => (
+                          <SelectItem key={t} value={t}>{t}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
