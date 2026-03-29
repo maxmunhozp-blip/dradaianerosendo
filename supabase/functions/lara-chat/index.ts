@@ -311,13 +311,30 @@ Deno.serve(async (req: Request) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Always fetch live office context + optional case context in parallel
-    const [officeContext, caseContext] = await Promise.all([
+    // Always fetch live office context, settings, and optional case context in parallel
+    const [officeContext, caseContext, settings] = await Promise.all([
       fetchOfficeContext(supabase),
       caseId ? fetchCaseContext(supabase, caseId) : Promise.resolve(""),
+      fetchSettings(supabase),
     ]);
 
-    const fullSystemPrompt = SYSTEM_PROMPT + "\n\n" + officeContext + (caseContext ? "\n\n" + caseContext : "");
+    // Build settings context string
+    let settingsContext = "\n\n## CONFIGURAÇÕES DO ESCRITÓRIO\n";
+    if (settings.office_name) settingsContext += `- Nome do escritório: ${settings.office_name}\n`;
+    if (settings.office_oab) settingsContext += `- OAB: ${settings.office_oab}\n`;
+    if (settings.office_phone) settingsContext += `- Telefone do escritório: ${settings.office_phone}\n`;
+    if (settings.office_email) settingsContext += `- E-mail do escritório: ${settings.office_email}\n`;
+    if (settings.template_doc_reminder) {
+      settingsContext += `\n### TEMPLATE DE COBRANÇA DE DOCUMENTOS (usar ao cobrar via WhatsApp):\n${settings.template_doc_reminder}\n`;
+    }
+    if (settings.template_welcome) {
+      settingsContext += `\n### TEMPLATE DE BOAS-VINDAS:\n${settings.template_welcome}\n`;
+    }
+    if (settings.template_signing) {
+      settingsContext += `\n### TEMPLATE DE ASSINATURA:\n${settings.template_signing}\n`;
+    }
+
+    const fullSystemPrompt = SYSTEM_PROMPT + "\n\n" + officeContext + settingsContext + (caseContext ? "\n\n" + caseContext : "");
 
     // Build messages for the AI API
     const aiMessages: any[] = [
