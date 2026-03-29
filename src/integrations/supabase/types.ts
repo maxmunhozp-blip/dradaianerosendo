@@ -238,6 +238,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      link_client_by_email: {
+        Args: { _email: string; _user_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "client"
