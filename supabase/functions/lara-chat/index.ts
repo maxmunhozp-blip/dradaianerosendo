@@ -244,6 +244,30 @@ Total de itens de checklist pendentes: ${pendingChecklist.length}
 ---`;
 }
 
+async function fetchIntimacoesContext(supabase: any): Promise<string> {
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  const { data: intimacoes } = await supabase
+    .from("intimacoes")
+    .select("process_number, tribunal, movement_type, deadline_date, status, ai_summary, created_at, cases(case_type, clients(name))")
+    .gte("created_at", thirtyDaysAgo.toISOString())
+    .order("created_at", { ascending: false })
+    .limit(20);
+
+  if (!intimacoes || intimacoes.length === 0) {
+    return "\n\n## INTIMAÇÕES RECENTES (últimos 30 dias)\nNenhuma intimação recebida nos últimos 30 dias.";
+  }
+
+  let ctx = "\n\n## INTIMAÇÕES RECENTES (últimos 30 dias)\n";
+  for (const i of intimacoes) {
+    const caseName = i.cases ? `${i.cases.case_type} — ${i.cases.clients?.name}` : "Não vinculado";
+    ctx += `- Processo: ${i.process_number || "N/I"} | Tribunal: ${i.tribunal || "N/I"} | Tipo: ${i.movement_type || "N/I"} | Prazo: ${i.deadline_date || "sem prazo"} | Status: ${i.status} | Caso: ${caseName}\n`;
+    if (i.ai_summary) ctx += `  Resumo: ${i.ai_summary}\n`;
+  }
+  return ctx;
+}
+
 async function fetchCaseContext(supabase: any, caseId: string): Promise<string> {
   const { data: caseData } = await supabase
     .from("cases")
