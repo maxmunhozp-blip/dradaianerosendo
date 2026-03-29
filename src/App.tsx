@@ -14,6 +14,7 @@ import ClientDetail from "@/pages/ClientDetail";
 import CaseDetail from "@/pages/CaseDetail";
 import LaraPage from "@/pages/LaraPage";
 import Documents from "@/pages/Documents";
+import Agenda from "@/pages/Agenda";
 import PortalDashboard from "@/pages/PortalDashboard";
 import PortalDocuments from "@/pages/PortalDocuments";
 import PortalLogin from "@/pages/PortalLogin";
@@ -44,6 +45,7 @@ const App = () => (
                 <Route path="/cases/:id" element={<CaseDetail />} />
                 <Route path="/lara" element={<LaraPage />} />
                 <Route path="/documents" element={<Documents />} />
+                <Route path="/agenda" element={<Agenda />} />
                 <Route path="/settings" element={<SettingsPage />} />
               </Route>
             </Route>

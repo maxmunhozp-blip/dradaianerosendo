@@ -6,6 +6,7 @@ import {
   FolderOpen,
   LogOut,
   Settings,
+  CalendarDays,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -27,6 +28,7 @@ const navItems = [
   { title: "Painel", url: "/", icon: LayoutDashboard },
   { title: "Clientes", url: "/clients", icon: Users },
   { title: "Documentos", url: "/documents", icon: FolderOpen },
+  { title: "Agenda", url: "/agenda", icon: CalendarDays },
   { title: "LARA", url: "/lara", icon: Bot },
   { title: "Configurações", url: "/settings", icon: Settings },
 ];

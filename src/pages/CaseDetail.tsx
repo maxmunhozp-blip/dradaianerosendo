@@ -13,7 +13,12 @@ import { LaraChat } from "@/components/LaraChat";
 import { EmptyState } from "@/components/EmptyState";
 import { DetailSkeleton } from "@/components/Skeletons";
 import { CaseTimeline } from "@/components/CaseTimeline";
-import { ArrowLeft, Upload, Plus, FileText, ClipboardList, FolderOpen, FileDown, Scale, PanelRightClose, PanelRightOpen } from "lucide-react";
+import { ArrowLeft, Upload, Plus, FileText, ClipboardList, FolderOpen, FileDown, Scale, PanelRightClose, PanelRightOpen, CalendarDays, Clock, MapPin, MessageSquare } from "lucide-react";
+import { useHearingsByCase } from "@/hooks/use-hearings";
+import { HearingModal } from "@/components/HearingModal";
+import { Badge } from "@/components/ui/badge";
+import { format, differenceInHours, isBefore } from "date-fns";
+import { supabase } from "@/integrations/supabase/client";
 import { GenerateDocumentsModal } from "@/components/GenerateDocumentsModal";
 import { PeticaoModal } from "@/components/PeticaoModal";
 import { Button } from "@/components/ui/button";
@@ -51,6 +56,8 @@ export default function CaseDetail() {
   const [showDocGen, setShowDocGen] = useState(false);
   const [showPeticao, setShowPeticao] = useState(false);
   const [showChat, setShowChat] = useState(true);
+  const [showHearingModal, setShowHearingModal] = useState(false);
+  const { data: hearings = [] } = useHearingsByCase(id!);
 
   useEffect(() => {
     if (dbMessages.length > 0 && !historyLoaded) {
@@ -273,6 +280,82 @@ export default function CaseDetail() {
               </Button>
             </div>
           </div>
+        </div>
+
+        {/* Hearings / Dates */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-medium text-foreground">Datas ({hearings.length})</h2>
+            <Button variant="outline" size="sm" onClick={() => setShowHearingModal(true)}>
+              <Plus className="w-3.5 h-3.5 mr-1.5" />
+              Adicionar data
+            </Button>
+          </div>
+          <div className="border border-border rounded-lg px-4">
+            {hearings.length === 0 ? (
+              <EmptyState
+                icon={CalendarDays}
+                title="Nenhuma data"
+                description="Adicione audiências e prazos para este caso."
+                actionLabel="Adicionar data"
+                onAction={() => setShowHearingModal(true)}
+              />
+            ) : (
+              hearings.map((h) => {
+                const d = new Date(h.date);
+                const overdue = h.status === "agendado" && isBefore(d, new Date());
+                const hoursUntil = differenceInHours(d, new Date());
+                const isSoon = h.status === "agendado" && hoursUntil >= 0 && hoursUntil <= 48;
+                const statusColors: Record<string, string> = {
+                  agendado: "bg-amber-100 text-amber-800",
+                  realizado: "bg-green-100 text-green-800",
+                  cancelado: "bg-muted text-muted-foreground",
+                };
+                return (
+                  <div key={h.id} className={`flex items-center justify-between py-3 border-b border-border last:border-b-0 ${overdue ? "bg-destructive/5 -mx-4 px-4" : ""}`}>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium text-foreground">{h.title}</p>
+                        {isSoon && <Badge variant="destructive" className="text-[10px] px-1.5 py-0">{hoursUntil <= 24 ? "Hoje" : "Amanhã"}</Badge>}
+                        {overdue && <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Atrasado</Badge>}
+                      </div>
+                      <div className="flex items-center gap-3 mt-0.5">
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Clock className="w-3 h-3" />{format(d, "dd/MM/yyyy HH:mm")}
+                        </span>
+                        {h.location && (
+                          <span className="text-xs text-muted-foreground flex items-center gap-1">
+                            <MapPin className="w-3 h-3" />{h.location}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge className={`${statusColors[h.status]} text-[10px]`}>
+                        {h.status === "agendado" ? "Agendado" : h.status === "realizado" ? "Realizado" : "Cancelado"}
+                      </Badge>
+                      {h.status === "agendado" && h.alert_whatsapp && (
+                        <Button variant="ghost" size="icon" className="h-7 w-7" title="Enviar lembrete" onClick={() => {
+                          const clientName = (caseData as any).clients?.name?.split(" ")[0] || "Cliente";
+                          const phone = ((caseData as any).clients?.phone || "").replace(/\D/g, "");
+                          const dateStr = format(d, "dd/MM/yyyy");
+                          const timeStr = format(d, "HH:mm");
+                          const loc = h.location || "local a confirmar";
+                          if (!phone) { toast.error("Cliente sem telefone cadastrado"); return; }
+                          supabase.functions.invoke("whatsapp", {
+                            body: { phone, message: `Olá ${clientName}! Lembrando que sua audiência está marcada para ${dateStr} às ${timeStr}h em ${loc}. Qualquer dúvida estou à disposição. Dra. Daiane Rosendo.` },
+                          }).then(({ error }) => { if (error) toast.error("Erro ao enviar"); else toast.success("Lembrete enviado"); });
+                        }}>
+                          <MessageSquare className="w-3.5 h-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+          <HearingModal open={showHearingModal} onOpenChange={setShowHearingModal} defaultCaseId={id} />
         </div>
 
         {/* Timeline */}
