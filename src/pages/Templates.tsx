@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { streamLaraChat } from "@/lib/lara-stream";
 import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
+import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, LevelFormat } from "docx";
+import { saveAs } from "file-saver";
 import {
   Select,
   SelectContent,
