@@ -94,7 +94,107 @@ export default function Templates() {
     }
   };
 
-  const selectedCaseData = cases?.find((c) => c.id === selectedCase);
+  const handleExportDocx = async () => {
+    if (!generatedContent) return;
+
+    try {
+      const lines = generatedContent.split("\n");
+      const children: Paragraph[] = [];
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed) {
+          children.push(new Paragraph({ children: [] }));
+          continue;
+        }
+
+        // Headings
+        if (trimmed.startsWith("### ")) {
+          children.push(new Paragraph({
+            heading: HeadingLevel.HEADING_3,
+            children: [new TextRun({ text: trimmed.replace(/^###\s*/, ""), bold: true, font: "Arial", size: 24 })],
+          }));
+        } else if (trimmed.startsWith("## ")) {
+          children.push(new Paragraph({
+            heading: HeadingLevel.HEADING_2,
+            children: [new TextRun({ text: trimmed.replace(/^##\s*/, ""), bold: true, font: "Arial", size: 28 })],
+          }));
+        } else if (trimmed.startsWith("# ")) {
+          children.push(new Paragraph({
+            heading: HeadingLevel.HEADING_1,
+            alignment: AlignmentType.CENTER,
+            children: [new TextRun({ text: trimmed.replace(/^#\s*/, ""), bold: true, font: "Arial", size: 32 })],
+          }));
+        } else if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
+          children.push(new Paragraph({
+            numbering: { reference: "bullets", level: 0 },
+            children: [new TextRun({ text: trimmed.replace(/^[-*]\s*/, ""), font: "Arial", size: 24 })],
+          }));
+        } else if (/^\d+\.\s/.test(trimmed)) {
+          children.push(new Paragraph({
+            numbering: { reference: "numbers", level: 0 },
+            children: [new TextRun({ text: trimmed.replace(/^\d+\.\s*/, ""), font: "Arial", size: 24 })],
+          }));
+        } else {
+          // Parse bold markers
+          const runs: TextRun[] = [];
+          const parts = trimmed.split(/(\*\*[^*]+\*\*)/g);
+          for (const part of parts) {
+            if (part.startsWith("**") && part.endsWith("**")) {
+              runs.push(new TextRun({ text: part.slice(2, -2), bold: true, font: "Arial", size: 24 }));
+            } else if (part) {
+              runs.push(new TextRun({ text: part, font: "Arial", size: 24 }));
+            }
+          }
+          children.push(new Paragraph({
+            spacing: { after: 120 },
+            alignment: AlignmentType.JUSTIFIED,
+            children: runs,
+          }));
+        }
+      }
+
+      const templateLabel = TEMPLATE_TYPES.find((t) => t.value === selectedTemplate)?.label || "Documento";
+      const clientName = (selectedCaseData as any)?.clients?.name || "Cliente";
+
+      const doc = new Document({
+        numbering: {
+          config: [
+            {
+              reference: "bullets",
+              levels: [{ level: 0, format: LevelFormat.BULLET, text: "\u2022", alignment: AlignmentType.LEFT,
+                style: { paragraph: { indent: { left: 720, hanging: 360 } } } }],
+            },
+            {
+              reference: "numbers",
+              levels: [{ level: 0, format: LevelFormat.DECIMAL, text: "%1.", alignment: AlignmentType.LEFT,
+                style: { paragraph: { indent: { left: 720, hanging: 360 } } } }],
+            },
+          ],
+        },
+        styles: {
+          default: { document: { run: { font: "Arial", size: 24 } } },
+        },
+        sections: [{
+          properties: {
+            page: {
+              size: { width: 11906, height: 16838 },
+              margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 },
+            },
+          },
+          children,
+        }],
+      });
+
+      const buffer = await Packer.toBlob(doc);
+      const fileName = `${templateLabel.replace(/\s+/g, "_")}_${clientName.replace(/\s+/g, "_")}.docx`;
+      saveAs(buffer, fileName);
+      toast.success("Documento DOCX exportado com sucesso");
+    } catch (e) {
+      console.error("Erro ao exportar DOCX:", e);
+      toast.error("Erro ao exportar documento");
+    }
+  };
 
   return (
     <div className="space-y-6">
