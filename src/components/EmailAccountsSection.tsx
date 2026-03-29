@@ -51,6 +51,7 @@ interface EmailAccount {
   sync_attachments: boolean;
   sync_attachments_pdf_only: boolean;
   sync_period_days: number;
+  sync_import_all: boolean;
 }
 
 const PLATFORMS = ["PJe", "eSAJ", "PROJUDI", "e-PROC", "Todos"];

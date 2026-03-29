@@ -28,6 +28,7 @@ interface ImapAccount {
   sync_attachments_pdf_only: boolean;
   sync_period_days: number;
   sync_configured: boolean;
+  sync_import_all: boolean;
 }
 
 // Decode RFC 2047 encoded words (=?charset?encoding?text?=)
