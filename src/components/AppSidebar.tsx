@@ -9,7 +9,9 @@ import {
   CalendarDays,
   ShieldCheck,
   FileStack,
+  Bell,
 } from "lucide-react";
+import { useIntimacaoCount } from "@/hooks/use-intimacoes";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
@@ -31,6 +33,7 @@ const navItems = [
   { title: "Clientes", url: "/clients", icon: Users },
   { title: "Documentos", url: "/documents", icon: FolderOpen },
   { title: "Agenda", url: "/agenda", icon: CalendarDays },
+  { title: "Intimações", url: "/intimacoes", icon: Bell },
   { title: "LARA", url: "/lara", icon: Bot },
   { title: "Templates", url: "/templates", icon: FileStack },
   { title: "Usuários", url: "/users", icon: ShieldCheck },
@@ -43,6 +46,7 @@ export function AppSidebar() {
   const location = useLocation();
   const currentPath = location.pathname;
   const { signOut, user } = useAuth();
+  const { data: intimacaoCount = 0 } = useIntimacaoCount();
 
   const isActive = (path: string) => {
     if (path === "/") return currentPath === "/";
@@ -84,6 +88,11 @@ export function AppSidebar() {
                     >
                       <item.icon className="w-4 h-4" />
                       {!collapsed && <span>{item.title}</span>}
+                      {!collapsed && item.url === "/intimacoes" && intimacaoCount > 0 && (
+                        <span className="ml-auto bg-amber-500 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                          {intimacaoCount > 9 ? "9+" : intimacaoCount}
+                        </span>
+                      )}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
