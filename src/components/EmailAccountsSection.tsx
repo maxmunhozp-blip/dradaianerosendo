@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Mail, Plus, RefreshCw, Trash2, Loader2, CheckCircle2, XCircle, Server } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { lovable } from "@/integrations/lovable/index";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
