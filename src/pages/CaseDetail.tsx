@@ -13,7 +13,7 @@ import { LaraChat } from "@/components/LaraChat";
 import { EmptyState } from "@/components/EmptyState";
 import { DetailSkeleton } from "@/components/Skeletons";
 import { CaseTimeline } from "@/components/CaseTimeline";
-import { ArrowLeft, Upload, Plus, FileText, ClipboardList, FolderOpen, FileDown, Scale, PanelRightClose, PanelRightOpen, CalendarDays, Clock, MapPin, MessageSquare } from "lucide-react";
+import { ArrowLeft, Upload, Plus, FileText, ClipboardList, FolderOpen, FileDown, Scale, PanelRightClose, PanelRightOpen, CalendarDays, Clock, MapPin, MessageSquare, Pencil } from "lucide-react";
 import { useHearingsByCase } from "@/hooks/use-hearings";
 import { HearingModal } from "@/components/HearingModal";
 import { Badge } from "@/components/ui/badge";
