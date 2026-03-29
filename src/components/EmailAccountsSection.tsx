@@ -485,7 +485,7 @@ export default function EmailAccountsSection() {
                   size="icon"
                   className="h-7 w-7"
                   disabled={syncMutation.isPending}
-                  onClick={() => syncMutation.mutate(account.id)}
+                  onClick={() => syncMutation.mutate({ accountId: account.id, provider: account.provider })}
                   title="Sincronizar agora"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${syncMutation.isPending ? "animate-spin" : ""}`} />
