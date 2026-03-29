@@ -228,16 +228,7 @@ export default function MailPage() {
 
   const handleSync = () => {
     const accountId = selectedAccountId === "all" ? undefined : selectedAccountId;
-    const account = accounts.find(a => a.id === selectedAccountId);
-
-    if (account?.provider === "hostinger" || account?.provider === "imap") {
-      syncImap.mutate(accountId);
-    } else if (account?.provider === "gmail") {
-      syncGmail.mutate(accountId);
-    } else {
-      syncGmail.mutate(undefined);
-      syncImap.mutate(undefined);
-    }
+    syncImap.mutate(accountId);
   };
 
   const handleMarkRead = async (email: EmailMessage) => {

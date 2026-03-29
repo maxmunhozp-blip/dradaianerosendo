@@ -208,6 +208,10 @@ function matchesFilters(
   // If import_all is enabled, skip all filters
   if (account.sync_import_all) return true;
 
+  // Account's own domain always passes
+  const accountDomain = account.imap_user?.split("@")[1]?.toLowerCase();
+  if (accountDomain && fromEmail.toLowerCase().includes(accountDomain)) return true;
+
   const isJudicial = /\.jus\.br/i.test(fromEmail);
   const textToCheck = `${subject} ${bodyText}`.toLowerCase();
   const isFinancial = FINANCIAL_KEYWORDS.some(kw => textToCheck.includes(kw));
@@ -524,9 +528,9 @@ Deno.serve(async (req) => {
 
     console.log(`[sync-imap] Found ${accounts?.length || 0} accounts to sync`);
 
-    // Filter accounts that have IMAP configured and sync_configured
+    // Filter accounts: manual sync (accountId) ignores sync_configured; cron respects it
     const imapAccounts = (accounts || []).filter(
-      (a: any) => a.imap_host && a.imap_user && a.imap_password && a.sync_configured !== false
+      (a: any) => a.imap_host && a.imap_user && a.imap_password && (accountId || a.sync_configured !== false)
     ) as ImapAccount[];
 
     console.log(`[sync-imap] ${imapAccounts.length} accounts with IMAP credentials`);
