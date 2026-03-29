@@ -50,6 +50,7 @@ Você pode ajudar com:
 - Se o contexto do caso estiver disponível, use os dados reais do caso (nome do cliente, tipo de ação, documentos já recebidos).
 - Se não souber algo com certeza, diga "não tenho certeza" em vez de inventar.
 - Nunca forneça conselho que substitua a decisão da advogada — você é uma ferramenta de apoio.
+- IMPORTANTE: Você TEM acesso aos dados em tempo real do escritório. Quando perguntarem sobre clientes, casos, documentos pendentes, etc., use os dados fornecidos na seção "CONTEXTO ATUAL DO ESCRITÓRIO" abaixo. Nunca diga que não tem acesso aos dados — os dados estão disponíveis para você.
 
 ## Comandos especiais
 Quando a mensagem começar com um comando:
@@ -58,6 +59,184 @@ Quando a mensagem começar com um comando:
 - /peticao → Inicie a redação de uma petição inicial com base no tipo do caso
 - /checklist → Gere uma lista completa de documentos necessários para o tipo de caso
 - /analise → Analise o documento ou informação fornecida e dê um parecer técnico`;
+
+async function fetchOfficeContext(supabase: any): Promise<string> {
+  // 1. All active clients with their cases
+  const { data: clients } = await supabase
+    .from("clients")
+    .select("id, name, cpf, email, phone, status")
+    .eq("status", "ativo");
+
+  if (!clients || clients.length === 0) {
+    return `
+---
+CONTEXTO ATUAL DO ESCRITÓRIO (dados em tempo real):
+Nenhum cliente ativo encontrado no sistema.
+---`;
+  }
+
+  // 2. All cases for active clients
+  const clientIds = clients.map((c: any) => c.id);
+  const { data: cases } = await supabase
+    .from("cases")
+    .select("id, case_type, status, client_id, cnj_number, court, description")
+    .in("client_id", clientIds);
+
+  const caseIds = (cases || []).map((c: any) => c.id);
+
+  // 3. Pending checklist items and pending documents in parallel
+  const [checklistResult, docsResult] = await Promise.all([
+    caseIds.length > 0
+      ? supabase
+          .from("checklist_items")
+          .select("id, label, case_id, required_by")
+          .in("case_id", caseIds)
+          .eq("done", false)
+      : { data: [] },
+    caseIds.length > 0
+      ? supabase
+          .from("documents")
+          .select("id, name, category, case_id")
+          .in("case_id", caseIds)
+          .eq("status", "solicitado")
+      : { data: [] },
+  ]);
+
+  const pendingChecklist = checklistResult.data || [];
+  const pendingDocs = docsResult.data || [];
+
+  // Group by case
+  const checklistByCase: Record<string, any[]> = {};
+  for (const item of pendingChecklist) {
+    if (!checklistByCase[item.case_id]) checklistByCase[item.case_id] = [];
+    checklistByCase[item.case_id].push(item);
+  }
+
+  const docsByCase: Record<string, any[]> = {};
+  for (const doc of pendingDocs) {
+    if (!docsByCase[doc.case_id]) docsByCase[doc.case_id] = [];
+    docsByCase[doc.case_id].push(doc);
+  }
+
+  // Build client → cases map
+  const casesByClient: Record<string, any[]> = {};
+  for (const c of cases || []) {
+    if (!casesByClient[c.client_id]) casesByClient[c.client_id] = [];
+    casesByClient[c.client_id].push(c);
+  }
+
+  // Build the context string
+  let clientsWithPending = "";
+  for (const client of clients) {
+    const clientCases = casesByClient[client.id] || [];
+    const hasPending = clientCases.some(
+      (c: any) => (checklistByCase[c.id]?.length || 0) > 0 || (docsByCase[c.id]?.length || 0) > 0
+    );
+
+    if (hasPending) {
+      clientsWithPending += `\n- **${client.name}** (CPF: ${client.cpf || "N/A"}, E-mail: ${client.email || "N/A"}, Tel: ${client.phone || "N/A"})`;
+      for (const cs of clientCases) {
+        const pendingCL = checklistByCase[cs.id] || [];
+        const pendingD = docsByCase[cs.id] || [];
+        if (pendingCL.length > 0 || pendingD.length > 0) {
+          clientsWithPending += `\n  Caso: ${cs.case_type} (Status: ${cs.status})`;
+          if (pendingD.length > 0) {
+            clientsWithPending += `\n  Documentos pendentes (solicitados):`;
+            for (const d of pendingD) {
+              clientsWithPending += `\n    - ${d.name} [${d.category}]`;
+            }
+          }
+          if (pendingCL.length > 0) {
+            clientsWithPending += `\n  Checklist pendente:`;
+            for (const cl of pendingCL) {
+              clientsWithPending += `\n    - ${cl.label}${cl.required_by ? ` (responsável: ${cl.required_by})` : ""}`;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Status counts
+  const statusCounts: Record<string, number> = {};
+  for (const c of cases || []) {
+    statusCounts[c.status] = (statusCounts[c.status] || 0) + 1;
+  }
+  const statusList = Object.entries(statusCounts)
+    .map(([s, n]) => `- ${s}: ${n} caso(s)`)
+    .join("\n");
+
+  // All clients summary
+  let allClientsSummary = "";
+  for (const client of clients) {
+    const clientCases = casesByClient[client.id] || [];
+    allClientsSummary += `\n- **${client.name}**: ${clientCases.length > 0 ? clientCases.map((c: any) => `${c.case_type} (${c.status})`).join(", ") : "sem casos"}`;
+  }
+
+  return `
+---
+CONTEXTO ATUAL DO ESCRITÓRIO (dados em tempo real):
+
+Clientes ativos (${clients.length}):
+${allClientsSummary}
+
+Clientes com documentos/checklist pendentes:
+${clientsWithPending || "Nenhum cliente com pendências."}
+
+Casos por status:
+${statusList || "Nenhum caso cadastrado."}
+
+Total de documentos pendentes (solicitados): ${pendingDocs.length}
+Total de itens de checklist pendentes: ${pendingChecklist.length}
+---`;
+}
+
+async function fetchCaseContext(supabase: any, caseId: string): Promise<string> {
+  const { data: caseData } = await supabase
+    .from("cases")
+    .select("*, clients(name, cpf, email, phone, status)")
+    .eq("id", caseId)
+    .single();
+
+  if (!caseData) return "";
+
+  const client = (caseData as any).clients;
+
+  const [docsResult, checklistResult] = await Promise.all([
+    supabase
+      .from("documents")
+      .select("name, category, status, uploaded_by, created_at")
+      .eq("case_id", caseId),
+    supabase
+      .from("checklist_items")
+      .select("label, done, required_by")
+      .eq("case_id", caseId),
+  ]);
+
+  const docs = docsResult.data || [];
+  const checklist = checklistResult.data || [];
+
+  return `
+## Contexto do caso selecionado (dados completos)
+- **Cliente**: ${client?.name || "N/A"} (CPF: ${client?.cpf || "N/A"})
+- **Contato**: ${client?.email || "N/A"} | ${client?.phone || "N/A"}
+- **Status do cliente**: ${client?.status || "N/A"}
+- **Tipo de ação**: ${caseData.case_type}
+- **Status do caso**: ${caseData.status}
+- **CNJ**: ${caseData.cnj_number || "Não atribuído"}
+- **Vara**: ${caseData.court || "Não definida"}
+- **Descrição**: ${caseData.description || "Sem descrição"}
+
+### Todos os documentos do caso (${docs.length})
+${docs.length > 0
+    ? docs.map((d: any) => `- ${d.name} [${d.category}] — Status: ${d.status} (enviado por: ${d.uploaded_by})`).join("\n")
+    : "Nenhum documento cadastrado."}
+
+### Checklist completo (${checklist.length} itens)
+${checklist.length > 0
+    ? checklist.map((c: any) => `- [${c.done ? "x" : " "}] ${c.label}${c.required_by ? ` (responsável: ${c.required_by})` : ""}`).join("\n")
+    : "Nenhum item no checklist."}`;
+}
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -82,58 +261,17 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Build case context if caseId provided
-    let caseContext = "";
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    if (caseId) {
-      // Load case with client info
-      const { data: caseData } = await supabase
-        .from("cases")
-        .select("*, clients(name, cpf, email, phone, status)")
-        .eq("id", caseId)
-        .single();
+    // Always fetch live office context + optional case context in parallel
+    const [officeContext, caseContext] = await Promise.all([
+      fetchOfficeContext(supabase),
+      caseId ? fetchCaseContext(supabase, caseId) : Promise.resolve(""),
+    ]);
 
-      if (caseData) {
-        const client = (caseData as any).clients;
-        
-        // Load documents
-        const { data: docs } = await supabase
-          .from("documents")
-          .select("name, category, status, uploaded_by")
-          .eq("case_id", caseId);
-
-        // Load checklist
-        const { data: checklist } = await supabase
-          .from("checklist_items")
-          .select("label, done, required_by")
-          .eq("case_id", caseId);
-
-        caseContext = `
-## Contexto do caso atual
-- **Cliente**: ${client?.name || "N/A"} (CPF: ${client?.cpf || "N/A"})
-- **Contato**: ${client?.email || "N/A"} | ${client?.phone || "N/A"}
-- **Tipo de ação**: ${caseData.case_type}
-- **Status do caso**: ${caseData.status}
-- **CNJ**: ${caseData.cnj_number || "Não atribuído"}
-- **Vara**: ${caseData.court || "Não definida"}
-- **Descrição**: ${caseData.description || "Sem descrição"}
-
-### Documentos do caso
-${docs && docs.length > 0
-  ? docs.map((d: any) => `- ${d.name} [${d.category}] — Status: ${d.status} (enviado por: ${d.uploaded_by})`).join("\n")
-  : "Nenhum documento cadastrado."}
-
-### Checklist
-${checklist && checklist.length > 0
-  ? checklist.map((c: any) => `- [${c.done ? "x" : " "}] ${c.label}${c.required_by ? ` (responsável: ${c.required_by})` : ""}`).join("\n")
-  : "Nenhum item no checklist."}`;
-      }
-    }
-
-    const fullSystemPrompt = SYSTEM_PROMPT + (caseContext ? "\n\n" + caseContext : "");
+    const fullSystemPrompt = SYSTEM_PROMPT + "\n\n" + officeContext + (caseContext ? "\n\n" + caseContext : "");
 
     // Build messages for the AI API
     const aiMessages: any[] = [
@@ -143,7 +281,6 @@ ${checklist && checklist.length > 0
     // Process messages, handling attachments
     for (const msg of messages) {
       if (msg.role === "user" && msg.attachments && msg.attachments.length > 0) {
-        // Multi-modal message with files
         const content: any[] = [{ type: "text", text: msg.content }];
         for (const att of msg.attachments) {
           if (att.type === "image") {
@@ -152,7 +289,6 @@ ${checklist && checklist.length > 0
               image_url: { url: att.data },
             });
           } else if (att.type === "pdf") {
-            // Send PDF content as text context
             content.push({
               type: "text",
               text: `[Documento anexado: ${att.name}]\n${att.extractedText || "(conteúdo não extraído)"}`,
@@ -184,7 +320,7 @@ ${checklist && checklist.length > 0
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-pro",
+        model: "google/gemini-2.5-flash",
         messages: aiMessages,
         stream: true,
       }),
@@ -211,9 +347,8 @@ ${checklist && checklist.length > 0
       );
     }
 
-    // We need to intercept the stream to save the full assistant response to DB
+    // Intercept the stream to save the full assistant response to DB
     const reader = response.body!.getReader();
-    const encoder = new TextEncoder();
     const decoder = new TextDecoder();
     let fullAssistantContent = "";
 
@@ -221,7 +356,6 @@ ${checklist && checklist.length > 0
       async pull(controller) {
         const { done, value } = await reader.read();
         if (done) {
-          // Save complete assistant message to DB
           if (caseId && fullAssistantContent) {
             await supabase.from("messages").insert({
               case_id: caseId,
@@ -233,7 +367,6 @@ ${checklist && checklist.length > 0
           return;
         }
 
-        // Parse chunks to accumulate assistant content
         const text = decoder.decode(value, { stream: true });
         const lines = text.split("\n");
         for (const line of lines) {
