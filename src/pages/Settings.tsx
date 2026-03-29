@@ -174,6 +174,7 @@ export default function Settings() {
     office: true,
     zapi: false,
     emailAccounts: false,
+    syncLog: false,
     templates: false,
     hours: false,
     intimacoes: false,
