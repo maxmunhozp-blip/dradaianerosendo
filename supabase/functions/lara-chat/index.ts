@@ -419,7 +419,22 @@ Deno.serve(async (req: Request) => {
       const lawNum = lastMsg.content.trim().replace(/^\/lei\s+/i, "");
       messages[messages.length - 1] = {
         ...lastMsg,
-        content: `Consulta de legislação: Busque e formate a resposta usando EXCLUSIVAMENTE os dados reais do LexML fornecidos abaixo para a lei ${lawNum}. Retorne título, resumo, URN oficial e link para o texto completo. NÃO use conhecimento prévio — use apenas os dados do LexML.`,
+        content: `Consulta detalhada de legislação para a lei ${lawNum}. Use os dados reais do LexML fornecidos no contexto. Responda de forma DETALHADA e ESTRUTURADA incluindo:
+
+1. **Título e identificação completa** (número, data, ementa oficial)
+2. **Contexto e finalidade** — por que esta lei foi criada, qual problema resolve
+3. **Principais artigos e dispositivos aplicáveis** — cite os artigos mais relevantes com explicação
+4. **Direitos e deveres** estabelecidos pela norma
+5. **Prazos e procedimentos** previstos
+6. **Exceções e casos especiais**
+7. **Consequências práticas** para o Direito de Família
+8. **Exemplo prático** de aplicação
+
+Ao final, inclua:
+- **URN oficial**: a URN do LexML
+- **Link para texto completo**: o link do LexML
+
+Use seu conhecimento jurídico para complementar os dados do LexML com explicações detalhadas. Cite artigos específicos sempre que possível. NÃO faça resumo genérico — seja detalhado e prático.`,
       };
     }
 
