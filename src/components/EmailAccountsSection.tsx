@@ -279,7 +279,7 @@ export default function EmailAccountsSection() {
       redirect_uri: window.location.origin + "/settings",
       extraParams: {
         access_type: "offline",
-        prompt: "consent",
+        prompt: "select_account",
       },
     });
 
