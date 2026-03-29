@@ -1,12 +1,9 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
-import {
-  getCaseById,
-  getClientById,
-  getDocumentsByCaseId,
-  getChecklistByCaseId,
-  getMessagesByCaseId,
-} from "@/lib/mock-data";
+import { useCase, useUpdateCase } from "@/hooks/use-cases";
+import { useDocumentsByCase, useCreateDocument, useUpdateDocument, useUploadDocument } from "@/hooks/use-documents";
+import { useChecklistByCase, useCreateChecklistItem, useToggleChecklistItem, useDeleteChecklistItem } from "@/hooks/use-checklist";
+import { useMessagesByCase, useSendMessage } from "@/hooks/use-messages";
 import { CaseStatusStepper } from "@/components/CaseStatusStepper";
 import { StatusBadge } from "@/components/StatusBadge";
 import { DocumentRow } from "@/components/DocumentRow";
@@ -15,80 +12,121 @@ import { LaraChat } from "@/components/LaraChat";
 import { ArrowLeft, Upload, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { Message, ChecklistItem } from "@/lib/types";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { toast } from "sonner";
+
+const statusSteps = ["documentacao", "montagem", "protocolo", "andamento", "encerrado"];
 
 export default function CaseDetail() {
   const { id } = useParams<{ id: string }>();
-  const caseData = getCaseById(id!);
-  const client = caseData ? getClientById(caseData.client_id) : null;
-  const documents = getDocumentsByCaseId(id!);
-  const initialChecklist = getChecklistByCaseId(id!);
-  const initialMessages = getMessagesByCaseId(id!);
+  const { data: caseData, isLoading } = useCase(id!);
+  const { data: documents = [] } = useDocumentsByCase(id!);
+  const { data: checklist = [] } = useChecklistByCase(id!);
+  const { data: messages = [] } = useMessagesByCase(id!);
 
-  const [checklist, setChecklist] = useState<ChecklistItem[]>(initialChecklist);
-  const [messages, setMessages] = useState<Message[]>(initialMessages);
+  const updateCase = useUpdateCase();
+  const createDoc = useCreateDocument();
+  const updateDoc = useUpdateDocument();
+  const uploadDoc = useUploadDocument();
+  const createChecklistItem = useCreateChecklistItem();
+  const toggleChecklistItem = useToggleChecklistItem();
+  const deleteChecklistItem = useDeleteChecklistItem();
+  const sendMessage = useSendMessage();
+
   const [newItem, setNewItem] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  if (!caseData || !client) {
-    return (
-      <div className="p-6">
-        <p className="text-sm text-muted-foreground">Caso não encontrado.</p>
-      </div>
-    );
+  if (isLoading) {
+    return <div className="p-6"><p className="text-sm text-muted-foreground">Carregando...</p></div>;
   }
 
-  const toggleChecklist = (itemId: string) => {
-    setChecklist((prev) =>
-      prev.map((item) => (item.id === itemId ? { ...item, done: !item.done } : item))
-    );
+  if (!caseData) {
+    return <div className="p-6"><p className="text-sm text-muted-foreground">Caso não encontrado.</p></div>;
+  }
+
+  const clientName = (caseData as any).clients?.name || "Cliente";
+
+  const handleStatusChange = async (newStatus: string) => {
+    try {
+      await updateCase.mutateAsync({ id: id!, status: newStatus });
+      toast.success("Status atualizado");
+    } catch {
+      toast.error("Erro ao atualizar status");
+    }
   };
 
-  const deleteChecklistItem = (itemId: string) => {
-    setChecklist((prev) => prev.filter((item) => item.id !== itemId));
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const fileUrl = await uploadDoc.mutateAsync({ file, caseId: id! });
+      await createDoc.mutateAsync({
+        case_id: id!,
+        name: file.name,
+        file_url: fileUrl,
+        category: "outro",
+        status: "recebido",
+        uploaded_by: "advogada",
+      });
+      toast.success("Documento enviado");
+    } catch {
+      toast.error("Erro ao enviar documento");
+    }
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const addChecklistItem = () => {
+  const handleAddChecklistItem = async () => {
     if (!newItem.trim()) return;
-    const item: ChecklistItem = {
-      id: `ch-new-${Date.now()}`,
-      created_at: new Date().toISOString(),
-      case_id: id!,
-      label: newItem.trim(),
-      done: false,
-      required_by: null,
-    };
-    setChecklist((prev) => [...prev, item]);
-    setNewItem("");
+    try {
+      await createChecklistItem.mutateAsync({ case_id: id!, label: newItem.trim() });
+      setNewItem("");
+    } catch {
+      toast.error("Erro ao adicionar item");
+    }
   };
 
-  const handleSendMessage = (content: string) => {
-    const userMsg: Message = {
-      id: `m-${Date.now()}`,
-      created_at: new Date().toISOString(),
-      case_id: id!,
-      role: "user",
-      content,
-      attachments: null,
-    };
-    const assistantMsg: Message = {
-      id: `m-${Date.now() + 1}`,
-      created_at: new Date().toISOString(),
-      case_id: id!,
-      role: "assistant",
-      content: "Entendido. Vou analisar as informações do caso e preparar uma resposta detalhada.",
-      attachments: null,
-    };
-    setMessages((prev) => [...prev, userMsg, assistantMsg]);
+  const handleToggleChecklist = async (itemId: string) => {
+    const item = checklist.find((i) => i.id === itemId);
+    if (!item) return;
+    await toggleChecklistItem.mutateAsync({ id: itemId, done: !item.done, case_id: id! });
   };
+
+  const handleDeleteChecklist = async (itemId: string) => {
+    await deleteChecklistItem.mutateAsync({ id: itemId, case_id: id! });
+  };
+
+  const handleSendMessage = async (content: string) => {
+    try {
+      await sendMessage.mutateAsync({ case_id: id!, role: "user", content });
+    } catch {
+      toast.error("Erro ao enviar mensagem");
+    }
+  };
+
+  // Map messages to the format LaraChat expects
+  const chatMessages = messages.map((m) => ({
+    id: m.id,
+    created_at: m.created_at,
+    case_id: m.case_id,
+    role: m.role as "user" | "assistant",
+    content: m.content,
+    attachments: m.attachments as any[] | null,
+  }));
 
   return (
     <div className="flex h-[calc(100vh-3rem)]">
       {/* Left column */}
       <div className="flex-1 overflow-y-auto p-6 min-w-0" style={{ flex: "0 0 60%" }}>
         <Button variant="ghost" size="sm" asChild className="mb-4">
-          <Link to={`/clients/${client.id}`}>
+          <Link to={`/clients/${caseData.client_id}`}>
             <ArrowLeft className="w-3.5 h-3.5 mr-1.5" />
-            {client.name}
+            {clientName}
           </Link>
         </Button>
 
@@ -106,6 +144,18 @@ export default function CaseDetail() {
               <p className="text-xs text-muted-foreground">Vara: {caseData.court}</p>
             )}
           </div>
+          <Select value={caseData.status} onValueChange={handleStatusChange}>
+            <SelectTrigger className="w-44 h-8 text-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {statusSteps.map((s) => (
+                <SelectItem key={s} value={s}>
+                  {s === "documentacao" ? "Documentação" : s === "montagem" ? "Montagem" : s === "protocolo" ? "Protocolo" : s === "andamento" ? "Em andamento" : "Encerrado"}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="mb-8 border border-border rounded-lg p-4">
@@ -115,11 +165,24 @@ export default function CaseDetail() {
         {/* Documents */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-medium text-foreground">Documentos</h2>
-            <Button variant="outline" size="sm">
-              <Upload className="w-3.5 h-3.5 mr-1.5" />
-              Upload
-            </Button>
+            <h2 className="text-sm font-medium text-foreground">Documentos ({documents.length})</h2>
+            <div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                onChange={handleFileUpload}
+                className="hidden"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadDoc.isPending}
+              >
+                <Upload className="w-3.5 h-3.5 mr-1.5" />
+                {uploadDoc.isPending ? "Enviando..." : "Upload"}
+              </Button>
+            </div>
           </div>
           <div className="border border-border rounded-lg px-4">
             {documents.length === 0 ? (
@@ -132,25 +195,27 @@ export default function CaseDetail() {
 
         {/* Checklist */}
         <div>
-          <h2 className="text-sm font-medium text-foreground mb-3">Checklist</h2>
+          <h2 className="text-sm font-medium text-foreground mb-3">
+            Checklist ({checklist.filter((i) => i.done).length}/{checklist.length})
+          </h2>
           <div className="border border-border rounded-lg px-4">
             {checklist.map((item) => (
               <ChecklistItemRow
                 key={item.id}
                 item={item}
-                onToggle={toggleChecklist}
-                onDelete={deleteChecklistItem}
+                onToggle={handleToggleChecklist}
+                onDelete={handleDeleteChecklist}
               />
             ))}
             <div className="flex items-center gap-2 py-3">
               <Input
                 value={newItem}
                 onChange={(e) => setNewItem(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && addChecklistItem()}
+                onKeyDown={(e) => e.key === "Enter" && handleAddChecklistItem()}
                 placeholder="Adicionar item..."
                 className="text-sm h-8"
               />
-              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={addChecklistItem}>
+              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={handleAddChecklistItem}>
                 <Plus className="w-3.5 h-3.5" />
               </Button>
             </div>
@@ -160,7 +225,7 @@ export default function CaseDetail() {
 
       {/* Right column - LARA chat */}
       <div className="border-l border-border" style={{ flex: "0 0 40%" }}>
-        <LaraChat messages={messages} onSend={handleSendMessage} />
+        <LaraChat messages={chatMessages} onSend={handleSendMessage} />
       </div>
     </div>
   );

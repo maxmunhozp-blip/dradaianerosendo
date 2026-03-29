@@ -1,16 +1,36 @@
 import { Users, FolderOpen, FileText, TrendingUp, Plus, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { mockClients, mockCases, mockDocuments } from "@/lib/mock-data";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Link } from "react-router-dom";
+import { useClients } from "@/hooks/use-clients";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function Dashboard() {
-  const activeClients = mockClients.filter((c) => c.status === "ativo").length;
-  const casesInProgress = mockCases.filter((c) => c.status !== "encerrado").length;
-  const pendingDocs = mockDocuments.filter((d) => d.status === "solicitado").length;
-  const casesThisMonth = mockCases.filter((c) => {
+  const { data: clients = [] } = useClients();
+  const { data: cases = [] } = useQuery({
+    queryKey: ["cases-all"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("cases").select("*, clients(name)").order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+  const { data: docs = [] } = useQuery({
+    queryKey: ["documents-all-dashboard"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("documents").select("*").eq("status", "solicitado");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const activeClients = clients.filter((c) => c.status === "ativo").length;
+  const casesInProgress = cases.filter((c) => c.status !== "encerrado").length;
+  const pendingDocs = docs.length;
+  const now = new Date();
+  const casesThisMonth = cases.filter((c) => {
     const d = new Date(c.created_at);
-    const now = new Date();
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
   }).length;
 
@@ -21,13 +41,7 @@ export default function Dashboard() {
     { label: "Casos este mês", value: casesThisMonth, icon: TrendingUp },
   ];
 
-  const recentActivity = [
-    { text: "Documento recebido: RG - Maria Silva", time: "Há 2 horas", case: "Divórcio" },
-    { text: "Novo caso aberto: Guarda - João Pedro", time: "Há 5 horas", case: "Guarda" },
-    { text: "Petição protocolada: Caso #cs1", time: "Ontem", case: "Divórcio" },
-    { text: "Novo cliente cadastrado: Ana Carolina", time: "Ontem", case: null },
-    { text: "Checklist atualizado: Inventário - Roberto", time: "Há 2 dias", case: "Inventário" },
-  ];
+  const recentCases = cases.slice(0, 5);
 
   return (
     <div className="p-6 max-w-6xl">
@@ -65,16 +79,27 @@ export default function Dashboard() {
       </div>
 
       <div>
-        <h2 className="text-sm font-medium text-foreground mb-4">Atividade recente</h2>
+        <h2 className="text-sm font-medium text-foreground mb-4">Casos recentes</h2>
         <div className="border border-border rounded-lg divide-y divide-border">
-          {recentActivity.map((item, i) => (
-            <div key={i} className="flex items-center justify-between px-4 py-3">
-              <div className="flex-1">
-                <p className="text-sm text-foreground">{item.text}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">{item.time}</p>
+          {recentCases.length === 0 && (
+            <p className="text-sm text-muted-foreground px-4 py-6 text-center">Nenhum caso cadastrado.</p>
+          )}
+          {recentCases.map((c: any) => (
+            <Link
+              key={c.id}
+              to={`/cases/${c.id}`}
+              className="flex items-center justify-between px-4 py-3 hover:bg-muted/50 transition-colors"
+            >
+              <div>
+                <p className="text-sm text-foreground font-medium">
+                  {c.case_type} — {c.clients?.name}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {new Date(c.created_at).toLocaleDateString("pt-BR")}
+                </p>
               </div>
-              {item.case && <StatusBadge status="andamento" className="ml-4" />}
-            </div>
+              <StatusBadge status={c.status} />
+            </Link>
           ))}
         </div>
       </div>

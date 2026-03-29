@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { mockClients, getCasesByClientId } from "@/lib/mock-data";
+import { useClients, useCreateClient } from "@/hooks/use-clients";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Search, Plus, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -20,18 +20,64 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 export default function Clients() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [dialogOpen, setDialogOpen] = useState(false);
 
-  const filtered = mockClients.filter((c) => {
+  const { data: clients = [], isLoading } = useClients();
+  const createClient = useCreateClient();
+
+  // Fetch cases to show case_type per client
+  const { data: allCases = [] } = useQuery({
+    queryKey: ["cases-all-for-clients"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("cases").select("client_id, case_type");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const casesByClient = allCases.reduce<Record<string, string>>((acc, c) => {
+    if (!acc[c.client_id]) acc[c.client_id] = c.case_type;
+    return acc;
+  }, {});
+
+  const [form, setForm] = useState({
+    name: "",
+    cpf: "",
+    phone: "",
+    email: "",
+    origin: "",
+    status: "prospect",
+  });
+
+  const filtered = clients.filter((c) => {
     const matchSearch =
       c.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.cpf.includes(search);
+      (c.cpf || "").includes(search);
     const matchStatus = statusFilter === "all" || c.status === statusFilter;
     return matchSearch && matchStatus;
   });
+
+  const handleCreate = async () => {
+    if (!form.name.trim()) {
+      toast.error("Nome é obrigatório");
+      return;
+    }
+    try {
+      await createClient.mutateAsync(form);
+      toast.success("Cliente cadastrado com sucesso");
+      setDialogOpen(false);
+      setForm({ name: "", cpf: "", phone: "", email: "", origin: "", status: "prospect" });
+    } catch {
+      toast.error("Erro ao cadastrar cliente");
+    }
+  };
 
   return (
     <div className="p-6 max-w-6xl">
@@ -39,10 +85,10 @@ export default function Clients() {
         <div>
           <h1 className="text-xl font-semibold text-foreground">Clientes</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {mockClients.length} clientes cadastrados
+            {clients.length} clientes cadastrados
           </p>
         </div>
-        <Dialog>
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button size="sm">
               <Plus className="w-3.5 h-3.5 mr-1.5" />
@@ -57,43 +103,63 @@ export default function Clients() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label>Nome completo</Label>
-                  <Input placeholder="Nome do cliente" className="mt-1.5" />
+                  <Input
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    placeholder="Nome do cliente"
+                    className="mt-1.5"
+                  />
                 </div>
                 <div>
                   <Label>CPF</Label>
-                  <Input placeholder="000.000.000-00" className="mt-1.5" />
+                  <Input
+                    value={form.cpf}
+                    onChange={(e) => setForm({ ...form, cpf: e.target.value })}
+                    placeholder="000.000.000-00"
+                    className="mt-1.5"
+                  />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label>Telefone</Label>
-                  <Input placeholder="(00) 00000-0000" className="mt-1.5" />
+                  <Input
+                    value={form.phone}
+                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                    placeholder="(00) 00000-0000"
+                    className="mt-1.5"
+                  />
                 </div>
                 <div>
                   <Label>Email</Label>
-                  <Input placeholder="email@exemplo.com" className="mt-1.5" />
+                  <Input
+                    value={form.email}
+                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    placeholder="email@exemplo.com"
+                    className="mt-1.5"
+                  />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label>Origem</Label>
-                  <Select>
+                  <Select value={form.origin} onValueChange={(v) => setForm({ ...form, origin: v })}>
                     <SelectTrigger className="mt-1.5">
                       <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="google">Google Ads</SelectItem>
-                      <SelectItem value="indicacao">Indicação</SelectItem>
-                      <SelectItem value="instagram">Instagram</SelectItem>
-                      <SelectItem value="outro">Outro</SelectItem>
+                      <SelectItem value="Google Ads">Google Ads</SelectItem>
+                      <SelectItem value="Indicação">Indicação</SelectItem>
+                      <SelectItem value="Instagram">Instagram</SelectItem>
+                      <SelectItem value="Outro">Outro</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
                   <Label>Status</Label>
-                  <Select>
+                  <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
                     <SelectTrigger className="mt-1.5">
-                      <SelectValue placeholder="Selecione" />
+                      <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="prospect">Prospect</SelectItem>
@@ -103,7 +169,9 @@ export default function Clients() {
                   </Select>
                 </div>
               </div>
-              <Button className="w-full">Cadastrar cliente</Button>
+              <Button className="w-full" onClick={handleCreate} disabled={createClient.isPending}>
+                {createClient.isPending ? "Cadastrando..." : "Cadastrar cliente"}
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -134,22 +202,24 @@ export default function Clients() {
       </div>
 
       <div className="border border-border rounded-lg">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-border">
-              <th className="text-left text-xs font-medium text-muted-foreground px-4 py-3">Nome</th>
-              <th className="text-left text-xs font-medium text-muted-foreground px-4 py-3">Tipo de caso</th>
-              <th className="text-left text-xs font-medium text-muted-foreground px-4 py-3">Status</th>
-              <th className="text-left text-xs font-medium text-muted-foreground px-4 py-3">Origem</th>
-              <th className="text-left text-xs font-medium text-muted-foreground px-4 py-3">Cadastro</th>
-              <th className="w-10"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((client) => {
-              const cases = getCasesByClientId(client.id);
-              const caseType = cases.length > 0 ? cases[0].case_type : "—";
-              return (
+        {isLoading ? (
+          <p className="text-sm text-muted-foreground px-4 py-6 text-center">Carregando...</p>
+        ) : filtered.length === 0 ? (
+          <p className="text-sm text-muted-foreground px-4 py-6 text-center">Nenhum cliente encontrado.</p>
+        ) : (
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="text-left text-xs font-medium text-muted-foreground px-4 py-3">Nome</th>
+                <th className="text-left text-xs font-medium text-muted-foreground px-4 py-3">Tipo de caso</th>
+                <th className="text-left text-xs font-medium text-muted-foreground px-4 py-3">Status</th>
+                <th className="text-left text-xs font-medium text-muted-foreground px-4 py-3">Origem</th>
+                <th className="text-left text-xs font-medium text-muted-foreground px-4 py-3">Cadastro</th>
+                <th className="w-10"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((client) => (
                 <tr
                   key={client.id}
                   className="border-b border-border last:border-0 hover:bg-muted/50 transition-colors"
@@ -160,11 +230,11 @@ export default function Clients() {
                     </Link>
                     <p className="text-xs text-muted-foreground">{client.cpf}</p>
                   </td>
-                  <td className="px-4 py-3 text-sm text-foreground">{caseType}</td>
+                  <td className="px-4 py-3 text-sm text-foreground">{casesByClient[client.id] || "—"}</td>
                   <td className="px-4 py-3">
                     <StatusBadge status={client.status} />
                   </td>
-                  <td className="px-4 py-3 text-sm text-muted-foreground">{client.origin}</td>
+                  <td className="px-4 py-3 text-sm text-muted-foreground">{client.origin || "—"}</td>
                   <td className="px-4 py-3 text-sm text-muted-foreground">
                     {new Date(client.created_at).toLocaleDateString("pt-BR")}
                   </td>
@@ -174,10 +244,10 @@ export default function Clients() {
                     </Link>
                   </td>
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );
