@@ -236,6 +236,27 @@ export default function CaseDetail() {
               >
                 <Pencil className="w-3.5 h-3.5" />
               </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" title="Excluir caso">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Excluir caso</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Tem certeza que deseja excluir este caso? Essa ação não pode ser desfeita. Todos os documentos, checklist e mensagens vinculados serão removidos.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDeleteCase} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                      Excluir
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
             <p className="text-sm text-muted-foreground mt-1">{caseData.description}</p>
             {caseData.cnj_number && (
