@@ -99,6 +99,24 @@ REGRAS IMPORTANTES para WhatsApp:
 - Se a advogada pedir para cobrar um cliente específico, gere apenas a mensagem daquele cliente.
 - O template padrão pode ser personalizado se a advogada pedir. Verifique se há um template customizado nos dados de configuração.`;
 
+async function fetchSettings(supabase: any): Promise<Record<string, string>> {
+  const { data } = await supabase
+    .from("settings")
+    .select("key, value")
+    .in("key", [
+      "template_doc_reminder",
+      "template_welcome",
+      "template_signing",
+      "office_name",
+      "office_oab",
+      "office_phone",
+      "office_email",
+    ]);
+  const map: Record<string, string> = {};
+  for (const row of data || []) map[row.key] = row.value;
+  return map;
+}
+
 async function fetchOfficeContext(supabase: any): Promise<string> {
   // 1. All active clients with their cases
   const { data: clients } = await supabase
