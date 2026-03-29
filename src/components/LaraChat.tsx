@@ -17,11 +17,15 @@ export function LaraChat({
   onSend,
   isLoading = false,
   className,
+  pendingCommand,
+  onCommandConsumed,
 }: {
   messages: ChatMessage[];
   onSend: (content: string, attachments: ChatAttachment[]) => void;
   isLoading?: boolean;
   className?: string;
+  pendingCommand?: string | null;
+  onCommandConsumed?: () => void;
 }) {
   const [input, setInput] = useState("");
   const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
@@ -31,6 +35,13 @@ export function LaraChat({
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, messages[messages.length - 1]?.content]);
+
+  useEffect(() => {
+    if (pendingCommand) {
+      setInput((prev) => (prev ? `${prev} ${pendingCommand}` : pendingCommand));
+      onCommandConsumed?.();
+    }
+  }, [pendingCommand, onCommandConsumed]);
 
   const handleSend = useCallback(() => {
     if (!input.trim() && attachments.length === 0) return;
@@ -198,7 +209,7 @@ export function LaraChat({
                 handleSend();
               }
             }}
-            placeholder="Mensagem para LARA..."
+            placeholder="Pergunte algo à LARA ou use um comando como /procuracao..."
             className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
             disabled={isLoading}
           />
