@@ -193,7 +193,7 @@ export function LaraChat({
 
     return (
       <>
-        <div className="prose prose-sm max-w-none prose-headings:text-secondary-foreground prose-p:text-secondary-foreground prose-li:text-secondary-foreground prose-strong:text-secondary-foreground prose-code:text-secondary-foreground">
+        <div className="prose prose-sm max-w-none break-words overflow-hidden prose-headings:text-secondary-foreground prose-p:text-secondary-foreground prose-li:text-secondary-foreground prose-strong:text-secondary-foreground prose-code:text-secondary-foreground prose-a:text-amber-600 prose-a:break-all">
           <ReactMarkdown>{displayContent}</ReactMarkdown>
           {msg.isStreaming && (
             <span className="inline-block w-1.5 h-4 bg-current animate-pulse ml-0.5" />
@@ -237,7 +237,7 @@ export function LaraChat({
             className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
           >
             <div
-              className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
+              className={`max-w-[85%] rounded-lg px-3 py-2 text-sm overflow-hidden break-words ${
                 msg.role === "user"
                   ? "bg-primary text-primary-foreground"
                   : "bg-secondary text-secondary-foreground"
