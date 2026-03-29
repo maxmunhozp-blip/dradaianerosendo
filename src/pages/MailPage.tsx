@@ -52,7 +52,7 @@ interface EmailMessage {
   category: string;
 }
 
-type EmailFilter = "all" | "unread" | "judicial" | "financial" | "other";
+type EmailFilter = "all" | "unread" | "judicial" | "financial" | "sent" | "other";
 
 function useEmailAccounts() {
   return useQuery({
@@ -83,6 +83,7 @@ function useEmailMessages(accountId: string | null, filter: EmailFilter, search:
       if (filter === "unread") query = query.eq("is_read", false);
       if (filter === "judicial") query = query.eq("category", "judicial");
       if (filter === "financial") query = query.eq("category", "financial");
+      if (filter === "sent") query = query.eq("direction", "outbound");
       if (filter === "other") query = query.eq("category", "other");
       if (search.trim()) query = query.ilike("subject", `%${search.trim()}%`);
 
@@ -291,6 +292,7 @@ export default function MailPage() {
     { value: "unread", label: "Não lidos" },
     { value: "judicial", label: "Judiciais" },
     { value: "financial", label: "Financeiro" },
+    { value: "sent", label: "Enviados" },
     { value: "other", label: "Outros" },
   ];
 
@@ -474,6 +476,11 @@ export default function MailPage() {
                               {email.category === "financial" && (
                                 <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-200 text-[9px] px-1 py-0">
                                   Financeiro
+                                </Badge>
+                              )}
+                              {(email as any).direction === "outbound" && (
+                                <Badge className="bg-blue-500/10 text-blue-600 border-blue-200 text-[9px] px-1 py-0">
+                                  Enviado
                                 </Badge>
                               )}
                               {selectedAccountId === "all" && acct && (

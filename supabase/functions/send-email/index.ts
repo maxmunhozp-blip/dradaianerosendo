@@ -166,6 +166,26 @@ Deno.serve(async (req: Request) => {
 
     console.log(`Email sent from ${account.email} to ${to}`);
 
+    // Store sent email in email_messages
+    try {
+      await supabase.from("email_messages").insert({
+        email_account_id: account_id,
+        message_uid: `sent_${crypto.randomUUID()}`,
+        from_email: account.email,
+        from_name: account.email,
+        subject,
+        body_text: body,
+        body_html: null,
+        received_at: new Date().toISOString(),
+        is_read: true,
+        is_judicial: false,
+        category: "sent",
+        direction: "outbound",
+      });
+    } catch (e) {
+      console.error("Error storing sent email:", e);
+    }
+
     return new Response(
       JSON.stringify({ success: true, message: "E-mail enviado com sucesso" }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }

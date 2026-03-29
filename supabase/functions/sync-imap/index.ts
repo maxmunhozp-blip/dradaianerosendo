@@ -19,6 +19,7 @@ const FINANCIAL_KEYWORDS = [
 interface ImapAccount {
   id: string;
   email: string;
+  label: string;
   imap_host: string;
   imap_port: number;
   imap_user: string;
@@ -422,7 +423,8 @@ async function syncAccount(admin: any, account: ImapAccount): Promise<number> {
       continue;
     }
 
-    const category = categorizeEmail(fromEmail, subject, bodyText);
+    const isFinanceiroAccount = /financeiro/i.test(account.email) || /financeiro/i.test(account.label || "");
+    const category = isFinanceiroAccount ? "financial" : categorizeEmail(fromEmail, subject, bodyText);
     const isJudicial = category === "judicial";
 
     // Storage protection: truncate large bodies

@@ -341,6 +341,7 @@ export type Database = {
           body_text: string
           category: string | null
           created_at: string
+          direction: string
           email_account_id: string
           from_email: string | null
           from_name: string | null
@@ -357,6 +358,7 @@ export type Database = {
           body_text?: string
           category?: string | null
           created_at?: string
+          direction?: string
           email_account_id: string
           from_email?: string | null
           from_name?: string | null
@@ -373,6 +375,7 @@ export type Database = {
           body_text?: string
           category?: string | null
           created_at?: string
+          direction?: string
           email_account_id?: string
           from_email?: string | null
           from_name?: string | null
