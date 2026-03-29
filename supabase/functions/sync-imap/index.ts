@@ -270,7 +270,20 @@ async function imapCommand(
 async function syncAccount(admin: any, account: ImapAccount): Promise<number> {
   console.log(`[sync-imap] Starting sync for account ${account.id} (${account.email})`);
   
-  const password = account.imap_password.replace(/\s/g, "");
+  // Try plain text first; if it looks like base64, decode it (legacy migration)
+  let password = account.imap_password.replace(/\s/g, "");
+  if (/^[A-Za-z0-9+/]+=*$/.test(password) && password.length > 8) {
+    try {
+      const decoded = atob(password);
+      // If decoding produces printable ASCII, it was likely btoa-encoded
+      if (/^[\x20-\x7E]+$/.test(decoded) && decoded.length >= 4) {
+        console.log(`[sync-imap] Password appears base64-encoded, decoding...`);
+        password = decoded;
+        // Fix the stored password for future syncs
+        await admin.from("email_accounts").update({ imap_password: password }).eq("id", account.id);
+      }
+    } catch { /* not base64, use as-is */ }
+  }
 
   console.log(`[sync-imap] Connecting to ${account.imap_host}:${account.imap_port}...`);
   const conn = await Deno.connectTls({
