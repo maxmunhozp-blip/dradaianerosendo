@@ -1,14 +1,18 @@
 import { Users, FolderOpen, FileText, TrendingUp, Plus, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/StatusBadge";
+import { AnimatedCounter } from "@/components/AnimatedCounter";
+import { EmptyState } from "@/components/EmptyState";
+import { StatCardSkeleton } from "@/components/Skeletons";
 import { Link } from "react-router-dom";
 import { useClients } from "@/hooks/use-clients";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Dashboard() {
-  const { data: clients = [] } = useClients();
-  const { data: cases = [] } = useQuery({
+  const { data: clients = [], isLoading: clientsLoading } = useClients();
+  const { data: cases = [], isLoading: casesLoading } = useQuery({
     queryKey: ["cases-all"],
     queryFn: async () => {
       const { data, error } = await supabase.from("cases").select("*, clients(name)").order("created_at", { ascending: false });
@@ -16,7 +20,7 @@ export default function Dashboard() {
       return data;
     },
   });
-  const { data: docs = [] } = useQuery({
+  const { data: docs = [], isLoading: docsLoading } = useQuery({
     queryKey: ["documents-all-dashboard"],
     queryFn: async () => {
       const { data, error } = await supabase.from("documents").select("*").eq("status", "solicitado");
@@ -24,6 +28,8 @@ export default function Dashboard() {
       return data;
     },
   });
+
+  const isLoading = clientsLoading || casesLoading || docsLoading;
 
   const activeClients = clients.filter((c) => c.status === "ativo").length;
   const casesInProgress = cases.filter((c) => c.status !== "encerrado").length;
@@ -67,40 +73,60 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-4 gap-4 mb-8">
-        {stats.map((stat) => (
-          <div key={stat.label} className="border border-border rounded-lg p-4">
-            <div className="flex items-center justify-between mb-3">
-              <stat.icon className="w-4 h-4 text-muted-foreground" />
-            </div>
-            <p className="text-2xl font-semibold text-foreground">{stat.value}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{stat.label}</p>
-          </div>
-        ))}
+        {isLoading
+          ? Array.from({ length: 4 }).map((_, i) => <StatCardSkeleton key={i} />)
+          : stats.map((stat) => (
+              <div key={stat.label} className="border border-border rounded-lg p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <stat.icon className="w-4 h-4 text-muted-foreground" />
+                </div>
+                <p className="text-2xl font-semibold text-foreground tabular-nums">
+                  <AnimatedCounter value={stat.value} />
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">{stat.label}</p>
+              </div>
+            ))}
       </div>
 
       <div>
         <h2 className="text-sm font-medium text-foreground mb-4">Casos recentes</h2>
         <div className="border border-border rounded-lg divide-y divide-border">
-          {recentCases.length === 0 && (
-            <p className="text-sm text-muted-foreground px-4 py-6 text-center">Nenhum caso cadastrado.</p>
-          )}
-          {recentCases.map((c: any) => (
-            <Link
-              key={c.id}
-              to={`/cases/${c.id}`}
-              className="flex items-center justify-between px-4 py-3 hover:bg-muted/50 transition-colors"
-            >
-              <div>
-                <p className="text-sm text-foreground font-medium">
-                  {c.case_type} — {c.clients?.name}
-                </p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {new Date(c.created_at).toLocaleDateString("pt-BR")}
-                </p>
+          {isLoading ? (
+            Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="px-4 py-3 flex items-center justify-between">
+                <div className="space-y-1.5">
+                  <Skeleton className="h-4 w-48" />
+                  <Skeleton className="h-3 w-24" />
+                </div>
+                <Skeleton className="h-5 w-20 rounded-md" />
               </div>
-              <StatusBadge status={c.status} />
-            </Link>
-          ))}
+            ))
+          ) : recentCases.length === 0 ? (
+            <EmptyState
+              icon={FolderOpen}
+              title="Nenhum caso cadastrado"
+              description="Crie o primeiro caso para começar a organizar seus processos."
+              actionLabel="Criar caso (Cmd+K)"
+            />
+          ) : (
+            recentCases.map((c: any) => (
+              <Link
+                key={c.id}
+                to={`/cases/${c.id}`}
+                className="flex items-center justify-between px-4 py-3 hover:bg-muted/50 transition-colors"
+              >
+                <div>
+                  <p className="text-sm text-foreground font-medium">
+                    {c.case_type} — {c.clients?.name}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {new Date(c.created_at).toLocaleDateString("pt-BR")}
+                  </p>
+                </div>
+                <StatusBadge status={c.status} />
+              </Link>
+            ))
+          )}
         </div>
       </div>
     </div>

@@ -1,5 +1,6 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
+import { QuickCreateCase } from "@/components/QuickCreateCase";
 import { Outlet } from "react-router-dom";
 
 export default function AdminLayout() {
@@ -16,6 +17,7 @@ export default function AdminLayout() {
           </main>
         </div>
       </div>
+      <QuickCreateCase />
     </SidebarProvider>
   );
 }

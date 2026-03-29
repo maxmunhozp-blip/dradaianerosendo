@@ -1,6 +1,6 @@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { ConfirmDelete } from "@/components/ConfirmDelete";
 
 interface ChecklistItemProps {
   item: {
@@ -31,14 +31,18 @@ export function ChecklistItemRow({ item, onToggle, onDelete }: ChecklistItemProp
           </span>
         )}
       </div>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-        onClick={() => onDelete(item.id)}
-      >
-        <Trash2 className="w-3 h-3" />
-      </Button>
+      <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+        <ConfirmDelete
+          title="Excluir item"
+          description={`Deseja excluir "${item.label}" do checklist?`}
+          onConfirm={() => onDelete(item.id)}
+          trigger={
+            <button className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted transition-colors">
+              <Trash2 className="w-3 h-3 text-muted-foreground" />
+            </button>
+          }
+        />
+      </div>
     </div>
   );
 }
