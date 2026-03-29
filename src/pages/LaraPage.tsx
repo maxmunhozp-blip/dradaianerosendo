@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { LaraChat } from "@/components/LaraChat";
 import { useLaraChat } from "@/hooks/use-lara-chat";
 import {
@@ -24,6 +24,7 @@ export default function LaraPage() {
   const activeCaseId = caseContext !== "none" ? caseContext : undefined;
   const { messages, isLoading, sendMessage, loadHistory } = useLaraChat(activeCaseId);
   const [historyLoaded, setHistoryLoaded] = useState<string | null>(null);
+  const [pendingCommand, setPendingCommand] = useState<string | null>(null);
 
   const { data: allCases = [] } = useQuery({
     queryKey: ["cases-all-lara"],
@@ -37,7 +38,6 @@ export default function LaraPage() {
     },
   });
 
-  // Load history when case context changes
   const { data: dbMessages = [] } = useQuery({
     queryKey: ["messages", caseContext],
     queryFn: async () => {
@@ -58,11 +58,14 @@ export default function LaraPage() {
       setHistoryLoaded(caseContext);
     }
     if (caseContext !== historyLoaded) {
-      // Reset when switching contexts
       loadHistory([]);
       setHistoryLoaded(null);
     }
   }, [caseContext, dbMessages, historyLoaded, loadHistory]);
+
+  const handleCommandClick = (cmd: string) => {
+    setPendingCommand(cmd);
+  };
 
   return (
     <div className="flex h-[calc(100vh-3rem)]">
@@ -74,7 +77,7 @@ export default function LaraPage() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="none">Nenhum</SelectItem>
+              <SelectItem value="none">Nenhum (geral)</SelectItem>
               {allCases.map((c: any) => (
                 <SelectItem key={c.id} value={c.id}>
                   {c.case_type} — {c.clients?.name}
@@ -86,31 +89,29 @@ export default function LaraPage() {
 
         <div className="flex flex-1 overflow-hidden">
           <div className="flex-1">
-            {caseContext === "none" ? (
-              <div className="flex items-center justify-center h-full">
-                <p className="text-sm text-muted-foreground">
-                  Selecione um caso para iniciar a conversa com LARA.
-                </p>
-              </div>
-            ) : (
-              <LaraChat
-                messages={messages}
-                onSend={sendMessage}
-                isLoading={isLoading}
-              />
-            )}
+            <LaraChat
+              messages={messages}
+              onSend={sendMessage}
+              isLoading={isLoading}
+              pendingCommand={pendingCommand}
+              onCommandConsumed={() => setPendingCommand(null)}
+            />
           </div>
 
           <div className="w-56 border-l border-border p-4 hidden lg:block">
             <p className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wider">
               Comandos
             </p>
-            <div className="space-y-2">
+            <div className="space-y-1">
               {shortcuts.map((s) => (
-                <div key={s.cmd} className="text-sm">
+                <button
+                  key={s.cmd}
+                  onClick={() => handleCommandClick(s.cmd)}
+                  className="block w-full text-left rounded-md px-2 py-1.5 hover:bg-muted transition-colors"
+                >
                   <code className="text-xs font-mono text-foreground">{s.cmd}</code>
                   <p className="text-xs text-muted-foreground">{s.desc}</p>
-                </div>
+                </button>
               ))}
             </div>
           </div>
