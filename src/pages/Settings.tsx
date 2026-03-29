@@ -408,6 +408,18 @@ export default function Settings() {
         </div>
       </CollapsibleSection>
 
+      {/* Contas de E-mail Judicial */}
+      <CollapsibleSection
+        open={openSections.emailAccounts}
+        onOpenChange={() => toggle("emailAccounts")}
+        icon={Mail}
+        iconBg="bg-amber-500/10 text-amber-600"
+        title="Contas de E-mail Judicial"
+        description="Monitore intimações de múltiplas contas Gmail"
+      >
+        <EmailAccountsSection />
+      </CollapsibleSection>
+
       {/* Templates de Mensagem */}
       <CollapsibleSection
         open={openSections.templates}
