@@ -441,6 +441,10 @@ export default function Templates() {
                   <Download className="w-3.5 h-3.5 mr-1.5" />
                   DOCX
                 </Button>
+                <Button variant="outline" size="sm" onClick={handleExportPdf}>
+                  <FileDown className="w-3.5 h-3.5 mr-1.5" />
+                  PDF
+                </Button>
                 <Button
                   variant="outline"
                   size="sm"
