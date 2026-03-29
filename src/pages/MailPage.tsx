@@ -381,6 +381,8 @@ export default function MailPage() {
           </div>
         </div>
       )}
+
+      {accounts.length === 0 ? (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center space-y-3">
             <Inbox className="w-12 h-12 mx-auto text-muted-foreground/40" />
