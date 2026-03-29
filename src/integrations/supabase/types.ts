@@ -351,6 +351,7 @@ export type Database = {
           raw_email_subject: string
           status: string
           tribunal: string | null
+          urgent_alert_sent: boolean
         }
         Insert: {
           ai_summary?: string | null
@@ -368,6 +369,7 @@ export type Database = {
           raw_email_subject?: string
           status?: string
           tribunal?: string | null
+          urgent_alert_sent?: boolean
         }
         Update: {
           ai_summary?: string | null
@@ -385,6 +387,7 @@ export type Database = {
           raw_email_subject?: string
           status?: string
           tribunal?: string | null
+          urgent_alert_sent?: boolean
         }
         Relationships: [
           {
