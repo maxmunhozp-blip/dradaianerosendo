@@ -137,8 +137,24 @@ export function SyncConfigModal({ open, onOpenChange, onSave, saving, initialCon
             </div>
           </div>
 
+          {/* Section - Importar todos (corporate) */}
+          {isCorporate && (
+            <div className="space-y-3 bg-muted/50 border border-border rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">Importar todos os e-mails</p>
+                  <p className="text-xs text-muted-foreground">
+                    E-mails corporativos não possuem os mesmos filtros do Gmail. 
+                    Ative para importar tudo sem filtros de assunto ou remetente.
+                  </p>
+                </div>
+                <Switch checked={importAll} onCheckedChange={setImportAll} />
+              </div>
+            </div>
+          )}
+
           {/* Section 2 - Filtros de assunto */}
-          <div className="space-y-3">
+          {!importAll && (
             <div className="flex items-center gap-2">
               <Filter className="w-4 h-4 text-muted-foreground" />
               <Label className="text-sm font-medium">Filtros de assunto</Label>
