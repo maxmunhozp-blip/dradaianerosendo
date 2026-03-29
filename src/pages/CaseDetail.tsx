@@ -12,6 +12,7 @@ import { ChecklistItemRow } from "@/components/ChecklistItemRow";
 import { LaraChat } from "@/components/LaraChat";
 import { EmptyState } from "@/components/EmptyState";
 import { DetailSkeleton } from "@/components/Skeletons";
+import { CaseTimeline } from "@/components/CaseTimeline";
 import { ArrowLeft, Upload, Plus, FileText, ClipboardList, FolderOpen, FileDown, Scale } from "lucide-react";
 import { GenerateDocumentsModal } from "@/components/GenerateDocumentsModal";
 import { PeticaoModal } from "@/components/PeticaoModal";
@@ -238,7 +239,7 @@ export default function CaseDetail() {
         </div>
 
         {/* Checklist */}
-        <div>
+        <div className="mb-8">
           <h2 className="text-sm font-medium text-foreground mb-3">
             Checklist ({checklist.filter((i) => i.done).length}/{checklist.length})
           </h2>
@@ -272,6 +273,14 @@ export default function CaseDetail() {
             </div>
           </div>
         </div>
+
+        {/* Timeline */}
+        <CaseTimeline
+          documents={documents}
+          messages={dbMessages}
+          checklist={checklist}
+          caseCreatedAt={caseData.created_at}
+        />
       </div>
 
       {/* Right column - LARA chat */}
