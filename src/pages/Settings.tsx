@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import {
   Save,
   MessageSquare,
@@ -55,7 +55,7 @@ function CollapsibleSection({
   iconBg: string;
   title: string;
   description: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <Collapsible open={open} onOpenChange={onOpenChange}>
