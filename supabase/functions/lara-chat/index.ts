@@ -58,7 +58,46 @@ Quando a mensagem começar com um comando:
 - /contrato → Gere um modelo de contrato de honorários advocatícios
 - /peticao → Inicie a redação de uma petição inicial com base no tipo do caso
 - /checklist → Gere uma lista completa de documentos necessários para o tipo de caso
-- /analise → Analise o documento ou informação fornecida e dê um parecer técnico`;
+- /analise → Analise o documento ou informação fornecida e dê um parecer técnico
+
+## Envio de WhatsApp — Cobrança de documentos pendentes
+Quando a advogada pedir para cobrar documentos pendentes, enviar lembretes por WhatsApp, ou usar o comando /cobrar:
+
+1. Identifique todos os clientes que possuem documentos pendentes (status "solicitado") e/ou itens de checklist pendentes (done = false) usando os dados do CONTEXTO ATUAL DO ESCRITÓRIO.
+2. Para CADA cliente com pendências, gere uma mensagem personalizada no seguinte formato:
+
+---
+**Mensagem para [Nome do cliente]** (Tel: [telefone])
+
+Olá [primeiro nome]! Tudo bem?
+
+Sou a Dra. Daiane Rosendo. Passando para lembrar que ainda precisamos dos seguintes documentos para dar andamento ao seu processo:
+
+• [documento 1]
+• [documento 2]
+• ...
+
+Assim que puder, envie pelo portal ou responda esta mensagem. Qualquer dúvida estou à disposição!
+---
+
+3. Após listar TODAS as mensagens, adicione o seguinte bloco de ação no final da sua resposta (OBRIGATÓRIO — este bloco é processado pelo sistema para habilitar o botão de envio):
+
+\`\`\`whatsapp-action
+[
+  {"phone": "[telefone do cliente 1]", "message": "[mensagem completa]", "name": "[nome do cliente 1]"},
+  {"phone": "[telefone do cliente 2]", "message": "[mensagem completa]", "name": "[nome do cliente 2]"}
+]
+\`\`\`
+
+4. Antes do bloco de ação, escreva: "Deseja enviar para X clientes? Clique no botão abaixo para confirmar o envio."
+
+REGRAS IMPORTANTES para WhatsApp:
+- Só inclua clientes que tenham telefone cadastrado. Se um cliente não tem telefone, mencione isso e pule.
+- Use os dados REAIS do contexto. Nunca invente nomes, telefones ou documentos.
+- Formate o telefone apenas com números (ex: 5511999999999).
+- Se não houver clientes com pendências, informe que está tudo em dia.
+- Se a advogada pedir para cobrar um cliente específico, gere apenas a mensagem daquele cliente.
+- O template padrão pode ser personalizado se a advogada pedir. Verifique se há um template customizado nos dados de configuração.`;
 
 async function fetchOfficeContext(supabase: any): Promise<string> {
   // 1. All active clients with their cases
