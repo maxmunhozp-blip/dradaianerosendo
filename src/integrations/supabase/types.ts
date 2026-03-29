@@ -262,7 +262,9 @@ export type Database = {
           sync_attachments_pdf_only: boolean | null
           sync_configured: boolean | null
           sync_error_message: string | null
+          sync_extra_domains: string | null
           sync_extra_senders: string | null
+          sync_financial: boolean | null
           sync_import_all: boolean | null
           sync_judicial_only: boolean | null
           sync_limit: number | null
@@ -291,7 +293,9 @@ export type Database = {
           sync_attachments_pdf_only?: boolean | null
           sync_configured?: boolean | null
           sync_error_message?: string | null
+          sync_extra_domains?: string | null
           sync_extra_senders?: string | null
+          sync_financial?: boolean | null
           sync_import_all?: boolean | null
           sync_judicial_only?: boolean | null
           sync_limit?: number | null
@@ -320,7 +324,9 @@ export type Database = {
           sync_attachments_pdf_only?: boolean | null
           sync_configured?: boolean | null
           sync_error_message?: string | null
+          sync_extra_domains?: string | null
           sync_extra_senders?: string | null
+          sync_financial?: boolean | null
           sync_import_all?: boolean | null
           sync_judicial_only?: boolean | null
           sync_limit?: number | null
@@ -333,6 +339,7 @@ export type Database = {
         Row: {
           body_html: string | null
           body_text: string
+          category: string | null
           created_at: string
           email_account_id: string
           from_email: string | null
@@ -348,6 +355,7 @@ export type Database = {
         Insert: {
           body_html?: string | null
           body_text?: string
+          category?: string | null
           created_at?: string
           email_account_id: string
           from_email?: string | null
@@ -363,6 +371,7 @@ export type Database = {
         Update: {
           body_html?: string | null
           body_text?: string
+          category?: string | null
           created_at?: string
           email_account_id?: string
           from_email?: string | null
