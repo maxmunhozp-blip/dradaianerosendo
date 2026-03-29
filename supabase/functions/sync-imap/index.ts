@@ -327,32 +327,44 @@ async function syncAccount(admin: any, account: ImapAccount): Promise<number> {
   await imapCommand(conn, "A002", "SELECT INBOX");
   console.log(`[sync-imap] INBOX selected`);
 
+  // Build date for fallback search
+  const since = new Date();
+  since.setDate(since.getDate() - (account.sync_period_days || 30));
+  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const imapDate = `${since.getUTCDate()}-${months[since.getUTCMonth()]}-${since.getUTCFullYear()}`;
+
   // Build search command based on cursor
   const lastCursor = account.gmail_message_id_cursor;
   let searchCmd: string;
 
   if (lastCursor && parseInt(lastCursor) > 0) {
-    // Fetch messages with UID greater than the last processed
     const nextUid = parseInt(lastCursor) + 1;
     searchCmd = `UID SEARCH UID ${nextUid}:*`;
     console.log(`[sync-imap] Incremental sync from UID ${nextUid}`);
   } else {
-    // First sync: use date-based search
-    const since = new Date();
-    since.setDate(since.getDate() - (account.sync_period_days || 30));
-    const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-    const imapDate = `${since.getUTCDate()}-${months[since.getUTCMonth()]}-${since.getUTCFullYear()}`;
     searchCmd = `UID SEARCH SINCE ${imapDate}`;
     console.log(`[sync-imap] First sync, searching since ${imapDate}`);
   }
 
   console.log(`[sync-imap] Search command: ${searchCmd}`);
-  const searchResp = await imapCommand(conn, "A003", searchCmd);
+  let searchResp = await imapCommand(conn, "A003", searchCmd);
 
-  const searchLine = searchResp.split("\r\n").find((l) => l.startsWith("* SEARCH"));
-  const allUids = searchLine
+  let searchLine = searchResp.split("\r\n").find((l) => l.startsWith("* SEARCH"));
+  let allUids = searchLine
     ? searchLine.replace("* SEARCH", "").trim().split(/\s+/).filter(Boolean)
     : [];
+
+  // Fallback: if cursor-based search returns 0 results, reset and search by date
+  if (allUids.length === 0 && lastCursor && parseInt(lastCursor) > 0) {
+    console.log(`[sync-imap] Cursor search returned 0 results, falling back to date search since ${imapDate}`);
+    const fallbackCmd = `UID SEARCH SINCE ${imapDate}`;
+    searchResp = await imapCommand(conn, "A003B", fallbackCmd);
+    searchLine = searchResp.split("\r\n").find((l) => l.startsWith("* SEARCH"));
+    allUids = searchLine
+      ? searchLine.replace("* SEARCH", "").trim().split(/\s+/).filter(Boolean)
+      : [];
+    console.log(`[sync-imap] Fallback found ${allUids.length} messages`);
+  }
 
   console.log(`[sync-imap] Found ${allUids.length} total messages`);
 
