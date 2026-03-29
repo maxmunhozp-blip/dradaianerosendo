@@ -109,6 +109,7 @@ export function ProcessTimeline({ caseId }: ProcessTimelineProps) {
     setFormTitle("");
     setFormDescription("");
     setFormPinned(false);
+    setFormFiles([]);
     setShowModal(true);
   };
 
@@ -119,7 +120,35 @@ export function ProcessTimeline({ caseId }: ProcessTimelineProps) {
     setFormTitle(entry.title);
     setFormDescription(entry.description);
     setFormPinned(entry.pinned);
+    setFormFiles(entry.file_urls || []);
     setShowModal(true);
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setUploading(true);
+    try {
+      const newFiles: { name: string; url: string }[] = [];
+      for (const file of Array.from(files)) {
+        const path = `timeline/${caseId}/${Date.now()}_${file.name}`;
+        const { error } = await supabase.storage.from("case-documents").upload(path, file);
+        if (error) throw error;
+        const { data: urlData } = supabase.storage.from("case-documents").getPublicUrl(path);
+        newFiles.push({ name: file.name, url: urlData.publicUrl });
+      }
+      setFormFiles((prev) => [...prev, ...newFiles]);
+      toast.success(`${newFiles.length} arquivo(s) adicionado(s)`);
+    } catch (err: any) {
+      toast.error("Erro ao enviar arquivo: " + (err.message || ""));
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const removeFormFile = (index: number) => {
+    setFormFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async () => {
@@ -137,7 +166,8 @@ export function ProcessTimeline({ caseId }: ProcessTimelineProps) {
           status: formStatus,
           event_date: new Date(formDate).toISOString(),
           pinned: formPinned,
-        });
+          file_urls: formFiles,
+        } as any);
         toast.success("Movimentação atualizada");
       } else {
         await createEntry.mutateAsync({
@@ -148,7 +178,8 @@ export function ProcessTimeline({ caseId }: ProcessTimelineProps) {
           event_date: new Date(formDate).toISOString(),
           type: "manual",
           pinned: formPinned,
-        });
+          file_urls: formFiles,
+        } as any);
         toast.success("Movimentação adicionada");
       }
       setShowModal(false);
