@@ -4,9 +4,11 @@ import {
   FileText,
   Bot,
   FolderOpen,
+  LogOut,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
+import { useAuth } from "@/hooks/use-auth";
 import {
   Sidebar,
   SidebarContent,
@@ -32,6 +34,7 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const location = useLocation();
   const currentPath = location.pathname;
+  const { signOut, user } = useAuth();
 
   const isActive = (path: string) => {
     if (path === "/") return currentPath === "/";
@@ -82,10 +85,17 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="p-4">
-        {!collapsed && (
-          <p className="text-[10px] text-sidebar-foreground/60">v1.0 — LexAI</p>
+      <SidebarFooter className="p-4 space-y-2">
+        {!collapsed && user && (
+          <p className="text-[10px] text-sidebar-foreground/60 truncate">{user.email}</p>
         )}
+        <button
+          onClick={() => signOut()}
+          className="flex items-center gap-2 text-xs text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors w-full"
+        >
+          <LogOut className="w-3.5 h-3.5" />
+          {!collapsed && <span>Sair</span>}
+        </button>
       </SidebarFooter>
     </Sidebar>
   );
