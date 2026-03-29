@@ -5,7 +5,8 @@ import { useCasesByClient, useCreateCase } from "@/hooks/use-cases";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyState } from "@/components/EmptyState";
 import { DetailSkeleton } from "@/components/Skeletons";
-import { ArrowLeft, Phone, Mail, Plus, FolderOpen } from "lucide-react";
+import { ArrowLeft, Phone, Mail, Plus, FolderOpen, Send, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
@@ -36,12 +37,35 @@ export default function ClientDetail() {
 
   const [notes, setNotes] = useState<string | null>(null);
   const [caseDialogOpen, setCaseDialogOpen] = useState(false);
+  const [inviting, setInviting] = useState(false);
   const [caseForm, setCaseForm] = useState({
     case_type: "Divórcio",
     description: "",
     cnj_number: "",
     court: "",
   });
+
+  const handleInviteClient = async () => {
+    if (!client?.email) {
+      toast.error("Cliente não possui e-mail cadastrado");
+      return;
+    }
+    setInviting(true);
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email: client.email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/portal`,
+        },
+      });
+      if (error) throw error;
+      toast.success(`Convite enviado para ${client.email}`);
+    } catch (err: any) {
+      toast.error("Erro ao enviar convite: " + err.message);
+    } finally {
+      setInviting(false);
+    }
+  };
 
   if (isLoading) return <DetailSkeleton />;
 
@@ -117,6 +141,15 @@ export default function ClientDetail() {
           </div>
           {client.origin && <p className="text-xs text-muted-foreground mt-1">Origem: {client.origin}</p>}
         </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleInviteClient}
+          disabled={inviting || !client.email}
+        >
+          {inviting ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Send className="w-3.5 h-3.5 mr-1.5" />}
+          Convidar cliente
+        </Button>
       </div>
 
       <Tabs defaultValue="cases">
