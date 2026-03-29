@@ -10,7 +10,9 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { DocumentRow } from "@/components/DocumentRow";
 import { ChecklistItemRow } from "@/components/ChecklistItemRow";
 import { LaraChat } from "@/components/LaraChat";
-import { ArrowLeft, Upload, Plus } from "lucide-react";
+import { EmptyState } from "@/components/EmptyState";
+import { DetailSkeleton } from "@/components/Skeletons";
+import { ArrowLeft, Upload, Plus, FileText, ClipboardList, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -44,7 +46,6 @@ export default function CaseDetail() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [historyLoaded, setHistoryLoaded] = useState(false);
 
-  // Load chat history from DB once
   useEffect(() => {
     if (dbMessages.length > 0 && !historyLoaded) {
       loadHistory(dbMessages);
@@ -52,12 +53,18 @@ export default function CaseDetail() {
     }
   }, [dbMessages, historyLoaded, loadHistory]);
 
-  if (caseLoading) {
-    return <div className="p-6"><p className="text-sm text-muted-foreground">Carregando...</p></div>;
-  }
+  if (caseLoading) return <DetailSkeleton />;
 
   if (!caseData) {
-    return <div className="p-6"><p className="text-sm text-muted-foreground">Caso não encontrado.</p></div>;
+    return (
+      <div className="p-6">
+        <EmptyState
+          icon={FolderOpen}
+          title="Caso não encontrado"
+          description="Este caso pode ter sido removido ou o link está incorreto."
+        />
+      </div>
+    );
   }
 
   const clientName = (caseData as any).clients?.name || "Cliente";
@@ -84,7 +91,7 @@ export default function CaseDetail() {
         status: "recebido",
         uploaded_by: "advogada",
       });
-      toast.success("Documento enviado");
+      toast.success("Documento enviado com sucesso");
     } catch {
       toast.error("Erro ao enviar documento");
     }
@@ -96,6 +103,7 @@ export default function CaseDetail() {
     try {
       await createChecklistItem.mutateAsync({ case_id: id!, label: newItem.trim() });
       setNewItem("");
+      toast.success("Item adicionado");
     } catch {
       toast.error("Erro ao adicionar item");
     }
@@ -104,11 +112,20 @@ export default function CaseDetail() {
   const handleToggleChecklist = async (itemId: string) => {
     const item = checklist.find((i) => i.id === itemId);
     if (!item) return;
-    await toggleChecklistItem.mutateAsync({ id: itemId, done: !item.done, case_id: id! });
+    try {
+      await toggleChecklistItem.mutateAsync({ id: itemId, done: !item.done, case_id: id! });
+    } catch {
+      toast.error("Erro ao atualizar item");
+    }
   };
 
   const handleDeleteChecklist = async (itemId: string) => {
-    await deleteChecklistItem.mutateAsync({ id: itemId, case_id: id! });
+    try {
+      await deleteChecklistItem.mutateAsync({ id: itemId, case_id: id! });
+      toast.success("Item removido");
+    } catch {
+      toast.error("Erro ao remover item");
+    }
   };
 
   return (
@@ -173,7 +190,13 @@ export default function CaseDetail() {
           </div>
           <div className="border border-border rounded-lg px-4">
             {documents.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4">Nenhum documento.</p>
+              <EmptyState
+                icon={FileText}
+                title="Nenhum documento"
+                description="Envie o primeiro documento para este caso."
+                actionLabel="Enviar documento"
+                onAction={() => fileInputRef.current?.click()}
+              />
             ) : (
               documents.map((doc) => <DocumentRow key={doc.id} doc={doc} />)
             )}
@@ -186,6 +209,13 @@ export default function CaseDetail() {
             Checklist ({checklist.filter((i) => i.done).length}/{checklist.length})
           </h2>
           <div className="border border-border rounded-lg px-4">
+            {checklist.length === 0 && (
+              <EmptyState
+                icon={ClipboardList}
+                title="Checklist vazio"
+                description="Adicione itens ao checklist deste caso."
+              />
+            )}
             {checklist.map((item) => (
               <ChecklistItemRow
                 key={item.id}

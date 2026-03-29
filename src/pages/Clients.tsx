@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { useClients, useCreateClient } from "@/hooks/use-clients";
 import { StatusBadge } from "@/components/StatusBadge";
-import { Search, Plus, ChevronRight } from "lucide-react";
+import { EmptyState } from "@/components/EmptyState";
+import { TableSkeleton } from "@/components/Skeletons";
+import { Search, Plus, ChevronRight, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -32,7 +34,6 @@ export default function Clients() {
   const { data: clients = [], isLoading } = useClients();
   const createClient = useCreateClient();
 
-  // Fetch cases to show case_type per client
   const { data: allCases = [] } = useQuery({
     queryKey: ["cases-all-for-clients"],
     queryFn: async () => {
@@ -201,12 +202,28 @@ export default function Clients() {
         </Select>
       </div>
 
-      <div className="border border-border rounded-lg">
-        {isLoading ? (
-          <p className="text-sm text-muted-foreground px-4 py-6 text-center">Carregando...</p>
-        ) : filtered.length === 0 ? (
-          <p className="text-sm text-muted-foreground px-4 py-6 text-center">Nenhum cliente encontrado.</p>
-        ) : (
+      {isLoading ? (
+        <TableSkeleton rows={5} cols={5} />
+      ) : filtered.length === 0 && clients.length === 0 ? (
+        <div className="border border-border rounded-lg">
+          <EmptyState
+            icon={Users}
+            title="Nenhum cliente cadastrado"
+            description="Cadastre seu primeiro cliente para começar a gerenciar seus casos."
+            actionLabel="Cadastrar cliente"
+            onAction={() => setDialogOpen(true)}
+          />
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="border border-border rounded-lg">
+          <EmptyState
+            icon={Search}
+            title="Nenhum resultado"
+            description="Nenhum cliente encontrado com os filtros aplicados."
+          />
+        </div>
+      ) : (
+        <div className="border border-border rounded-lg">
           <table className="w-full">
             <thead>
               <tr className="border-b border-border">
@@ -247,8 +264,8 @@ export default function Clients() {
               ))}
             </tbody>
           </table>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

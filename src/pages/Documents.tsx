@@ -1,7 +1,9 @@
 import { useAllDocuments } from "@/hooks/use-documents";
 import { useState } from "react";
 import { StatusBadge } from "@/components/StatusBadge";
-import { Download } from "lucide-react";
+import { EmptyState } from "@/components/EmptyState";
+import { TableSkeleton } from "@/components/Skeletons";
+import { Download, FileText, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -65,12 +67,26 @@ export default function Documents() {
         </Select>
       </div>
 
-      <div className="border border-border rounded-lg">
-        {isLoading ? (
-          <p className="text-sm text-muted-foreground px-4 py-6 text-center">Carregando...</p>
-        ) : filtered.length === 0 ? (
-          <p className="text-sm text-muted-foreground px-4 py-6 text-center">Nenhum documento encontrado.</p>
-        ) : (
+      {isLoading ? (
+        <TableSkeleton rows={5} cols={5} />
+      ) : allDocs.length === 0 ? (
+        <div className="border border-border rounded-lg">
+          <EmptyState
+            icon={FileText}
+            title="Nenhum documento"
+            description="Documentos aparecerão aqui quando forem adicionados aos casos."
+          />
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="border border-border rounded-lg">
+          <EmptyState
+            icon={Search}
+            title="Nenhum resultado"
+            description="Nenhum documento encontrado com os filtros aplicados."
+          />
+        </div>
+      ) : (
+        <div className="border border-border rounded-lg">
           <table className="w-full">
             <thead>
               <tr className="border-b border-border">
@@ -107,8 +123,8 @@ export default function Documents() {
               ))}
             </tbody>
           </table>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

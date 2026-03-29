@@ -3,7 +3,9 @@ import { useParams, Link } from "react-router-dom";
 import { useClient, useUpdateClient } from "@/hooks/use-clients";
 import { useCasesByClient, useCreateCase } from "@/hooks/use-cases";
 import { StatusBadge } from "@/components/StatusBadge";
-import { ArrowLeft, Phone, Mail, Plus } from "lucide-react";
+import { EmptyState } from "@/components/EmptyState";
+import { DetailSkeleton } from "@/components/Skeletons";
+import { ArrowLeft, Phone, Mail, Plus, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
@@ -41,12 +43,18 @@ export default function ClientDetail() {
     court: "",
   });
 
-  if (isLoading) {
-    return <div className="p-6"><p className="text-sm text-muted-foreground">Carregando...</p></div>;
-  }
+  if (isLoading) return <DetailSkeleton />;
 
   if (!client) {
-    return <div className="p-6"><p className="text-sm text-muted-foreground">Cliente não encontrado.</p></div>;
+    return (
+      <div className="p-6">
+        <EmptyState
+          icon={FolderOpen}
+          title="Cliente não encontrado"
+          description="Este cliente pode ter sido removido ou o link está incorreto."
+        />
+      </div>
+    );
   }
 
   const handleSaveNotes = async () => {
@@ -185,7 +193,15 @@ export default function ClientDetail() {
           </div>
 
           {cases.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhum caso registrado.</p>
+            <div className="border border-border rounded-lg">
+              <EmptyState
+                icon={FolderOpen}
+                title="Nenhum caso registrado"
+                description="Crie o primeiro caso para este cliente."
+                actionLabel="Novo caso"
+                onAction={() => setCaseDialogOpen(true)}
+              />
+            </div>
           ) : (
             <div className="border border-border rounded-lg divide-y divide-border">
               {cases.map((c) => (
