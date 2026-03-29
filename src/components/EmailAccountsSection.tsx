@@ -200,6 +200,52 @@ export default function EmailAccountsSection() {
   const [editSmtpHost, setEditSmtpHost] = useState("");
   const [editSmtpPort, setEditSmtpPort] = useState("");
 
+  // Sync config modal
+  const [syncConfigOpen, setSyncConfigOpen] = useState(false);
+  const [syncConfigAccount, setSyncConfigAccount] = useState<EmailAccount | null>(null);
+  const [syncConfigSaving, setSyncConfigSaving] = useState(false);
+
+  const handleSyncClick = (account: EmailAccount) => {
+    // If not configured yet, show config modal first
+    if (!account.sync_configured) {
+      setSyncConfigAccount(account);
+      setSyncConfigOpen(true);
+    } else {
+      syncMutation.mutate({ accountId: account.id, provider: account.provider });
+    }
+  };
+
+  const handleOpenSyncConfig = (account: EmailAccount) => {
+    setSyncConfigAccount(account);
+    setSyncConfigOpen(true);
+  };
+
+  const handleSaveSyncConfig = async (config: SyncConfig) => {
+    if (!syncConfigAccount) return;
+    setSyncConfigSaving(true);
+    try {
+      const { error } = await (supabase.from("email_accounts") as any)
+        .update({
+          ...config,
+          sync_configured: true,
+        })
+        .eq("id", syncConfigAccount.id);
+      if (error) throw error;
+      
+      toast.success("Configuração salva! Iniciando sincronização...");
+      setSyncConfigOpen(false);
+      setSyncConfigAccount(null);
+      qc.invalidateQueries({ queryKey: ["email-accounts"] });
+      
+      // Start sync after saving config
+      syncMutation.mutate({ accountId: syncConfigAccount.id, provider: syncConfigAccount.provider });
+    } catch (err: any) {
+      toast.error("Erro ao salvar configuração: " + err.message);
+    } finally {
+      setSyncConfigSaving(false);
+    }
+  };
+
   const resetForm = () => {
     setNewLabel("");
     setNewPlatform("Todos");
