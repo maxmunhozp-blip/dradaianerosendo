@@ -423,7 +423,7 @@ async function syncAccount(admin: any, account: ImapAccount): Promise<number> {
       continue;
     }
 
-    const isFinanceiroAccount = /financeiro/i.test(account.email) || /financeiro/i.test((account as any).label || "");
+    const isFinanceiroAccount = /financeiro/i.test(account.email) || /financeiro/i.test(account.label || "");
     const category = isFinanceiroAccount ? "financial" : categorizeEmail(fromEmail, subject, bodyText);
     const isJudicial = category === "judicial";
 
