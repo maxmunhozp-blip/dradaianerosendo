@@ -415,7 +415,7 @@ export default function Settings() {
         icon={Mail}
         iconBg="bg-amber-500/10 text-amber-600"
         title="Contas de E-mail Judicial"
-        description="Monitore intimações de múltiplas contas Gmail"
+        description="Monitore intimações via Gmail ou Hostinger/IMAP"
       >
         <EmailAccountsSection />
       </CollapsibleSection>

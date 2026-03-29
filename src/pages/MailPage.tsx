@@ -1,0 +1,395 @@
+import { useState } from "react";
+import {
+  Mail, RefreshCw, Search, Filter, Inbox, Loader2, ExternalLink,
+  AlertTriangle, FileText, ChevronRight, Server, Edit,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { format } from "date-fns";
+import { toast } from "sonner";
+import { useSyncGmail } from "@/components/EmailAccountsSection";
+
+interface EmailAccount {
+  id: string;
+  label: string;
+  email: string;
+  provider: string;
+}
+
+interface EmailMessage {
+  id: string;
+  created_at: string;
+  email_account_id: string;
+  message_uid: string;
+  from_email: string | null;
+  from_name: string | null;
+  subject: string;
+  body_text: string;
+  body_html: string | null;
+  received_at: string | null;
+  is_read: boolean;
+  is_judicial: boolean;
+  intimacao_id: string | null;
+}
+
+type EmailFilter = "all" | "unread" | "judicial" | "other";
+
+function useEmailAccounts() {
+  return useQuery({
+    queryKey: ["email-accounts"],
+    queryFn: async () => {
+      const { data, error } = await (supabase.from("email_accounts") as any)
+        .select("id, label, email, provider")
+        .eq("status", "conectado")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data as EmailAccount[];
+    },
+  });
+}
+
+function useEmailMessages(accountId: string | null, filter: EmailFilter, search: string) {
+  return useQuery({
+    queryKey: ["email-messages", accountId, filter, search],
+    queryFn: async () => {
+      let query = (supabase.from("email_messages") as any)
+        .select("*")
+        .order("received_at", { ascending: false })
+        .limit(100);
+
+      if (accountId && accountId !== "all") {
+        query = query.eq("email_account_id", accountId);
+      }
+      if (filter === "unread") query = query.eq("is_read", false);
+      if (filter === "judicial") query = query.eq("is_judicial", true);
+      if (filter === "other") query = query.eq("is_judicial", false);
+      if (search.trim()) query = query.ilike("subject", `%${search.trim()}%`);
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return data as EmailMessage[];
+    },
+  });
+}
+
+function useSyncImap() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (accountId?: string) => {
+      const { data, error } = await supabase.functions.invoke("sync-imap", {
+        body: accountId ? { account_id: accountId } : {},
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ["email-messages"] });
+      qc.invalidateQueries({ queryKey: ["email-accounts"] });
+      const count = data?.new_emails ?? 0;
+      toast.success(count > 0 ? `${count} novo(s) e-mail(s) encontrado(s)!` : "Sincronização concluída.");
+    },
+    onError: (err: any) => toast.error("Erro: " + err.message),
+  });
+}
+
+function useRegisterIntimacao() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (email: EmailMessage) => {
+      const { data, error } = await supabase.functions.invoke("process-intimacao", {
+        body: {
+          subject: email.subject,
+          body: email.body_text,
+          from_email: email.from_email,
+          date: email.received_at,
+          gmail_message_id: `mail_${email.id}`,
+        },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["email-messages"] });
+      qc.invalidateQueries({ queryKey: ["intimacoes"] });
+      toast.success("Intimação registrada com sucesso!");
+    },
+    onError: (err: any) => toast.error("Erro: " + err.message),
+  });
+}
+
+export default function MailPage() {
+  const [selectedAccountId, setSelectedAccountId] = useState<string>("all");
+  const [filter, setFilter] = useState<EmailFilter>("all");
+  const [search, setSearch] = useState("");
+  const [selectedEmail, setSelectedEmail] = useState<EmailMessage | null>(null);
+
+  const { data: accounts = [] } = useEmailAccounts();
+  const { data: emails = [], isLoading } = useEmailMessages(
+    selectedAccountId === "all" ? null : selectedAccountId,
+    filter,
+    search
+  );
+
+  const syncGmail = useSyncGmail();
+  const syncImap = useSyncImap();
+  const registerIntimacao = useRegisterIntimacao();
+  const qc = useQueryClient();
+
+  const isSyncing = syncGmail.isPending || syncImap.isPending;
+
+  const handleSync = () => {
+    const accountId = selectedAccountId === "all" ? undefined : selectedAccountId;
+    const account = accounts.find(a => a.id === selectedAccountId);
+
+    if (account?.provider === "hostinger" || account?.provider === "imap") {
+      syncImap.mutate(accountId);
+    } else if (account?.provider === "gmail") {
+      syncGmail.mutate(accountId);
+    } else {
+      // Sync all
+      syncGmail.mutate(undefined);
+      syncImap.mutate(undefined);
+    }
+  };
+
+  const handleMarkRead = async (email: EmailMessage) => {
+    if (!email.is_read) {
+      await (supabase.from("email_messages") as any)
+        .update({ is_read: true })
+        .eq("id", email.id);
+      qc.invalidateQueries({ queryKey: ["email-messages"] });
+    }
+  };
+
+  const accountsMap = Object.fromEntries(accounts.map(a => [a.id, a]));
+
+  const filterOptions: { value: EmailFilter; label: string }[] = [
+    { value: "all", label: "Todos" },
+    { value: "unread", label: "Não lidos" },
+    { value: "judicial", label: "Judiciais" },
+    { value: "other", label: "Outros" },
+  ];
+
+  return (
+    <div className="flex flex-col h-[calc(100vh-4rem)]">
+      {/* Top bar */}
+      <div className="flex items-center justify-between border-b px-4 py-3 shrink-0">
+        <div className="flex items-center gap-3">
+          <Select value={selectedAccountId} onValueChange={setSelectedAccountId}>
+            <SelectTrigger className="w-64">
+              <SelectValue placeholder="Selecionar conta" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as contas</SelectItem>
+              {accounts.map(a => (
+                <SelectItem key={a.id} value={a.id}>
+                  {a.label} — {a.email}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" disabled={isSyncing} onClick={handleSync}>
+            <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isSyncing ? "animate-spin" : ""}`} />
+            Sincronizar
+          </Button>
+          <Button size="sm" variant="outline" className="text-amber-600 border-amber-300" disabled>
+            <Edit className="w-3.5 h-3.5 mr-1.5" />
+            Compor
+          </Button>
+        </div>
+      </div>
+
+      {accounts.length === 0 ? (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center space-y-3">
+            <Inbox className="w-12 h-12 mx-auto text-muted-foreground/40" />
+            <p className="text-sm text-muted-foreground">Nenhuma conta de e-mail conectada</p>
+            <Button variant="outline" size="sm" asChild>
+              <a href="/settings">Configurar contas</a>
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-1 min-h-0">
+          {/* Left column — email list */}
+          <div className="w-[35%] border-r flex flex-col min-h-0">
+            <div className="p-3 space-y-2 border-b shrink-0">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por assunto..."
+                  className="pl-8 h-8 text-sm"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+              <div className="flex gap-1">
+                {filterOptions.map(f => (
+                  <Button
+                    key={f.value}
+                    variant={filter === f.value ? "default" : "ghost"}
+                    size="sm"
+                    className="h-6 text-[11px] px-2"
+                    onClick={() => setFilter(f.value)}
+                  >
+                    {f.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <ScrollArea className="flex-1">
+              {isLoading ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : emails.length === 0 ? (
+                <div className="text-center py-8">
+                  <Mail className="w-8 h-8 mx-auto text-muted-foreground/40 mb-2" />
+                  <p className="text-xs text-muted-foreground">Nenhum e-mail encontrado</p>
+                </div>
+              ) : (
+                <div className="divide-y">
+                  {emails.map(email => {
+                    const isActive = selectedEmail?.id === email.id;
+                    const acct = accountsMap[email.email_account_id];
+                    return (
+                      <button
+                        key={email.id}
+                        onClick={() => { setSelectedEmail(email); handleMarkRead(email); }}
+                        className={`w-full text-left px-3 py-2.5 hover:bg-muted/50 transition-colors ${
+                          isActive ? "bg-muted" : ""
+                        } ${!email.is_read ? "bg-amber-50/50" : ""}`}
+                      >
+                        <div className="flex items-start gap-2">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5">
+                              {!email.is_read && (
+                                <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                              )}
+                              <span className={`text-xs truncate ${!email.is_read ? "font-semibold" : ""}`}>
+                                {email.from_name || email.from_email || "Desconhecido"}
+                              </span>
+                            </div>
+                            <p className={`text-xs mt-0.5 truncate ${!email.is_read ? "font-medium text-foreground" : "text-muted-foreground"}`}>
+                              {email.subject}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground truncate mt-0.5">
+                              {email.body_text?.substring(0, 80)}
+                            </p>
+                            <div className="flex items-center gap-1.5 mt-1">
+                              {email.received_at && (
+                                <span className="text-[10px] text-muted-foreground">
+                                  {format(new Date(email.received_at), "dd/MM HH:mm")}
+                                </span>
+                              )}
+                              {email.is_judicial && (
+                                <Badge className="bg-amber-500/10 text-amber-600 border-amber-200 text-[9px] px-1 py-0">
+                                  Judicial
+                                </Badge>
+                              )}
+                              {selectedAccountId === "all" && acct && (
+                                <Badge variant="outline" className="text-[9px] px-1 py-0">
+                                  {acct.label}
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                          <ChevronRight className="w-3 h-3 text-muted-foreground shrink-0 mt-1" />
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </ScrollArea>
+          </div>
+
+          {/* Right column — email viewer */}
+          <div className="flex-1 flex flex-col min-h-0">
+            {selectedEmail ? (
+              <>
+                <div className="p-4 border-b shrink-0 space-y-2">
+                  <div className="flex items-start justify-between">
+                    <h2 className="text-base font-semibold text-foreground pr-4">
+                      {selectedEmail.subject}
+                    </h2>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {selectedEmail.is_judicial && (
+                        <Badge className="bg-amber-500/10 text-amber-600 border-amber-200 text-[10px]">
+                          <AlertTriangle className="w-3 h-3 mr-0.5" />
+                          Judicial
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                    <span>
+                      <strong>De:</strong> {selectedEmail.from_name ? `${selectedEmail.from_name} <${selectedEmail.from_email}>` : selectedEmail.from_email}
+                    </span>
+                    {selectedEmail.received_at && (
+                      <span>{format(new Date(selectedEmail.received_at), "dd/MM/yyyy HH:mm")}</span>
+                    )}
+                  </div>
+                  {selectedEmail.is_judicial && !selectedEmail.intimacao_id && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-amber-600 border-amber-300 hover:bg-amber-50"
+                      disabled={registerIntimacao.isPending}
+                      onClick={() => registerIntimacao.mutate(selectedEmail)}
+                    >
+                      {registerIntimacao.isPending ? (
+                        <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+                      ) : (
+                        <FileText className="w-3.5 h-3.5 mr-1" />
+                      )}
+                      Registrar como Intimação
+                    </Button>
+                  )}
+                  {selectedEmail.intimacao_id && (
+                    <Badge variant="outline" className="text-[10px] text-emerald-600 border-emerald-200">
+                      Intimação registrada
+                    </Badge>
+                  )}
+                </div>
+                <ScrollArea className="flex-1 p-4">
+                  {selectedEmail.body_html ? (
+                    <div
+                      className="prose prose-sm max-w-none text-foreground"
+                      dangerouslySetInnerHTML={{ __html: selectedEmail.body_html }}
+                    />
+                  ) : (
+                    <pre className="text-sm whitespace-pre-wrap font-sans text-foreground">
+                      {selectedEmail.body_text}
+                    </pre>
+                  )}
+                </ScrollArea>
+              </>
+            ) : (
+              <div className="flex-1 flex items-center justify-center">
+                <div className="text-center space-y-2">
+                  <Mail className="w-10 h-10 mx-auto text-muted-foreground/30" />
+                  <p className="text-sm text-muted-foreground">Selecione um e-mail para visualizar</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
