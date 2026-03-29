@@ -1,9 +1,37 @@
+import { useEffect, useRef } from "react";
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
+import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 
 export function PortalProtectedRoute() {
   const { user, isLoading } = useAuth();
+  const linkedRef = useRef(false);
+
+  useEffect(() => {
+    if (!user || linkedRef.current) return;
+    linkedRef.current = true;
+
+    // Auto-link: if no client record has this user_id, find by email and link
+    (async () => {
+      const { data: existing } = await supabase
+        .from("clients")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (existing) return; // already linked
+
+      const email = user.email;
+      if (!email) return;
+
+      await supabase
+        .from("clients")
+        .update({ user_id: user.id })
+        .eq("email", email)
+        .is("user_id", null);
+    })();
+  }, [user]);
 
   if (isLoading) {
     return (
