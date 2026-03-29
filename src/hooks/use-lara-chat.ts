@@ -21,12 +21,13 @@ export function useLaraChat(caseId?: string) {
 
   const sendMessage = useCallback(
     async (content: string, attachments: ChatAttachment[]) => {
-      const expandedContent = expandCommand(content);
+      const { display, api } = expandCommand(content);
 
+      // Show the display version in the chat bubble
       const userMsg: ChatMessage = {
         id: `user-${Date.now()}`,
         role: "user",
-        content: expandedContent,
+        content: display,
         attachments: attachments.length > 0 ? attachments : undefined,
       };
 
@@ -36,7 +37,7 @@ export function useLaraChat(caseId?: string) {
       let assistantContent = "";
       const assistantId = `assistant-${Date.now()}`;
 
-      // Build message history for the API
+      // Send the API version to the backend
       const apiMessages = [
         ...messages.map((m) => ({
           role: m.role,
@@ -45,7 +46,7 @@ export function useLaraChat(caseId?: string) {
         })),
         {
           role: "user" as const,
-          content: expandedContent,
+          content: api,
           attachments: attachments.length > 0 ? attachments : undefined,
         },
       ];

@@ -13,19 +13,36 @@ const COMMAND_EXPANSIONS: Record<string, string> = {
     "/cobrar — Por favor, identifique todos os clientes com documentos pendentes e gere mensagens personalizadas de WhatsApp para cobrança. Inclua o bloco whatsapp-action com os dados para envio.",
   "/agenda":
     "/agenda — Por favor, liste todas as audiências e prazos futuros, agrupados por semana, indicando caso, cliente, data, hora e local. Destaque os que estão próximos (48h) ou atrasados.",
-  "/lei":
-    "/lei — Por favor, busque no LexML (portal oficial de legislação brasileira) informações sobre a lei especificada. Retorne título, resumo, URN oficial e link para o texto completo.",
 };
 
-export function expandCommand(input: string): string {
-  const trimmed = input.trim().toLowerCase();
+/**
+ * Expands a command into display text (what user sees) and API text (what gets sent to the AI).
+ * For /lei, the original text is preserved in display while the API gets an instruction.
+ * For other commands, expansion happens normally.
+ */
+export function expandCommand(input: string): { display: string; api: string } {
+  const trimmed = input.trim();
+  const lower = trimmed.toLowerCase();
+
+  // Special handling for /lei — keep original in display, send instruction to API
+  const leiMatch = lower.match(/^\/lei\s+(.+)/);
+  if (leiMatch) {
+    return {
+      display: trimmed,
+      api: trimmed, // Pass the raw /lei command so the edge function can detect it
+    };
+  }
+
+  // Other commands — expand for both display and API
   for (const [cmd, expansion] of Object.entries(COMMAND_EXPANSIONS)) {
-    if (trimmed === cmd || trimmed.startsWith(cmd + " ")) {
-      const extra = input.trim().slice(cmd.length).trim();
-      return extra ? `${expansion}\n\nInformações adicionais: ${extra}` : expansion;
+    if (lower === cmd || lower.startsWith(cmd + " ")) {
+      const extra = trimmed.slice(cmd.length).trim();
+      const expanded = extra ? `${expansion}\n\nInformações adicionais: ${extra}` : expansion;
+      return { display: expanded, api: expanded };
     }
   }
-  return input;
+
+  return { display: input, api: input };
 }
 
-export const COMMANDS = Object.keys(COMMAND_EXPANSIONS);
+export const COMMANDS = [...Object.keys(COMMAND_EXPANSIONS), "/lei"];
