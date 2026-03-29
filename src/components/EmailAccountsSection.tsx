@@ -295,7 +295,7 @@ export default function EmailAccountsSection() {
     };
 
     const handleOAuthRedirect = async () => {
-      const pending = localStorage.getItem("pending_email_account");
+      setOauthStep("Autenticando com Google...");
       if (!pending) return;
 
       const hasOAuthParams =
