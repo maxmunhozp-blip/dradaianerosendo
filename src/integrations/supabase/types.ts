@@ -258,6 +258,14 @@ export type Database = {
           smtp_host: string | null
           smtp_port: number | null
           status: string
+          sync_attachments: boolean | null
+          sync_attachments_pdf_only: boolean | null
+          sync_configured: boolean | null
+          sync_extra_senders: string | null
+          sync_judicial_only: boolean | null
+          sync_limit: number | null
+          sync_period_days: number | null
+          sync_subject_filters: Json | null
         }
         Insert: {
           access_token?: string | null
@@ -277,6 +285,14 @@ export type Database = {
           smtp_host?: string | null
           smtp_port?: number | null
           status?: string
+          sync_attachments?: boolean | null
+          sync_attachments_pdf_only?: boolean | null
+          sync_configured?: boolean | null
+          sync_extra_senders?: string | null
+          sync_judicial_only?: boolean | null
+          sync_limit?: number | null
+          sync_period_days?: number | null
+          sync_subject_filters?: Json | null
         }
         Update: {
           access_token?: string | null
@@ -296,6 +312,14 @@ export type Database = {
           smtp_host?: string | null
           smtp_port?: number | null
           status?: string
+          sync_attachments?: boolean | null
+          sync_attachments_pdf_only?: boolean | null
+          sync_configured?: boolean | null
+          sync_extra_senders?: string | null
+          sync_judicial_only?: boolean | null
+          sync_limit?: number | null
+          sync_period_days?: number | null
+          sync_subject_filters?: Json | null
         }
         Relationships: []
       }

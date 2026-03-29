@@ -9,6 +9,8 @@ const corsHeaders = {
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
+const MAX_BODY_SIZE = 100 * 1024; // 100KB
+
 interface ImapAccount {
   id: string;
   email: string;
@@ -18,6 +20,14 @@ interface ImapAccount {
   imap_password: string;
   gmail_message_id_cursor: string | null;
   platform: string;
+  sync_limit: number;
+  sync_subject_filters: string[];
+  sync_judicial_only: boolean;
+  sync_extra_senders: string;
+  sync_attachments: boolean;
+  sync_attachments_pdf_only: boolean;
+  sync_period_days: number;
+  sync_configured: boolean;
 }
 
 // Decode RFC 2047 encoded words (=?charset?encoding?text?=)
@@ -29,11 +39,9 @@ function decodeRfc2047(str: string): string {
       try {
         let bytes: Uint8Array;
         if (encoding.toUpperCase() === "B") {
-          // Base64
           const bin = atob(text.replace(/\s/g, ""));
           bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
         } else {
-          // Quoted-Printable
           const decoded = text
             .replace(/_/g, " ")
             .replace(/=([0-9A-Fa-f]{2})/g, (_m: string, hex: string) =>
@@ -49,7 +57,6 @@ function decodeRfc2047(str: string): string {
   );
 }
 
-// Decode base64 content
 function decodeBase64(str: string): string {
   try {
     const cleaned = str.replace(/\s/g, "");
@@ -61,28 +68,22 @@ function decodeBase64(str: string): string {
   }
 }
 
-// Decode quoted-printable content
 function decodeQuotedPrintable(str: string): string {
   return str
-    .replace(/=\r?\n/g, "") // soft line breaks
+    .replace(/=\r?\n/g, "")
     .replace(/=([0-9A-Fa-f]{2})/g, (_m, hex) =>
       String.fromCharCode(parseInt(hex, 16))
     );
 }
 
-// Parse MIME parts from raw email
-// Simple body extractor - avoids recursive MIME parsing issues
 function extractEmailBody(raw: string): { html: string | null; text: string } {
   try {
-    // Try to find text/plain or text/html parts
     let htmlContent: string | null = null;
     let textContent = "";
 
-    // Find boundary
     const boundaryMatch = raw.match(/boundary="?([^"\s;]+)"?/i);
 
     if (!boundaryMatch) {
-      // Single-part message
       const cteMatch = raw.match(/^Content-Transfer-Encoding:\s*(.+)$/im);
       const cte = (cteMatch?.[1] || "").trim().toLowerCase();
       const ctMatch = raw.match(/^Content-Type:\s*([^;\s]+)/im);
@@ -101,11 +102,10 @@ function extractEmailBody(raw: string): { html: string | null; text: string } {
       return { html: null, text: body.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() };
     }
 
-    // Multipart - split by boundary (non-recursive, flat scan)
     const escapedBoundary = boundaryMatch[1].replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const parts = raw.split(new RegExp(`--${escapedBoundary}`));
 
-    for (const part of parts.slice(1, 10)) { // skip preamble, max 10 parts
+    for (const part of parts.slice(1, 10)) {
       if (part.trim() === "--" || part.trim() === "") continue;
 
       const ctMatch = part.match(/Content-Type:\s*([^;\s]+)/i);
@@ -113,7 +113,6 @@ function extractEmailBody(raw: string): { html: string | null; text: string } {
       const ct = (ctMatch?.[1] || "").toLowerCase();
       const cte = (cteMatch?.[1] || "").toLowerCase();
 
-      // Skip attachments and nested multipart
       if (ct.includes("multipart/") || ct.includes("image/") || ct.includes("application/")) continue;
 
       const bodyIdx = part.search(/\r?\n\r?\n/);
@@ -141,65 +140,45 @@ function extractEmailBody(raw: string): { html: string | null; text: string } {
   }
 }
 
-const legalKeywords = [
-  // Atos processuais
-  "processo", "intimação", "intimacao", "citação", "citacao",
-  "audiência", "audiencia", "sentença", "sentenca", "despacho",
-  "mandado", "alvará", "alvara", "petição", "peticao",
-  "recurso", "agravo", "apelação", "apelacao", "embargo",
-  "contestação", "contestacao", "réplica", "replica",
-  "impugnação", "impugnacao", "exceção", "excecao",
-  "reconvenção", "reconvencao", "contradita",
-  // Tribunais e sistemas
-  "jus.br", "pje", "esaj", "projudi", "eproc", "e-proc", "sei",
-  "tjsp", "tjrj", "tjmg", "tjba", "tjrs", "tjpr", "tjsc", "tjpe", "tjce", "tjgo", "tjdf",
-  "tjal", "tjam", "tjap", "tjma", "tjms", "tjmt", "tjpa", "tjpb", "tjpi", "tjrn", "tjro", "tjrr", "tjse", "tjto", "tjes",
-  "trf1", "trf2", "trf3", "trf4", "trf5", "trf6",
-  "stf", "stj", "tst", "trt", "tre", "tse",
-  "tribunal", "vara", "juiz", "juízo", "juizo", "comarca", "fórum", "forum",
-  "turma recursal", "juizado especial", "juizado",
-  // Partes e profissionais
-  "réu", "reu", "autor", "advogad", "oab", "procuração", "procuracao",
-  "requerente", "requerido", "exequente", "executado", "impetrante",
-  "reclamante", "reclamado", "apelante", "apelado", "agravante", "agravado",
-  "litisconsorte", "assistente", "interveniente", "curador", "tutor",
-  "defensor", "promotor", "ministério público", "ministerio publico",
-  // Documentos e procedimentos
-  "diligência", "diligencia", "prazo", "prazo fatal", "prazo processual",
-  "cnj", "distribuição", "distribuicao", "protocolo", "certidão", "certidao",
-  "oficial de justiça", "oficial de justica",
-  "carta precatória", "carta precatoria", "carta rogatória", "carta rogatoria",
-  "edital", "publicação", "publicacao", "dje", "diário oficial", "diario oficial",
-  "execução", "execucao", "penhora", "leilão", "leilao", "hasta pública", "hasta publica",
-  "arresto", "sequestro", "bloqueio", "bacenjud", "renajud", "infojud", "sisbajud",
-  // Áreas do direito de família
-  "inventário", "inventario", "divórcio", "divorcio", "separação", "separacao",
-  "pensão", "pensao", "alimentos", "guarda", "tutela", "curatela",
-  "adoção", "adocao", "união estável", "uniao estavel",
-  "partilha", "meação", "meacao", "regime de bens",
-  "alienação parental", "alienacao parental",
-  "regulamentação de visitas", "regulamentacao de visitas",
-  // Decisões e recursos
-  "habeas corpus", "mandamus", "liminar", "tutela antecipada", "tutela provisória", "tutela provisoria",
-  "antecipação de tutela", "antecipacao de tutela", "efeito suspensivo",
-  "indenização", "indenizacao", "dano moral", "dano material",
-  "trabalhista", "reclamação", "reclamacao",
-  "previdenciário", "previdenciario", "inss", "benefício", "beneficio",
-  "honorários", "honorarios", "custas", "emolumentos", "sucumbência", "sucumbencia",
-  "acórdão", "acordao", "jurisprudência", "jurisprudencia", "súmula", "sumula",
-  "trânsito em julgado", "transito em julgado", "coisa julgada",
-  // Contratos e obrigações
-  "contrato", "cláusula", "clausula", "rescisão", "rescisao",
-  "notificação extrajudicial", "notificacao extrajudicial",
-  "escritura", "procuração", "procuracao", "substabelecimento",
-  // Termos comuns em e-mails de sistemas judiciais
-  "movimentação", "movimentacao", "andamento processual", "andamento",
-  "consulta processual", "acompanhamento", "push",
-  "numeração única", "numeracao unica", "número do processo", "numero do processo",
-  "comprovante de protocolo", "recibo",
-  "pauta de julgamento", "pauta de audiência", "pauta de audiencia",
-  "escavador", "jusbrasil",
-];
+// Build IMAP search criteria from sync preferences
+function buildSearchCriteria(account: ImapAccount): string {
+  const since = new Date();
+  since.setDate(since.getDate() - (account.sync_period_days || 30));
+  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const imapDate = `${since.getUTCDate()}-${months[since.getUTCMonth()]}-${since.getUTCFullYear()}`;
+  return `SEARCH SINCE ${imapDate}`;
+}
+
+// Check if email matches user's configured filters
+function matchesFilters(
+  subject: string,
+  fromEmail: string,
+  bodyText: string,
+  account: ImapAccount
+): boolean {
+  const isJudicial = /\.jus\.br/i.test(fromEmail);
+
+  // If judicial-only is on, non-judicial emails need to match extra senders
+  if (account.sync_judicial_only) {
+    let senderMatch = isJudicial;
+    if (!senderMatch && account.sync_extra_senders) {
+      const extras = account.sync_extra_senders.split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
+      senderMatch = extras.some(s => fromEmail.toLowerCase().includes(s));
+    }
+    if (!senderMatch) return false;
+  }
+
+  // Check subject filters
+  const filters = account.sync_subject_filters || [];
+  if (filters.length > 0) {
+    const textToCheck = `${subject} ${bodyText}`.toLowerCase();
+    const hasMatch = filters.some(kw => textToCheck.includes(kw.toLowerCase()));
+    // Also pass if judicial (always relevant)
+    if (!hasMatch && !isJudicial) return false;
+  }
+
+  return true;
+}
 
 async function imapCommand(
   conn: Deno.TlsConn,
@@ -228,6 +207,8 @@ async function imapCommand(
 }
 
 async function syncAccount(admin: any, account: ImapAccount): Promise<number> {
+  console.log(`[sync-imap] Starting sync for account ${account.id} (${account.email})`);
+  
   let password: string;
   try {
     password = atob(account.imap_password);
@@ -236,52 +217,49 @@ async function syncAccount(admin: any, account: ImapAccount): Promise<number> {
   }
   password = password.replace(/\s/g, "");
 
+  console.log(`[sync-imap] Connecting to ${account.imap_host}:${account.imap_port}...`);
   const conn = await Deno.connectTls({
     hostname: account.imap_host,
     port: account.imap_port,
   });
 
-  // Read greeting
   const greetBuf = new Uint8Array(4096);
   await conn.read(greetBuf);
+  console.log(`[sync-imap] Connected, authenticating...`);
 
-  // AUTHENTICATE PLAIN
   const credentials = btoa(`\0${account.imap_user}\0${password}`);
-  const loginResp = await imapCommand(
-    conn,
-    "A001",
-    `AUTHENTICATE PLAIN ${credentials}`
-  );
+  const loginResp = await imapCommand(conn, "A001", `AUTHENTICATE PLAIN ${credentials}`);
   if (!loginResp.includes("A001 OK")) {
     conn.close();
+    console.error(`[sync-imap] Login failed for ${account.email}`);
     throw new Error("Login failed");
   }
+  console.log(`[sync-imap] Authenticated successfully`);
 
-  // SELECT INBOX
   await imapCommand(conn, "A002", "SELECT INBOX");
+  console.log(`[sync-imap] INBOX selected`);
 
-  // SEARCH for recent emails (last 3 days for speed)
-  const since = new Date();
-  since.setDate(since.getDate() - 3);
-  const months = [
-    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-  ];
-  const imapDate = `${since.getUTCDate()}-${months[since.getUTCMonth()]}-${since.getUTCFullYear()}`;
-  const searchResp = await imapCommand(conn, "A003", `SEARCH SINCE ${imapDate}`);
+  const searchCmd = buildSearchCriteria(account);
+  console.log(`[sync-imap] Search command: ${searchCmd}`);
+  const searchResp = await imapCommand(conn, "A003", searchCmd);
 
-  // Parse UIDs
-  const searchLine = searchResp
-    .split("\r\n")
-    .find((l) => l.startsWith("* SEARCH"));
-  const uids = searchLine
+  const searchLine = searchResp.split("\r\n").find((l) => l.startsWith("* SEARCH"));
+  const allUids = searchLine
     ? searchLine.replace("* SEARCH", "").trim().split(/\s+/).filter(Boolean)
     : [];
 
-  let newCount = 0;
+  console.log(`[sync-imap] Found ${allUids.length} total messages`);
 
-  // Process only the last 10 emails to avoid timeout
-  for (const uid of uids.slice(-10)) {
+  // Limit to sync_limit (process most recent)
+  const syncLimit = account.sync_limit || 100;
+  const uids = allUids.slice(-Math.min(syncLimit, allUids.length));
+  console.log(`[sync-imap] Processing last ${uids.length} messages (limit: ${syncLimit})`);
+
+  let newCount = 0;
+  let skippedExisting = 0;
+  let skippedFilter = 0;
+
+  for (const uid of uids) {
     // Check if already exists
     const { data: existing } = await admin
       .from("email_messages")
@@ -290,16 +268,14 @@ async function syncAccount(admin: any, account: ImapAccount): Promise<number> {
       .eq("message_uid", uid)
       .maybeSingle();
 
-    if (existing) continue;
+    if (existing) {
+      skippedExisting++;
+      continue;
+    }
 
     // FETCH entire message
-    const fetchResp = await imapCommand(
-      conn,
-      `F${uid}`,
-      `FETCH ${uid} BODY[]`
-    );
+    const fetchResp = await imapCommand(conn, `F${uid}`, `FETCH ${uid} BODY[]`);
 
-    // Parse headers from raw message
     const fromMatch = fetchResp.match(/^From:\s*(.+)$/im);
     const subjectMatch = fetchResp.match(/^Subject:\s*(.+(?:\r?\n\s+.+)*)$/im);
     const dateMatch = fetchResp.match(/^Date:\s*(.+)$/im);
@@ -310,51 +286,52 @@ async function syncAccount(admin: any, account: ImapAccount): Promise<number> {
     ) || "(sem assunto)";
     const dateStr = dateMatch?.[1]?.trim() || "";
 
-    // Extract email and name from From header
     const emailExtract = fromRaw.match(/<([^>]+)>/);
     const fromEmail = emailExtract ? emailExtract[1] : fromRaw;
     const fromName = emailExtract
       ? fromRaw.replace(/<[^>]+>/, "").trim().replace(/"/g, "")
       : "";
 
-    const isJudicial = /\.jus\.br/i.test(fromEmail);
-
-    // Parse MIME parts for proper HTML/text extraction
     const { html: bodyHtml, text: bodyText } = extractEmailBody(fetchResp);
 
-    // Filter: only import legal-related emails
-    const textToCheck =
-      `${subject} ${fromEmail} ${fromName} ${bodyText}`.toLowerCase();
-    const isLegal =
-      isJudicial || legalKeywords.some((kw) => textToCheck.includes(kw));
-
-    if (!isLegal) {
-      console.log(`Skipping non-legal email: "${subject}" from ${fromEmail}`);
+    // Apply user's configured filters
+    if (!matchesFilters(subject, fromEmail, bodyText, account)) {
+      skippedFilter++;
       continue;
     }
 
-    // Save
+    const isJudicial = /\.jus\.br/i.test(fromEmail);
+
+    // Storage protection: truncate large bodies
+    let finalBodyText = (bodyText || "").substring(0, 10000);
+    let finalBodyHtml = bodyHtml;
+    let bodyTruncated = false;
+
+    if (finalBodyHtml && finalBodyHtml.length > MAX_BODY_SIZE) {
+      finalBodyHtml = finalBodyHtml.substring(0, MAX_BODY_SIZE);
+      bodyTruncated = true;
+      console.log(`[sync-imap] Body truncated for email: "${subject}"`);
+    }
+
+    // Save email
     await admin.from("email_messages").insert({
       email_account_id: account.id,
       message_uid: uid,
       from_email: fromEmail,
       from_name: fromName,
       subject,
-      body_text: (bodyText || "").substring(0, 10000),
-      body_html: bodyHtml ? bodyHtml.substring(0, 50000) : null,
-      received_at: dateStr
-        ? new Date(dateStr).toISOString()
-        : new Date().toISOString(),
+      body_text: finalBodyText,
+      body_html: finalBodyHtml,
+      received_at: dateStr ? new Date(dateStr).toISOString() : new Date().toISOString(),
       is_read: false,
       is_judicial: isJudicial,
     });
 
-    // Try to link to a case and create timeline entry
+    // Try to link to case and create timeline entry
     try {
-      // Extract potential CNJ number from subject or body
       const cnjPattern = /(\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4})/;
       const cnjMatch = (subject + " " + bodyText).match(cnjPattern);
-      
+
       let linkedCaseId: string | null = null;
       if (cnjMatch) {
         const { data: matchedCase } = await admin
@@ -366,7 +343,6 @@ async function syncAccount(admin: any, account: ImapAccount): Promise<number> {
       }
 
       if (linkedCaseId) {
-        // Create timeline entry automatically
         const cleanBody = (bodyText || "").substring(0, 2000);
         await admin.from("case_timeline").insert({
           case_id: linkedCaseId,
@@ -377,10 +353,10 @@ async function syncAccount(admin: any, account: ImapAccount): Promise<number> {
           event_date: dateStr ? new Date(dateStr).toISOString() : new Date().toISOString(),
           responsible: fromName || fromEmail,
         });
-        console.log(`Timeline entry created for case ${linkedCaseId} from email: "${subject}"`);
+        console.log(`[sync-imap] Timeline entry created for case ${linkedCaseId}`);
       }
     } catch (e) {
-      console.error("Error creating timeline entry:", e);
+      console.error("[sync-imap] Error creating timeline entry:", e);
     }
 
     // If judicial, process as intimação
@@ -401,16 +377,17 @@ async function syncAccount(admin: any, account: ImapAccount): Promise<number> {
           }),
         });
       } catch (e) {
-        console.error("Error processing intimacao:", e);
+        console.error("[sync-imap] Error processing intimacao:", e);
       }
     }
 
     newCount++;
   }
 
-  // LOGOUT
   await imapCommand(conn, "A099", "LOGOUT");
   conn.close();
+
+  console.log(`[sync-imap] Sync complete for ${account.email}: ${newCount} new, ${skippedExisting} existing, ${skippedFilter} filtered out`);
   return newCount;
 }
 
@@ -420,33 +397,44 @@ Deno.serve(async (req) => {
   }
 
   try {
+    console.log("[sync-imap] Function invoked");
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     let accountId: string | undefined;
     try {
       const body = await req.json();
       accountId = body.accountId || body.account_id;
+      console.log(`[sync-imap] Account ID: ${accountId || "all"}`);
     } catch {
-      /* no body */
+      console.log("[sync-imap] No body provided, syncing all accounts");
     }
 
     let query = admin
       .from("email_accounts")
       .select("*")
-      .in("provider", ["hostinger", "imap"])
+      .in("provider", ["hostinger", "imap", "gmail"])
       .in("status", ["conectado", "sincronizando"]);
 
     if (accountId) query = query.eq("id", accountId);
 
     const { data: accounts, error: accErr } = await query;
-    if (accErr) throw accErr;
+    if (accErr) {
+      console.error("[sync-imap] Error fetching accounts:", accErr);
+      throw accErr;
+    }
+
+    console.log(`[sync-imap] Found ${accounts?.length || 0} accounts to sync`);
+
+    // Filter accounts that have IMAP configured
+    const imapAccounts = (accounts || []).filter(
+      (a: any) => a.imap_host && a.imap_user && a.imap_password
+    ) as ImapAccount[];
+
+    console.log(`[sync-imap] ${imapAccounts.length} accounts with IMAP credentials`);
 
     let totalNew = 0;
 
-    for (const account of (accounts || []) as ImapAccount[]) {
-      if (!account.imap_host || !account.imap_user || !account.imap_password)
-        continue;
-
+    for (const account of imapAccounts) {
       try {
         const count = await syncAccount(admin, account);
         totalNew += count;
@@ -459,7 +447,7 @@ Deno.serve(async (req) => {
           })
           .eq("id", account.id);
       } catch (err) {
-        console.error(`Error syncing IMAP account ${account.id}:`, err);
+        console.error(`[sync-imap] Error syncing account ${account.id}:`, err);
         await admin
           .from("email_accounts")
           .update({ status: "erro" })
@@ -467,12 +455,14 @@ Deno.serve(async (req) => {
       }
     }
 
+    console.log(`[sync-imap] Total new emails: ${totalNew}`);
+
     return new Response(
       JSON.stringify({ success: true, new_emails: totalNew }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
-    console.error("sync-imap error:", err);
+    console.error("[sync-imap] Fatal error:", err);
     return new Response(
       JSON.stringify({
         error: err instanceof Error ? err.message : "Erro",

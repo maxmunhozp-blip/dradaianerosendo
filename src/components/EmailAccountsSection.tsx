@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { Mail, Plus, RefreshCw, Trash2, Loader2, CheckCircle2, XCircle, Server, Eye, EyeOff, Pencil } from "lucide-react";
+import { Mail, Plus, RefreshCw, Trash2, Loader2, CheckCircle2, XCircle, Server, Eye, EyeOff, Pencil, Settings2 } from "lucide-react";
+import { SyncConfigModal, type SyncConfig } from "@/components/SyncConfigModal";
 import { Button } from "@/components/ui/button";
 import { lovable } from "@/integrations/lovable/index";
 import { Input } from "@/components/ui/input";
@@ -42,6 +43,14 @@ interface EmailAccount {
   imap_port: number | null;
   imap_user: string | null;
   imap_password: string | null;
+  sync_configured: boolean;
+  sync_limit: number;
+  sync_subject_filters: string[];
+  sync_judicial_only: boolean;
+  sync_extra_senders: string;
+  sync_attachments: boolean;
+  sync_attachments_pdf_only: boolean;
+  sync_period_days: number;
 }
 
 const PLATFORMS = ["PJe", "eSAJ", "PROJUDI", "e-PROC", "Todos"];
@@ -190,6 +199,52 @@ export default function EmailAccountsSection() {
   // Edit SMTP fields
   const [editSmtpHost, setEditSmtpHost] = useState("");
   const [editSmtpPort, setEditSmtpPort] = useState("");
+
+  // Sync config modal
+  const [syncConfigOpen, setSyncConfigOpen] = useState(false);
+  const [syncConfigAccount, setSyncConfigAccount] = useState<EmailAccount | null>(null);
+  const [syncConfigSaving, setSyncConfigSaving] = useState(false);
+
+  const handleSyncClick = (account: EmailAccount) => {
+    // If not configured yet, show config modal first
+    if (!account.sync_configured) {
+      setSyncConfigAccount(account);
+      setSyncConfigOpen(true);
+    } else {
+      syncMutation.mutate({ accountId: account.id, provider: account.provider });
+    }
+  };
+
+  const handleOpenSyncConfig = (account: EmailAccount) => {
+    setSyncConfigAccount(account);
+    setSyncConfigOpen(true);
+  };
+
+  const handleSaveSyncConfig = async (config: SyncConfig) => {
+    if (!syncConfigAccount) return;
+    setSyncConfigSaving(true);
+    try {
+      const { error } = await (supabase.from("email_accounts") as any)
+        .update({
+          ...config,
+          sync_configured: true,
+        })
+        .eq("id", syncConfigAccount.id);
+      if (error) throw error;
+      
+      toast.success("Configuração salva! Iniciando sincronização...");
+      setSyncConfigOpen(false);
+      setSyncConfigAccount(null);
+      qc.invalidateQueries({ queryKey: ["email-accounts"] });
+      
+      // Start sync after saving config
+      syncMutation.mutate({ accountId: syncConfigAccount.id, provider: syncConfigAccount.provider });
+    } catch (err: any) {
+      toast.error("Erro ao salvar configuração: " + err.message);
+    } finally {
+      setSyncConfigSaving(false);
+    }
+  };
 
   const resetForm = () => {
     setNewLabel("");
@@ -753,8 +808,17 @@ export default function EmailAccountsSection() {
                   variant="ghost"
                   size="icon"
                   className="h-7 w-7"
+                  onClick={() => handleOpenSyncConfig(account)}
+                  title="Configurar importação"
+                >
+                  <Settings2 className="w-3.5 h-3.5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
                   disabled={syncMutation.isPending}
-                  onClick={() => syncMutation.mutate({ accountId: account.id, provider: account.provider })}
+                  onClick={() => handleSyncClick(account)}
                   title="Sincronizar agora"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${syncMutation.isPending ? "animate-spin" : ""}`} />
@@ -866,6 +930,23 @@ export default function EmailAccountsSection() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Sync Config Modal */}
+      <SyncConfigModal
+        open={syncConfigOpen}
+        onOpenChange={setSyncConfigOpen}
+        onSave={handleSaveSyncConfig}
+        saving={syncConfigSaving}
+        initialConfig={syncConfigAccount ? {
+          sync_limit: syncConfigAccount.sync_limit ?? 100,
+          sync_subject_filters: syncConfigAccount.sync_subject_filters ?? [],
+          sync_judicial_only: syncConfigAccount.sync_judicial_only ?? true,
+          sync_extra_senders: syncConfigAccount.sync_extra_senders ?? "",
+          sync_attachments: syncConfigAccount.sync_attachments ?? false,
+          sync_attachments_pdf_only: syncConfigAccount.sync_attachments_pdf_only ?? true,
+          sync_period_days: syncConfigAccount.sync_period_days ?? 30,
+        } : undefined}
+      />
     </div>
   );
 }
