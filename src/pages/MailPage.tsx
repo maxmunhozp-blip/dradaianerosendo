@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   Mail, RefreshCw, Search, Filter, Inbox, Loader2, ExternalLink,
   AlertTriangle, FileText, ChevronRight, Server, Edit, Clock,
+  Trash2, Archive, Reply, MailOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
