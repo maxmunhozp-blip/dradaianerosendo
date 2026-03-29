@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useCase, useUpdateCase } from "@/hooks/use-cases";
+import { useCase, useUpdateCase, useDeleteCase } from "@/hooks/use-cases";
 import { useDocumentsByCase, useCreateDocument, useUploadDocument } from "@/hooks/use-documents";
 import { useChecklistByCase, useCreateChecklistItem, useToggleChecklistItem, useDeleteChecklistItem } from "@/hooks/use-checklist";
 import { useMessagesByCase } from "@/hooks/use-messages";
@@ -15,7 +15,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { ProcessTimeline } from "@/components/ProcessTimeline";
 import { DetailSkeleton } from "@/components/Skeletons";
 import { CaseTimeline } from "@/components/CaseTimeline";
-import { ArrowLeft, Upload, Plus, FileText, ClipboardList, FolderOpen, FileDown, Scale, PanelRightClose, PanelRightOpen, CalendarDays, Clock, MapPin, MessageSquare, Pencil } from "lucide-react";
+import { ArrowLeft, Upload, Plus, FileText, ClipboardList, FolderOpen, FileDown, Scale, PanelRightClose, PanelRightOpen, CalendarDays, Clock, MapPin, MessageSquare, Pencil, Trash2 } from "lucide-react";
 import { useHearingsByCase } from "@/hooks/use-hearings";
 import { HearingModal } from "@/components/HearingModal";
 import { Badge } from "@/components/ui/badge";
