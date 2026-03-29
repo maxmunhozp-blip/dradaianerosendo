@@ -34,7 +34,7 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { format, differenceInDays } from "date-fns";
+import { format, differenceInDays, differenceInHours } from "date-fns";
 import { Link } from "react-router-dom";
 import {
   useIntimacoes,
@@ -54,8 +54,18 @@ function statusDot(status: string) {
 
 function deadlineBadge(dateStr: string | null) {
   if (!dateStr) return null;
-  const days = differenceInDays(new Date(dateStr), new Date());
-  if (days < 0) return <Badge variant="destructive" className="text-[10px]">Vencido</Badge>;
+  const now = new Date();
+  const deadline = new Date(dateStr);
+  const hours = differenceInHours(deadline, now);
+  const days = differenceInDays(deadline, now);
+
+  if (hours < 0) return <Badge variant="destructive" className="text-[10px]">Vencido</Badge>;
+  if (hours <= 48) return (
+    <Badge variant="destructive" className="text-[10px] animate-pulse gap-1">
+      <AlertTriangle className="w-3 h-3" />
+      URGENTE {hours}h
+    </Badge>
+  );
   if (days <= 5) return <Badge variant="destructive" className="text-[10px]">{days}d</Badge>;
   if (days <= 15) return <Badge className="text-[10px] bg-amber-500/10 text-amber-600 border-amber-500/20">{days}d</Badge>;
   return <Badge variant="outline" className="text-[10px]">{days}d</Badge>;
