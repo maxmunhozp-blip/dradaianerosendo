@@ -256,13 +256,7 @@ async function imapCommand(
 async function syncAccount(admin: any, account: ImapAccount): Promise<number> {
   console.log(`[sync-imap] Starting sync for account ${account.id} (${account.email})`);
   
-  let password: string;
-  try {
-    password = atob(account.imap_password);
-  } catch {
-    password = account.imap_password;
-  }
-  password = password.replace(/\s/g, "");
+  const password = account.imap_password.replace(/\s/g, "");
 
   console.log(`[sync-imap] Connecting to ${account.imap_host}:${account.imap_port}...`);
   const conn = await Deno.connectTls({
@@ -474,7 +468,7 @@ Deno.serve(async (req) => {
 
     // Filter accounts that have IMAP configured
     const imapAccounts = (accounts || []).filter(
-      (a: any) => a.imap_host && a.imap_user && a.imap_password
+      (a: any) => a.imap_host && a.imap_user && a.imap_password && a.sync_configured !== false
     ) as ImapAccount[];
 
     console.log(`[sync-imap] ${imapAccounts.length} accounts with IMAP credentials`);
@@ -497,7 +491,10 @@ Deno.serve(async (req) => {
         console.error(`[sync-imap] Error syncing account ${account.id}:`, err);
         await admin
           .from("email_accounts")
-          .update({ status: "erro" })
+          .update({ 
+            status: "erro",
+            sync_error_message: err instanceof Error ? err.message : String(err)
+          })
           .eq("id", account.id);
       }
     }

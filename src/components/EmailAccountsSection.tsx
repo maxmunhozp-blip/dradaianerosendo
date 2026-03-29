@@ -471,7 +471,7 @@ export default function EmailAccountsSection() {
         imap_host: resolvedImapHost,
         imap_port: resolvedImapPort,
         imap_user: hostEmail,
-        imap_password: btoa(hostPassword.replace(/\s/g, "")),
+        imap_password: hostPassword.replace(/\s/g, ""),
         smtp_host: resolvedSmtpHost,
         smtp_port: resolvedSmtpPort,
       });
@@ -528,7 +528,7 @@ export default function EmailAccountsSection() {
           });
           if (error) throw error;
           if (!data?.success) throw new Error(data?.error || "Falha na conexão IMAP");
-          updates.imap_password = btoa(editPassword.replace(/\s/g, ""));
+          updates.imap_password = editPassword.replace(/\s/g, "");
           updates.status = "conectado";
         }
       }
@@ -791,7 +791,7 @@ export default function EmailAccountsSection() {
                     Conectado
                   </Badge>
                 ) : (
-                  <Badge variant="destructive" className="text-[10px]">
+                  <Badge variant="destructive" className="text-[10px]" title={account.status === "erro" && (account as any).sync_error_message ? (account as any).sync_error_message : undefined}>
                     <XCircle className="w-3 h-3 mr-0.5" />
                     {account.status === "erro" ? "Erro" : "Desconectado"}
                   </Badge>

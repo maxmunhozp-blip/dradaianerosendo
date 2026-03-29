@@ -1,0 +1,1 @@
+ALTER TABLE public.email_accounts ADD COLUMN IF NOT EXISTS sync_error_message text DEFAULT NULL;
