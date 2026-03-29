@@ -549,6 +549,15 @@ export default function EmailAccountsSection() {
                   variant="ghost"
                   size="icon"
                   className="h-7 w-7"
+                  onClick={() => openEditDialog(account)}
+                  title="Editar credenciais"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
                   disabled={syncMutation.isPending}
                   onClick={() => syncMutation.mutate({ accountId: account.id, provider: account.provider })}
                   title="Sincronizar agora"
