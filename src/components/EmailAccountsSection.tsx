@@ -803,6 +803,16 @@ export default function EmailAccountsSection() {
                     <Input type="number" value={editPort} onChange={(e) => setEditPort(e.target.value)} />
                   </div>
                 </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Host SMTP</Label>
+                    <Input value={editSmtpHost} onChange={(e) => setEditSmtpHost(e.target.value)} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Porta SMTP</Label>
+                    <Input type="number" value={editSmtpPort} onChange={(e) => setEditSmtpPort(e.target.value)} />
+                  </div>
+                </div>
                 <div className="space-y-1">
                   <Label className="text-xs">Nova senha (deixe vazio para manter)</Label>
                   <div className="relative">
