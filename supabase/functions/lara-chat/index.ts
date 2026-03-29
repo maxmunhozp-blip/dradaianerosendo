@@ -287,6 +287,69 @@ ${checklist.length > 0
     : "Nenhum item no checklist."}`;
 }
 
+// Detect if user message needs LexML grounding
+function detectLegalQuery(content: string): string | null {
+  const lower = content.toLowerCase();
+  // /lei command
+  const leiMatch = lower.match(/^\/lei\s+(.+)/);
+  if (leiMatch) return leiMatch[1].trim();
+  // Mentions specific law numbers
+  const lawPatterns = [
+    /lei\s+(?:n[ºo°]?\s*)?(\d[\d.\/]+)/i,
+    /código\s+civil/i,
+    /código\s+penal/i,
+    /constituição/i,
+    /cpc/i,
+    /eca/i,
+    /art(?:igo)?\.?\s*\d+/i,
+  ];
+  for (const p of lawPatterns) {
+    if (p.test(content)) {
+      // Extract a meaningful search term
+      const m = content.match(/lei\s+(?:n[ºo°]?\s*)?(\d[\d.\/]+)/i);
+      if (m) return `lei ${m[1]}`;
+      if (/código\s+civil/i.test(content)) return "código civil lei 10406";
+      if (/código\s+penal/i.test(content)) return "código penal";
+      if (/constituição/i.test(content)) return "constituição federal";
+      if (/\bcpc\b/i.test(content)) return "código de processo civil lei 13105";
+      if (/\beca\b/i.test(content)) return "estatuto da criança e do adolescente";
+      return content.slice(0, 80);
+    }
+  }
+  return null;
+}
+
+async function fetchLexMLContext(query: string, supabaseUrl: string): Promise<string> {
+  try {
+    const resp = await fetch(`${supabaseUrl}/functions/v1/lexml-search`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${Deno.env.get("SUPABASE_ANON_KEY") || ""}`,
+      },
+      body: JSON.stringify({ query }),
+    });
+    if (!resp.ok) return "";
+    const data = await resp.json();
+    if (!data.results || data.results.length === 0) return "";
+
+    let ctx = "\n\n## FUNDAMENTAÇÃO LEXML (fonte oficial — cite as URNs na resposta)\n";
+    ctx += `Pesquisa realizada em: ${data.timestamp}\n\n`;
+    for (const r of data.results) {
+      ctx += `- **${r.title}**\n`;
+      if (r.urn) ctx += `  URN: ${r.urn}\n`;
+      if (r.date) ctx += `  Data: ${r.date}\n`;
+      if (r.summary) ctx += `  Resumo: ${r.summary}\n`;
+      if (r.url) ctx += `  Link: ${r.url}\n`;
+      ctx += "\n";
+    }
+    return ctx;
+  } catch (e) {
+    console.error("LexML context fetch error:", e);
+    return "";
+  }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -314,11 +377,16 @@ Deno.serve(async (req: Request) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Always fetch live office context, settings, and optional case context in parallel
-    const [officeContext, caseContext, settings] = await Promise.all([
+    // Detect if last user message needs LexML grounding
+    const lastMsg = messages[messages.length - 1];
+    const legalQuery = lastMsg?.role === "user" ? detectLegalQuery(lastMsg.content) : null;
+
+    // Fetch all context in parallel (including LexML if needed)
+    const [officeContext, caseContext, settings, lexmlContext] = await Promise.all([
       fetchOfficeContext(supabase),
       caseId ? fetchCaseContext(supabase, caseId) : Promise.resolve(""),
       fetchSettings(supabase),
+      legalQuery ? fetchLexMLContext(legalQuery, supabaseUrl) : Promise.resolve(""),
     ]);
 
     // Build settings context string
@@ -337,7 +405,7 @@ Deno.serve(async (req: Request) => {
       settingsContext += `\n### TEMPLATE DE ASSINATURA:\n${settings.template_signing}\n`;
     }
 
-    const fullSystemPrompt = SYSTEM_PROMPT + "\n\n" + officeContext + settingsContext + (caseContext ? "\n\n" + caseContext : "");
+    const fullSystemPrompt = SYSTEM_PROMPT + "\n\n" + officeContext + settingsContext + (caseContext ? "\n\n" + caseContext : "") + lexmlContext;
 
     // Build messages for the AI API
     const aiMessages: any[] = [
