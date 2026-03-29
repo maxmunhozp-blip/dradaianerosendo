@@ -5,6 +5,7 @@ import {
   Bot,
   FolderOpen,
   LogOut,
+  Settings,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -27,6 +28,7 @@ const navItems = [
   { title: "Clientes", url: "/clients", icon: Users },
   { title: "Documentos", url: "/documents", icon: FolderOpen },
   { title: "LARA", url: "/lara", icon: Bot },
+  { title: "Configurações", url: "/settings", icon: Settings },
 ];
 
 export function AppSidebar() {

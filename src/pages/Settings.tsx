@@ -27,9 +27,9 @@ export default function Settings() {
   const loadSettings = async () => {
     setLoading(true);
     const { data } = await supabase
-      .from("settings")
+      .from("settings" as any)
       .select("key, value")
-      .in("key", ["zapi_instance_id", "zapi_token"]);
+      .in("key", ["zapi_instance_id", "zapi_token"]) as any;
 
     if (data) {
       for (const row of data) {
@@ -49,8 +49,8 @@ export default function Settings() {
       ];
 
       for (const entry of entries) {
-        const { error } = await supabase
-          .from("settings")
+        const { error } = await (supabase
+          .from("settings" as any) as any)
           .upsert(
             { key: entry.key, value: entry.value, updated_at: new Date().toISOString() },
             { onConflict: "key" }
@@ -83,8 +83,8 @@ export default function Settings() {
             <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-green-100 flex items-center justify-center">
-                    <MessageSquare className="w-4 h-4 text-green-700" />
+                  <div className="w-9 h-9 rounded-lg bg-accent/20 flex items-center justify-center">
+                    <MessageSquare className="w-4 h-4 text-accent-foreground" />
                   </div>
                   <div>
                     <CardTitle className="text-sm font-medium">Z-API (WhatsApp)</CardTitle>
