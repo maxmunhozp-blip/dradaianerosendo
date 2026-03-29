@@ -49,9 +49,10 @@ interface EmailMessage {
   is_read: boolean;
   is_judicial: boolean;
   intimacao_id: string | null;
+  category: string;
 }
 
-type EmailFilter = "all" | "unread" | "judicial" | "other";
+type EmailFilter = "all" | "unread" | "judicial" | "financial" | "other";
 
 function useEmailAccounts() {
   return useQuery({

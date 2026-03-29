@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Loader2, Filter, Mail, Paperclip, Calendar, AlertTriangle, Settings2 } from "lucide-react";
+import { Loader2, Filter, Mail, Paperclip, Calendar, AlertTriangle, Settings2, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -214,7 +214,7 @@ export function SyncConfigModal({ open, onOpenChange, onSave, saving, initialCon
           {!importAll && (
             <div className="space-y-3">
               <div className="flex items-center gap-2">
-                <Server className="w-4 h-4 text-muted-foreground" />
+                <Globe className="w-4 h-4 text-muted-foreground" />
                 <Label className="text-sm font-medium">Outros remetentes</Label>
               </div>
               <div className="flex items-center justify-between">
