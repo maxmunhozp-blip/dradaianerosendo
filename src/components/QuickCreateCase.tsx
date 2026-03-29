@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useClients } from "@/hooks/use-clients";
 import { useCreateCase } from "@/hooks/use-cases";
+import { useCaseTypes } from "@/hooks/use-case-types";
 import {
   Dialog,
   DialogContent,
@@ -25,6 +26,7 @@ export function QuickCreateCase() {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
   const { data: clients = [] } = useClients();
+  const { data: caseTypes = ["Divórcio", "Guarda", "Alimentos", "Inventário", "Outro"] } = useCaseTypes();
   const createCase = useCreateCase();
 
   const [form, setForm] = useState({
@@ -113,11 +115,9 @@ export function QuickCreateCase() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Divórcio">Divórcio</SelectItem>
-                <SelectItem value="Guarda">Guarda</SelectItem>
-                <SelectItem value="Alimentos">Alimentos</SelectItem>
-                <SelectItem value="Inventário">Inventário</SelectItem>
-                <SelectItem value="Outro">Outro</SelectItem>
+                {caseTypes.map((t) => (
+                  <SelectItem key={t} value={t}>{t}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
