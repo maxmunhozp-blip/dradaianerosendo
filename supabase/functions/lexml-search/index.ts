@@ -42,7 +42,7 @@ function parseSearchResponse(xml: string): LexMLResult[] {
     const meta = extractTagRaw(hit, "meta");
     if (!meta) continue;
 
-    const urn = extractTag(meta, "urn");
+    const urn = extractTag(meta, "urn").replace(/\s+/g, "");
     const tipoDocumento = extractTag(meta, "tipoDocumento");
     const descritor = extractTag(meta, "descritor");
     const localidade = extractTag(meta, "localidade");
