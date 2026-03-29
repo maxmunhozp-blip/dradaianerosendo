@@ -541,11 +541,11 @@ export default function MailPage() {
                       </Button>
                       <Button
                         size="sm"
-                        disabled
-                        title="Envio SMTP não configurado"
+                        disabled={sendingReply || !replyText.trim()}
+                        onClick={handleSendReply}
                       >
-                        <Reply className="w-3.5 h-3.5 mr-1" />
-                        Enviar (SMTP necessário)
+                        {sendingReply ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Reply className="w-3.5 h-3.5 mr-1" />}
+                        Enviar
                       </Button>
                     </div>
                   </div>
