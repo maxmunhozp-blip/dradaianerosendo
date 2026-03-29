@@ -153,6 +153,71 @@ export default function MailPage() {
 
   const isSyncing = syncGmail.isPending || syncImap.isPending;
 
+  const [sendingReply, setSendingReply] = useState(false);
+  const [composeOpen, setComposeOpen] = useState(false);
+  const [composeTo, setComposeTo] = useState("");
+  const [composeSubject, setComposeSubject] = useState("");
+  const [composeBody, setComposeBody] = useState("");
+  const [sendingCompose, setSendingCompose] = useState(false);
+
+  const handleSendReply = async () => {
+    if (!selectedEmail || !replyText.trim()) return;
+    const account = accounts.find(a => a.id === selectedEmail.email_account_id);
+    if (!account) { toast.error("Conta de e-mail não encontrada"); return; }
+    setSendingReply(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-email", {
+        body: {
+          account_id: selectedEmail.email_account_id,
+          to: selectedEmail.from_email,
+          subject: `Re: ${selectedEmail.subject}`,
+          body: replyText,
+          in_reply_to: selectedEmail.message_uid,
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success("Resposta enviada com sucesso!");
+      setReplyOpen(false);
+      setReplyText("");
+    } catch (err: any) {
+      toast.error("Erro ao enviar: " + (err.message || "Erro desconhecido"));
+    } finally {
+      setSendingReply(false);
+    }
+  };
+
+  const handleSendCompose = async () => {
+    if (!composeTo.trim() || !composeSubject.trim() || !composeBody.trim()) {
+      toast.error("Preencha todos os campos");
+      return;
+    }
+    const accountId = selectedAccountId !== "all" ? selectedAccountId : accounts[0]?.id;
+    if (!accountId) { toast.error("Nenhuma conta disponível"); return; }
+    setSendingCompose(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-email", {
+        body: {
+          account_id: accountId,
+          to: composeTo,
+          subject: composeSubject,
+          body: composeBody,
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success("E-mail enviado com sucesso!");
+      setComposeOpen(false);
+      setComposeTo("");
+      setComposeSubject("");
+      setComposeBody("");
+    } catch (err: any) {
+      toast.error("Erro ao enviar: " + (err.message || "Erro desconhecido"));
+    } finally {
+      setSendingCompose(false);
+    }
+  };
+
   const handleSync = () => {
     const accountId = selectedAccountId === "all" ? undefined : selectedAccountId;
     const account = accounts.find(a => a.id === selectedAccountId);
