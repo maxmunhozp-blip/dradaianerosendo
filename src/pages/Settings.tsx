@@ -88,8 +88,24 @@ function CollapsibleSection({
   );
 }
 
+const VALIDATORS: Record<string, { regex: RegExp; msg: string }> = {
+  office_phone: {
+    regex: /^\(?\d{2}\)?\s?\d{4,5}-?\d{4}$/,
+    msg: "Formato inválido. Ex: (11) 99999-9999",
+  },
+  office_email: {
+    regex: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+    msg: "E-mail inválido. Ex: contato@escritorio.com",
+  },
+  office_oab: {
+    regex: /^OAB\/[A-Z]{2}\s?\d{3,6}$/i,
+    msg: "Formato inválido. Ex: OAB/SP 123456",
+  },
+};
+
 export default function Settings() {
   const [values, setValues] = useState<Record<string, string>>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [openSections, setOpenSections] = useState({
     office: true,
     zapi: false,
@@ -101,7 +117,23 @@ export default function Settings() {
   const [saved, setSaved] = useState(false);
 
   const val = (key: string) => values[key] || "";
-  const set = (key: string, v: string) => setValues((prev) => ({ ...prev, [key]: v }));
+  const set = (key: string, v: string) => {
+    setValues((prev) => ({ ...prev, [key]: v }));
+    // Clear error on edit
+    if (errors[key]) setErrors((prev) => { const n = { ...prev }; delete n[key]; return n; });
+  };
+
+  const validate = (): boolean => {
+    const newErrors: Record<string, string> = {};
+    for (const [key, validator] of Object.entries(VALIDATORS)) {
+      const v = values[key]?.trim();
+      if (v && !validator.regex.test(v)) {
+        newErrors[key] = validator.msg;
+      }
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   useEffect(() => {
     loadSettings();
