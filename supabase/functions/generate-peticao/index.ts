@@ -10,6 +10,12 @@ const buildSystemPrompt = (caseType: string) => `Você é LARA, assistente jurí
 
 Sua tarefa é redigir uma petição inicial completa e tecnicamente correta para uma ação de ${caseType}.
 
+REGRAS ABSOLUTAS SOBRE VERIFICAÇÃO LEGAL:
+- Quando dados de verificação LexML forem fornecidos na seção "VERIFICAÇÃO LEXML", use-os para fundamentar a petição.
+- Para CADA lei citada na petição, se ela consta na verificação LexML, cite a URN oficial.
+- Se uma lei citada NÃO foi verificada via LexML, marque-a com [VERIFICAR: lei não confirmada no LexML].
+- Ao final da petição, adicione: "Fundamentação verificada via LexML em [data atual]."
+
 REGRAS ABSOLUTAS:
 - Cite APENAS leis que existem com número e ano corretos
 - NUNCA invente números de acórdão ou julgados
@@ -138,6 +144,57 @@ Deno.serve(async (req: Request) => {
 
     userPrompt += `\nRedija a petição completa seguindo o formato especificado.`;
 
+    // Fetch LexML verification for the case type
+    let lexmlContext = "";
+    try {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const lexmlQueries = [caseData.case_type];
+      // Add specific law queries based on case type
+      const lawMap: Record<string, string[]> = {
+        "Divórcio": ["lei 10406 divórcio", "lei 13105 divórcio"],
+        "Guarda": ["lei 10406 guarda", "lei 8069 guarda"],
+        "Alimentos": ["lei 5478 alimentos", "lei 10406 alimentos"],
+        "Inventário": ["lei 10406 inventário", "lei 11441 inventário"],
+      };
+      if (lawMap[caseData.case_type]) {
+        lexmlQueries.push(...lawMap[caseData.case_type]);
+      }
+
+      const lexmlResults = await Promise.all(
+        lexmlQueries.map(async (q: string) => {
+          try {
+            const resp = await fetch(`${supabaseUrl}/functions/v1/lexml-search`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${Deno.env.get("SUPABASE_ANON_KEY") || ""}`,
+              },
+              body: JSON.stringify({ query: q }),
+            });
+            if (resp.ok) {
+              const data = await resp.json();
+              return data.results || [];
+            }
+          } catch { /* ignore */ }
+          return [];
+        })
+      );
+
+      const allResults = lexmlResults.flat();
+      if (allResults.length > 0) {
+        lexmlContext = "\n\nVERIFICAÇÃO LEXML (leis verificadas no portal oficial):\n";
+        const seen = new Set<string>();
+        for (const r of allResults) {
+          if (seen.has(r.urn)) continue;
+          seen.add(r.urn);
+          lexmlContext += `- ${r.title} | URN: ${r.urn} | ${r.url}\n`;
+        }
+        lexmlContext += `\nData da verificação: ${new Date().toLocaleDateString("pt-BR")}\n`;
+      }
+    } catch (e) {
+      console.error("LexML verification error:", e);
+    }
+
     // Fetch document contents from storage if URLs are provided
     const aiMessages: any[] = [];
     const contentParts: any[] = [{ type: "text", text: userPrompt }];
@@ -193,7 +250,7 @@ Deno.serve(async (req: Request) => {
 
     aiMessages.push({
       role: "system",
-      content: buildSystemPrompt(caseData.case_type),
+      content: buildSystemPrompt(caseData.case_type) + lexmlContext,
     });
     aiMessages.push({
       role: "user",

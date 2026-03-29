@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, Paperclip, FileText, Image, X, Loader2, MessageSquare, CheckCircle2 } from "lucide-react";
+import { Send, Paperclip, FileText, Image, X, Loader2, MessageSquare, CheckCircle2, Scale } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ReactMarkdown from "react-markdown";
 import { supabase } from "@/integrations/supabase/client";
@@ -187,14 +187,24 @@ export function LaraChat({
 
     const { cleanContent, actions } = parseWhatsAppActions(msg.content);
 
+    // Detect LexML-verified content
+    const hasLexML = cleanContent.includes("[lexml-verified]");
+    const displayContent = cleanContent.replace(/\[lexml-verified\]/g, "").trim();
+
     return (
       <>
         <div className="prose prose-sm max-w-none prose-headings:text-secondary-foreground prose-p:text-secondary-foreground prose-li:text-secondary-foreground prose-strong:text-secondary-foreground prose-code:text-secondary-foreground">
-          <ReactMarkdown>{cleanContent}</ReactMarkdown>
+          <ReactMarkdown>{displayContent}</ReactMarkdown>
           {msg.isStreaming && (
             <span className="inline-block w-1.5 h-4 bg-current animate-pulse ml-0.5" />
           )}
         </div>
+        {hasLexML && !msg.isStreaming && (
+          <div className="mt-2 flex items-center gap-1.5 text-[10px] text-amber-600 bg-amber-50 border border-amber-200 rounded px-2 py-1 w-fit">
+            <Scale className="w-3 h-3" />
+            Verificado via LexML
+          </div>
+        )}
         {actions.length > 0 && !msg.isStreaming && (
           <WhatsAppActionBlock actions={actions} />
         )}
@@ -217,7 +227,7 @@ export function LaraChat({
           <div className="text-center py-8">
             <p className="text-sm text-muted-foreground">Inicie uma conversa com a LARA.</p>
             <p className="text-xs text-muted-foreground mt-2">
-              Comandos: /procuracao · /contrato · /peticao · /checklist · /analise · /cobrar
+              Comandos: /procuracao · /contrato · /peticao · /checklist · /analise · /cobrar · /lei
             </p>
           </div>
         )}

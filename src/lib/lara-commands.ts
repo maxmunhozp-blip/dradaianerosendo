@@ -13,6 +13,8 @@ const COMMAND_EXPANSIONS: Record<string, string> = {
     "/cobrar — Por favor, identifique todos os clientes com documentos pendentes e gere mensagens personalizadas de WhatsApp para cobrança. Inclua o bloco whatsapp-action com os dados para envio.",
   "/agenda":
     "/agenda — Por favor, liste todas as audiências e prazos futuros, agrupados por semana, indicando caso, cliente, data, hora e local. Destaque os que estão próximos (48h) ou atrasados.",
+  "/lei":
+    "/lei — Por favor, busque no LexML (portal oficial de legislação brasileira) informações sobre a lei especificada. Retorne título, resumo, URN oficial e link para o texto completo.",
 };
 
 export function expandCommand(input: string): string {
