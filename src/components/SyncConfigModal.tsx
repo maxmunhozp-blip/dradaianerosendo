@@ -51,6 +51,7 @@ export interface SyncConfig {
   sync_attachments: boolean;
   sync_attachments_pdf_only: boolean;
   sync_period_days: number;
+  sync_import_all?: boolean;
 }
 
 interface SyncConfigModalProps {
@@ -59,6 +60,7 @@ interface SyncConfigModalProps {
   onSave: (config: SyncConfig) => void;
   saving?: boolean;
   initialConfig?: Partial<SyncConfig>;
+  provider?: string;
 }
 
 export function SyncConfigModal({ open, onOpenChange, onSave, saving, initialConfig }: SyncConfigModalProps) {
