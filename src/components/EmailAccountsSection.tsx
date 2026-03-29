@@ -221,26 +221,43 @@ export default function EmailAccountsSection() {
     }
   };
 
-  // Handle OAuth redirect
+  // Handle OAuth redirect (only once)
   useEffect(() => {
     const handleOAuthRedirect = async () => {
       const hash = window.location.hash;
       if (!hash.includes("access_token")) return;
 
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.provider_token) return;
-
+      // Prevent duplicate processing
       const pending = localStorage.getItem("pending_email_account");
       if (!pending) return;
 
-      const { label, platform } = JSON.parse(pending);
+      // Remove immediately to prevent re-processing
       localStorage.removeItem("pending_email_account");
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.provider_token) return;
+
+      const { label, platform } = JSON.parse(pending);
 
       try {
         const res = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
           headers: { Authorization: `Bearer ${session.provider_token}` },
         });
         const userInfo = await res.json();
+
+        // Check if account already exists
+        const { data: existing } = await (supabase.from("email_accounts") as any)
+          .select("id")
+          .eq("email", userInfo.email)
+          .maybeSingle();
+
+        if (existing) {
+          toast.info(`Conta ${userInfo.email} já está conectada`);
+          qc.invalidateQueries({ queryKey: ["email-accounts"] });
+          // Clean URL hash
+          window.history.replaceState(null, "", window.location.pathname);
+          return;
+        }
 
         const { error } = await (supabase.from("email_accounts") as any).insert({
           label,
@@ -255,6 +272,8 @@ export default function EmailAccountsSection() {
         if (error) throw error;
         toast.success(`Conta ${userInfo.email} conectada com sucesso!`);
         qc.invalidateQueries({ queryKey: ["email-accounts"] });
+        // Clean URL hash
+        window.history.replaceState(null, "", window.location.pathname);
       } catch (err: any) {
         toast.error("Erro ao salvar conta: " + err.message);
       }
