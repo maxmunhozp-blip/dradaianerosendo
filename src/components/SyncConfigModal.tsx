@@ -63,12 +63,14 @@ interface SyncConfigModalProps {
   provider?: string;
 }
 
-export function SyncConfigModal({ open, onOpenChange, onSave, saving, initialConfig }: SyncConfigModalProps) {
+export function SyncConfigModal({ open, onOpenChange, onSave, saving, initialConfig, provider }: SyncConfigModalProps) {
+  const isCorporate = provider === "hostinger" || provider === "imap";
+  const [importAll, setImportAll] = useState(initialConfig?.sync_import_all ?? isCorporate);
   const [limit, setLimit] = useState(initialConfig?.sync_limit ?? 100);
   const [subjectFilters, setSubjectFilters] = useState<string[]>(
     (initialConfig?.sync_subject_filters as string[]) ?? [...DEFAULT_SUBJECT_FILTERS]
   );
-  const [judicialOnly, setJudicialOnly] = useState(initialConfig?.sync_judicial_only ?? true);
+  const [judicialOnly, setJudicialOnly] = useState(initialConfig?.sync_judicial_only ?? !isCorporate);
   const [extraSenders, setExtraSenders] = useState(initialConfig?.sync_extra_senders ?? "");
   const [attachments, setAttachments] = useState(initialConfig?.sync_attachments ?? false);
   const [pdfOnly, setPdfOnly] = useState(initialConfig?.sync_attachments_pdf_only ?? true);
