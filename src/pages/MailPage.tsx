@@ -60,7 +60,7 @@ function useEmailAccounts() {
     queryFn: async () => {
       const { data, error } = await (supabase.from("email_accounts") as any)
         .select("id, label, email, provider, last_sync")
-        .eq("status", "conectado")
+        .in("status", ["conectado", "sincronizando", "erro"])
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data as EmailAccount[];
