@@ -229,41 +229,29 @@ export default function EmailAccountsSection() {
     }
   };
 
-  // Handle OAuth redirect (only once)
+  // Handle OAuth redirect (robust callback finalization)
   useEffect(() => {
-    const handleOAuthRedirect = async () => {
-      // Check if we have a pending account to connect
-      const pending = localStorage.getItem("pending_email_account");
-      if (!pending) return;
-
-      // Wait a moment for the session to be established after OAuth redirect
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-
-      // Check if we have a provider_token (Google access token)
-      const providerToken = session.provider_token;
-      if (!providerToken) {
-        // Listen for auth state change to get provider_token
-        return;
-      }
-
-      // Remove immediately to prevent re-processing
+    const saveGmailAccount = async (session: any, pendingRaw: string) => {
       localStorage.removeItem("pending_email_account");
 
-      const { label, platform } = JSON.parse(pending);
+      const { label, platform } = JSON.parse(pendingRaw);
+      const providerToken = session?.provider_token as string | undefined;
+      if (!providerToken) return;
 
       try {
         const res = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
           headers: { Authorization: `Bearer ${providerToken}` },
         });
-        const userInfo = await res.json();
 
-        if (!userInfo.email) {
-          toast.error("Não foi possível obter o e-mail da conta Google");
-          return;
+        if (!res.ok) {
+          throw new Error("Falha ao obter dados da conta Google");
         }
 
-        // Check if account already exists
+        const userInfo = await res.json();
+        if (!userInfo.email) {
+          throw new Error("Não foi possível obter o e-mail da conta Google");
+        }
+
         const { data: existing } = await (supabase.from("email_accounts") as any)
           .select("id")
           .eq("email", userInfo.email)
@@ -287,68 +275,58 @@ export default function EmailAccountsSection() {
         });
 
         if (error) throw error;
+
         toast.success(`Conta ${userInfo.email} conectada com sucesso!`);
         qc.invalidateQueries({ queryKey: ["email-accounts"] });
         window.history.replaceState(null, "", window.location.pathname);
       } catch (err: any) {
         toast.error("Erro ao salvar conta: " + err.message);
-        console.error("OAuth save error:", err);
       }
+    };
+
+    const handleOAuthRedirect = async () => {
+      const pending = localStorage.getItem("pending_email_account");
+      if (!pending) return;
+
+      const hasOAuthParams =
+        window.location.search.includes("code=") ||
+        window.location.hash.includes("access_token");
+
+      if (hasOAuthParams && window.location.search.includes("code=")) {
+        const { error } = await supabase.auth.exchangeCodeForSession(window.location.href);
+        if (error) {
+          toast.error("Erro ao finalizar autenticação Google: " + error.message);
+          return;
+        }
+      }
+
+      let session = (await supabase.auth.getSession()).data.session;
+
+      for (let i = 0; i < 8 && !session?.provider_token; i++) {
+        await new Promise((resolve) => setTimeout(resolve, 350));
+        session = (await supabase.auth.getSession()).data.session;
+      }
+
+      if (!session?.provider_token) {
+        if (hasOAuthParams) {
+          toast.error("Autenticação concluída, mas o token do Gmail não foi liberado. Tente novamente.");
+          window.history.replaceState(null, "", window.location.pathname);
+        }
+        return;
+      }
+
+      await saveGmailAccount(session, pending);
     };
 
     handleOAuthRedirect();
 
-    // Also listen for auth state changes (provider_token comes with SIGNED_IN event)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === "SIGNED_IN" && session?.provider_token) {
-        const pending = localStorage.getItem("pending_email_account");
-        if (!pending) return;
-
-        localStorage.removeItem("pending_email_account");
-        const { label, platform } = JSON.parse(pending);
-
-        try {
-          const res = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
-            headers: { Authorization: `Bearer ${session.provider_token}` },
-          });
-          const userInfo = await res.json();
-
-          if (!userInfo.email) {
-            toast.error("Não foi possível obter o e-mail da conta Google");
-            return;
-          }
-
-          const { data: existing } = await (supabase.from("email_accounts") as any)
-            .select("id")
-            .eq("email", userInfo.email)
-            .maybeSingle();
-
-          if (existing) {
-            toast.info(`Conta ${userInfo.email} já está conectada`);
-            qc.invalidateQueries({ queryKey: ["email-accounts"] });
-            window.history.replaceState(null, "", window.location.pathname);
-            return;
-          }
-
-          const { error } = await (supabase.from("email_accounts") as any).insert({
-            label,
-            email: userInfo.email,
-            platform,
-            provider: "gmail",
-            status: "conectado",
-            access_token: session.provider_token,
-            refresh_token: session.provider_refresh_token || null,
-          });
-
-          if (error) throw error;
-          toast.success(`Conta ${userInfo.email} conectada com sucesso!`);
-          qc.invalidateQueries({ queryKey: ["email-accounts"] });
-          window.history.replaceState(null, "", window.location.pathname);
-        } catch (err: any) {
-          toast.error("Erro ao salvar conta: " + err.message);
-          console.error("OAuth save error:", err);
-        }
-      }
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event !== "SIGNED_IN" || !session?.provider_token) return;
+      const pending = localStorage.getItem("pending_email_account");
+      if (!pending) return;
+      await saveGmailAccount(session, pending);
     });
 
     return () => subscription.unsubscribe();
