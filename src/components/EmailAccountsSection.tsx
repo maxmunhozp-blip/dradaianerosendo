@@ -209,11 +209,14 @@ export default function EmailAccountsSection() {
     if (!hostPassword.trim()) { toast.error("Informe a senha"); return; }
     setTesting(true);
     setTestResult(null);
+    const isGmail = providerTab === "gmail";
+    const resolvedImapHost = isGmail ? "imap.gmail.com" : imapHost;
+    const resolvedImapPort = isGmail ? 993 : parseInt(imapPort);
     try {
       const { data, error } = await supabase.functions.invoke("test-imap", {
         body: {
-          host: imapHost,
-          port: parseInt(imapPort),
+          host: resolvedImapHost,
+          port: resolvedImapPort,
           user: hostEmail,
           password: hostPassword.replace(/\s/g, ""),
         },
@@ -383,12 +386,17 @@ export default function EmailAccountsSection() {
     if (!hostPassword.trim()) { toast.error("Informe a senha"); return; }
 
     setSaving(true);
+    const isGmail = providerTab === "gmail";
+    const resolvedImapHost = isGmail ? "imap.gmail.com" : imapHost;
+    const resolvedImapPort = isGmail ? 993 : parseInt(imapPort);
+    const resolvedSmtpHost = isGmail ? "smtp.gmail.com" : smtpHost;
+    const resolvedSmtpPort = isGmail ? 465 : parseInt(smtpPort);
     try {
       // Test IMAP connection
       const { data, error } = await supabase.functions.invoke("test-imap", {
         body: {
-          host: imapHost,
-          port: parseInt(imapPort),
+          host: resolvedImapHost,
+          port: resolvedImapPort,
           user: hostEmail,
           password: hostPassword.replace(/\s/g, ""),
         },
@@ -402,14 +410,14 @@ export default function EmailAccountsSection() {
         label: newLabel,
         email: hostEmail,
         platform: newPlatform,
-        provider: providerTab === "gmail" ? "gmail" : "hostinger",
+        provider: isGmail ? "gmail" : "hostinger",
         status: "conectado",
-        imap_host: imapHost,
-        imap_port: parseInt(imapPort),
+        imap_host: resolvedImapHost,
+        imap_port: resolvedImapPort,
         imap_user: hostEmail,
         imap_password: btoa(hostPassword.replace(/\s/g, "")),
-        smtp_host: smtpHost,
-        smtp_port: parseInt(smtpPort),
+        smtp_host: resolvedSmtpHost,
+        smtp_port: resolvedSmtpPort,
       });
 
       if (insertError) throw insertError;
@@ -613,40 +621,44 @@ export default function EmailAccountsSection() {
                   </button>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label className="text-xs">IMAP Host</Label>
-                  <Input
-                    value={imapHost}
-                    onChange={(e) => setImapHost(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs">IMAP Porta</Label>
-                  <Input
-                    type="number"
-                    value={imapPort}
-                    onChange={(e) => setImapPort(e.target.value)}
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label className="text-xs">SMTP Host</Label>
-                  <Input
-                    value={smtpHost}
-                    onChange={(e) => setSmtpHost(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs">SMTP Porta</Label>
-                  <Input
-                    type="number"
-                    value={smtpPort}
-                    onChange={(e) => setSmtpPort(e.target.value)}
-                  />
-                </div>
-              </div>
+              {providerTab !== "gmail" && (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label className="text-xs">IMAP Host</Label>
+                      <Input
+                        value={imapHost}
+                        onChange={(e) => setImapHost(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">IMAP Porta</Label>
+                      <Input
+                        type="number"
+                        value={imapPort}
+                        onChange={(e) => setImapPort(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label className="text-xs">SMTP Host</Label>
+                      <Input
+                        value={smtpHost}
+                        onChange={(e) => setSmtpHost(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">SMTP Porta</Label>
+                      <Input
+                        type="number"
+                        value={smtpPort}
+                        onChange={(e) => setSmtpPort(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
 
             {testResult && (
