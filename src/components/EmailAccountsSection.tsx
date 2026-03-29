@@ -237,9 +237,13 @@ export default function EmailAccountsSection() {
 
       const { label, platform } = JSON.parse(pendingRaw);
       const providerToken = session?.provider_token as string | undefined;
-      if (!providerToken) return;
+      if (!providerToken) {
+        setOauthStep(null);
+        return;
+      }
 
       try {
+        setOauthStep("Obtendo dados da conta Google...");
         const res = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
           headers: { Authorization: `Bearer ${providerToken}` },
         });
@@ -253,6 +257,7 @@ export default function EmailAccountsSection() {
           throw new Error("Não foi possível obter o e-mail da conta Google");
         }
 
+        setOauthStep(`Verificando conta ${userInfo.email}...`);
         const { data: existing } = await (supabase.from("email_accounts") as any)
           .select("id")
           .eq("email", userInfo.email)
@@ -262,9 +267,11 @@ export default function EmailAccountsSection() {
           toast.info(`Conta ${userInfo.email} já está conectada`);
           qc.invalidateQueries({ queryKey: ["email-accounts"] });
           window.history.replaceState(null, "", window.location.pathname);
+          setOauthStep(null);
           return;
         }
 
+        setOauthStep(`Salvando conta ${userInfo.email}...`);
         const { error } = await (supabase.from("email_accounts") as any).insert({
           label,
           email: userInfo.email,
@@ -282,6 +289,8 @@ export default function EmailAccountsSection() {
         window.history.replaceState(null, "", window.location.pathname);
       } catch (err: any) {
         toast.error("Erro ao salvar conta: " + err.message);
+      } finally {
+        setOauthStep(null);
       }
     };
 
