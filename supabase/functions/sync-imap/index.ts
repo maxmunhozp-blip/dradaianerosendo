@@ -88,8 +88,8 @@ async function syncAccount(admin: any, account: ImapAccount): Promise<number> {
 
     if (existing) continue;
 
-    // FETCH the message
-    const fetchResp = await imapCommand(conn, `F${uid}`, `FETCH ${uid} (BODY[HEADER.FIELDS (FROM SUBJECT DATE)] BODY[TEXT])`);
+    // FETCH the full message (headers + body)
+    const fetchResp = await imapCommand(conn, `F${uid}`, `FETCH ${uid} (BODY[HEADER.FIELDS (FROM SUBJECT DATE CONTENT-TYPE)] BODY[])`);
 
     // Parse headers
     const fromMatch = fetchResp.match(/From:\s*(.+)/i);
@@ -107,9 +107,22 @@ async function syncAccount(admin: any, account: ImapAccount): Promise<number> {
 
     const isJudicial = /\.jus\.br/i.test(fromEmail);
 
-    // Extract body text (simplified)
+    // Extract body - try to find HTML part
     const bodyParts = fetchResp.split(/\r\n\r\n/);
-    const bodyText = bodyParts.length > 2 ? bodyParts.slice(2).join("\n\n").substring(0, 10000) : "";
+    const fullBody = bodyParts.length > 2 ? bodyParts.slice(2).join("\n\n") : "";
+    
+    // Try to extract HTML content
+    let bodyHtml: string | null = null;
+    let bodyText = "";
+    
+    const htmlMatch = fullBody.match(/<html[\s\S]*<\/html>/i);
+    if (htmlMatch) {
+      bodyHtml = htmlMatch[0].substring(0, 50000);
+      // Strip tags for text version
+      bodyText = htmlMatch[0].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().substring(0, 10000);
+    } else {
+      bodyText = fullBody.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().substring(0, 10000);
+    }
 
     // Save to email_messages
     await admin.from("email_messages").insert({
@@ -119,6 +132,7 @@ async function syncAccount(admin: any, account: ImapAccount): Promise<number> {
       from_name: fromName,
       subject,
       body_text: bodyText,
+      body_html: bodyHtml,
       received_at: dateStr ? new Date(dateStr).toISOString() : new Date().toISOString(),
       is_read: false,
       is_judicial: isJudicial,
