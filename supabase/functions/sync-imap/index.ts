@@ -223,9 +223,9 @@ async function syncAccount(admin: any, account: ImapAccount): Promise<number> {
   // SELECT INBOX
   await imapCommand(conn, "A002", "SELECT INBOX");
 
-  // SEARCH for recent emails (last 7 days)
+  // SEARCH for recent emails (last 3 days for speed)
   const since = new Date();
-  since.setDate(since.getDate() - 7);
+  since.setDate(since.getDate() - 3);
   const months = [
     "Jan", "Feb", "Mar", "Apr", "May", "Jun",
     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
@@ -243,7 +243,8 @@ async function syncAccount(admin: any, account: ImapAccount): Promise<number> {
 
   let newCount = 0;
 
-  for (const uid of uids.slice(0, 20)) {
+  // Process only the last 10 emails to avoid timeout
+  for (const uid of uids.slice(-10)) {
     // Check if already exists
     const { data: existing } = await admin
       .from("email_messages")

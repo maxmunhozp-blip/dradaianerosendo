@@ -40,8 +40,8 @@ async function fetchGmailMessages(
   accessToken: string,
   cursor: string | null
 ): Promise<{ messages: any[]; nextCursor: string | null }> {
-  const query = "from:(*@*.jus.br OR *@pje.jus.br) newer_than:7d";
-  const url = `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(query)}&maxResults=20`;
+  const query = "from:(*@*.jus.br OR *@pje.jus.br) newer_than:3d";
+  const url = `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(query)}&maxResults=10`;
 
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${accessToken}` },

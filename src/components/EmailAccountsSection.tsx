@@ -80,17 +80,35 @@ function useSyncAccount() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ accountId, provider }: { accountId: string; provider: string }) => {
-      // Reset status to "conectado" before syncing so the function picks it up
+      // Reset status to "sincronizando" before syncing
       await (supabase.from("email_accounts") as any)
-        .update({ status: "conectado" })
+        .update({ status: "sincronizando" })
         .eq("id", accountId);
 
       const funcName = provider === "gmail" ? "sync-gmail" : "sync-imap";
-      const { data, error } = await supabase.functions.invoke(funcName, {
-        body: { account_id: accountId },
-      });
-      if (error) throw error;
-      return data;
+
+      // Add a 25s timeout to prevent infinite loading
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 25000);
+
+      try {
+        const { data, error } = await supabase.functions.invoke(funcName, {
+          body: { account_id: accountId },
+        });
+        clearTimeout(timeout);
+        if (error) throw error;
+        return data;
+      } catch (err: any) {
+        clearTimeout(timeout);
+        // On timeout, update status back
+        await (supabase.from("email_accounts") as any)
+          .update({ status: "conectado" })
+          .eq("id", accountId);
+        if (err.name === "AbortError") {
+          throw new Error("Tempo limite excedido. Tente novamente.");
+        }
+        throw err;
+      }
     },
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ["email-accounts"] });
