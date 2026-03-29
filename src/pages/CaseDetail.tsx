@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCase, useUpdateCase } from "@/hooks/use-cases";
 import { useDocumentsByCase, useCreateDocument, useUploadDocument } from "@/hooks/use-documents";
 import { useChecklistByCase, useCreateChecklistItem, useToggleChecklistItem, useDeleteChecklistItem } from "@/hooks/use-checklist";
