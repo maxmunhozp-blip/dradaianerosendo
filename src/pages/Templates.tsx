@@ -6,6 +6,7 @@ import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, LevelFormat } from "docx";
 import { saveAs } from "file-saver";
+import jsPDF from "jspdf";
 import {
   Select,
   SelectContent,
@@ -17,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
-import { FileText, Loader2, Copy, RefreshCw, Sparkles, Download } from "lucide-react";
+import { FileText, Loader2, Copy, RefreshCw, Sparkles, Download, FileDown } from "lucide-react";
 
 const FORMAT_INSTRUCTIONS = `
 
