@@ -14,15 +14,21 @@ interface LexMLResult {
   url: string;
 }
 
-function extractTag(xml: string, tag: string): string {
-  const regex = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`, "i");
-  const match = xml.match(regex);
-  return match ? stripXmlTags(match[1].trim()) : "";
+/** Strip all XML/HTML tags and collapse whitespace */
+function stripXml(s: string): string {
+  return s.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
 }
 
-/** Strip all XML/HTML tags and collapse whitespace */
-function stripXmlTags(s: string): string {
-  return s.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
+/** Extract raw inner content of first matching tag (keeps child tags) */
+function extractTagRaw(xml: string, tag: string): string {
+  const regex = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`, "i");
+  const match = xml.match(regex);
+  return match ? match[1].trim() : "";
+}
+
+/** Extract text content of first matching tag (strips child tags) */
+function extractTag(xml: string, tag: string): string {
+  return stripXml(extractTagRaw(xml, tag));
 }
 
 function parseSearchResponse(xml: string): LexMLResult[] {
@@ -33,7 +39,7 @@ function parseSearchResponse(xml: string): LexMLResult[] {
 
   while ((match = docHitRegex.exec(xml)) !== null && results.length < 5) {
     const hit = match[1];
-    const meta = extractTag(hit, "meta");
+    const meta = extractTagRaw(hit, "meta");
     if (!meta) continue;
 
     const urn = extractTag(meta, "urn");
