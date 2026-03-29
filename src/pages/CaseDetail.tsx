@@ -1,9 +1,10 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useCase, useUpdateCase } from "@/hooks/use-cases";
-import { useDocumentsByCase, useCreateDocument, useUpdateDocument, useUploadDocument } from "@/hooks/use-documents";
+import { useDocumentsByCase, useCreateDocument, useUploadDocument } from "@/hooks/use-documents";
 import { useChecklistByCase, useCreateChecklistItem, useToggleChecklistItem, useDeleteChecklistItem } from "@/hooks/use-checklist";
-import { useMessagesByCase, useSendMessage } from "@/hooks/use-messages";
+import { useMessagesByCase } from "@/hooks/use-messages";
+import { useLaraChat } from "@/hooks/use-lara-chat";
 import { CaseStatusStepper } from "@/components/CaseStatusStepper";
 import { StatusBadge } from "@/components/StatusBadge";
 import { DocumentRow } from "@/components/DocumentRow";
@@ -25,24 +26,33 @@ const statusSteps = ["documentacao", "montagem", "protocolo", "andamento", "ence
 
 export default function CaseDetail() {
   const { id } = useParams<{ id: string }>();
-  const { data: caseData, isLoading } = useCase(id!);
+  const { data: caseData, isLoading: caseLoading } = useCase(id!);
   const { data: documents = [] } = useDocumentsByCase(id!);
   const { data: checklist = [] } = useChecklistByCase(id!);
-  const { data: messages = [] } = useMessagesByCase(id!);
+  const { data: dbMessages = [] } = useMessagesByCase(id!);
+
+  const { messages: chatMessages, isLoading: chatLoading, sendMessage, loadHistory } = useLaraChat(id);
 
   const updateCase = useUpdateCase();
   const createDoc = useCreateDocument();
-  const updateDoc = useUpdateDocument();
   const uploadDoc = useUploadDocument();
   const createChecklistItem = useCreateChecklistItem();
   const toggleChecklistItem = useToggleChecklistItem();
   const deleteChecklistItem = useDeleteChecklistItem();
-  const sendMessage = useSendMessage();
 
   const [newItem, setNewItem] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
 
-  if (isLoading) {
+  // Load chat history from DB once
+  useEffect(() => {
+    if (dbMessages.length > 0 && !historyLoaded) {
+      loadHistory(dbMessages);
+      setHistoryLoaded(true);
+    }
+  }, [dbMessages, historyLoaded, loadHistory]);
+
+  if (caseLoading) {
     return <div className="p-6"><p className="text-sm text-muted-foreground">Carregando...</p></div>;
   }
 
@@ -101,24 +111,6 @@ export default function CaseDetail() {
     await deleteChecklistItem.mutateAsync({ id: itemId, case_id: id! });
   };
 
-  const handleSendMessage = async (content: string) => {
-    try {
-      await sendMessage.mutateAsync({ case_id: id!, role: "user", content });
-    } catch {
-      toast.error("Erro ao enviar mensagem");
-    }
-  };
-
-  // Map messages to the format LaraChat expects
-  const chatMessages = messages.map((m) => ({
-    id: m.id,
-    created_at: m.created_at,
-    case_id: m.case_id,
-    role: m.role as "user" | "assistant",
-    content: m.content,
-    attachments: m.attachments as any[] | null,
-  }));
-
   return (
     <div className="flex h-[calc(100vh-3rem)]">
       {/* Left column */}
@@ -167,12 +159,7 @@ export default function CaseDetail() {
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-medium text-foreground">Documentos ({documents.length})</h2>
             <div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                onChange={handleFileUpload}
-                className="hidden"
-              />
+              <input ref={fileInputRef} type="file" onChange={handleFileUpload} className="hidden" />
               <Button
                 variant="outline"
                 size="sm"
@@ -225,7 +212,11 @@ export default function CaseDetail() {
 
       {/* Right column - LARA chat */}
       <div className="border-l border-border" style={{ flex: "0 0 40%" }}>
-        <LaraChat messages={chatMessages} onSend={handleSendMessage} />
+        <LaraChat
+          messages={chatMessages}
+          onSend={sendMessage}
+          isLoading={chatLoading}
+        />
       </div>
     </div>
   );
