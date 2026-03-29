@@ -65,6 +65,11 @@ export default function CaseDetail() {
   const [showChat, setShowChat] = useState(true);
   const [showHearingModal, setShowHearingModal] = useState(false);
   const { data: hearings = [] } = useHearingsByCase(id!);
+  const [showEditCase, setShowEditCase] = useState(false);
+  const [editCaseType, setEditCaseType] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editCnj, setEditCnj] = useState("");
+  const [editCourt, setEditCourt] = useState("");
 
   useEffect(() => {
     if (dbMessages.length > 0 && !historyLoaded) {
