@@ -31,7 +31,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 const statusSteps = ["documentacao", "montagem", "protocolo", "andamento", "encerrado"];
 
 export default function CaseDetail() {
