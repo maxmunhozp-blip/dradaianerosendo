@@ -62,8 +62,12 @@ async function syncAccount(admin: any, account: ImapAccount): Promise<number> {
   // SELECT INBOX
   await imapCommand(conn, "A002", "SELECT INBOX");
 
-  // SEARCH for unseen judicial emails
-  const searchResp = await imapCommand(conn, "A003", 'SEARCH UNSEEN FROM "jus.br"');
+  // SEARCH for recent emails (last 7 days)
+  const since = new Date();
+  since.setDate(since.getDate() - 7);
+  const sinceStr = since.toUTCString().replace(/\d{2}:\d{2}:\d{2}\s*/, "").replace(/,\s*/, " ").split(" ").slice(0,3).join("-");
+  const searchResp = await imapCommand(conn, "A003", `SEARCH SINCE ${since.toISOString().split("T")[0].split("-").reverse().join("-").replace(/(\d{2})-(\d{2})-(\d{4})/, function(_, d, m, y) { const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]; return d + "-" + months[parseInt(m)-1] + "-" + y; })}`);
+
 
   // Parse UIDs from SEARCH response
   const searchLine = searchResp.split("\r\n").find(l => l.startsWith("* SEARCH"));
@@ -165,7 +169,7 @@ Deno.serve(async (req) => {
     let accountId: string | undefined;
     try {
       const body = await req.json();
-      accountId = body.account_id;
+      accountId = body.accountId || body.account_id;
     } catch { /* no body */ }
 
     // Fetch IMAP accounts
