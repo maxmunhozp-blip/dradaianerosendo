@@ -475,9 +475,14 @@ export default function MailPage() {
                                   {format(new Date(email.received_at), "dd/MM HH:mm")}
                                 </span>
                               )}
-                              {email.is_judicial && (
+                              {email.category === "judicial" && (
                                 <Badge className="bg-amber-500/10 text-amber-600 border-amber-200 text-[9px] px-1 py-0">
                                   Judicial
+                                </Badge>
+                              )}
+                              {email.category === "financial" && (
+                                <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-200 text-[9px] px-1 py-0">
+                                  Financeiro
                                 </Badge>
                               )}
                               {selectedAccountId === "all" && acct && (
