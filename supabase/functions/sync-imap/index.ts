@@ -71,7 +71,8 @@ function decodeQuotedPrintable(str: string): string {
 }
 
 // Parse MIME parts from raw email
-function parseMimeParts(raw: string): { html: string | null; text: string } {
+function parseMimeParts(raw: string, depth = 0): { html: string | null; text: string } {
+  if (depth > 5) return { html: null, text: "" };
   // Find boundary
   const boundaryMatch = raw.match(/boundary="?([^"\s;]+)"?/i);
   
