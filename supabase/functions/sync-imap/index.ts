@@ -228,7 +228,14 @@ async function imapCommand(
 }
 
 async function syncAccount(admin: any, account: ImapAccount): Promise<number> {
-  const password = atob(account.imap_password);
+  let password: string;
+  try {
+    password = atob(account.imap_password);
+  } catch {
+    password = account.imap_password;
+  }
+  password = password.replace(/\s/g, "");
+
   const conn = await Deno.connectTls({
     hostname: account.imap_host,
     port: account.imap_port,
@@ -238,11 +245,12 @@ async function syncAccount(admin: any, account: ImapAccount): Promise<number> {
   const greetBuf = new Uint8Array(4096);
   await conn.read(greetBuf);
 
-  // LOGIN
+  // AUTHENTICATE PLAIN
+  const credentials = btoa(`\0${account.imap_user}\0${password}`);
   const loginResp = await imapCommand(
     conn,
     "A001",
-    `LOGIN "${account.imap_user}" "${password.replace(/"/g, '\\"')}"`
+    `AUTHENTICATE PLAIN ${credentials}`
   );
   if (!loginResp.includes("A001 OK")) {
     conn.close();
