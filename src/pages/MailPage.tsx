@@ -153,6 +153,71 @@ export default function MailPage() {
 
   const isSyncing = syncGmail.isPending || syncImap.isPending;
 
+  const [sendingReply, setSendingReply] = useState(false);
+  const [composeOpen, setComposeOpen] = useState(false);
+  const [composeTo, setComposeTo] = useState("");
+  const [composeSubject, setComposeSubject] = useState("");
+  const [composeBody, setComposeBody] = useState("");
+  const [sendingCompose, setSendingCompose] = useState(false);
+
+  const handleSendReply = async () => {
+    if (!selectedEmail || !replyText.trim()) return;
+    const account = accounts.find(a => a.id === selectedEmail.email_account_id);
+    if (!account) { toast.error("Conta de e-mail não encontrada"); return; }
+    setSendingReply(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-email", {
+        body: {
+          account_id: selectedEmail.email_account_id,
+          to: selectedEmail.from_email,
+          subject: `Re: ${selectedEmail.subject}`,
+          body: replyText,
+          in_reply_to: selectedEmail.message_uid,
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success("Resposta enviada com sucesso!");
+      setReplyOpen(false);
+      setReplyText("");
+    } catch (err: any) {
+      toast.error("Erro ao enviar: " + (err.message || "Erro desconhecido"));
+    } finally {
+      setSendingReply(false);
+    }
+  };
+
+  const handleSendCompose = async () => {
+    if (!composeTo.trim() || !composeSubject.trim() || !composeBody.trim()) {
+      toast.error("Preencha todos os campos");
+      return;
+    }
+    const accountId = selectedAccountId !== "all" ? selectedAccountId : accounts[0]?.id;
+    if (!accountId) { toast.error("Nenhuma conta disponível"); return; }
+    setSendingCompose(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-email", {
+        body: {
+          account_id: accountId,
+          to: composeTo,
+          subject: composeSubject,
+          body: composeBody,
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success("E-mail enviado com sucesso!");
+      setComposeOpen(false);
+      setComposeTo("");
+      setComposeSubject("");
+      setComposeBody("");
+    } catch (err: any) {
+      toast.error("Erro ao enviar: " + (err.message || "Erro desconhecido"));
+    } finally {
+      setSendingCompose(false);
+    }
+  };
+
   const handleSync = () => {
     const accountId = selectedAccountId === "all" ? undefined : selectedAccountId;
     const account = accounts.find(a => a.id === selectedAccountId);
@@ -269,12 +334,53 @@ export default function MailPage() {
             <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isSyncing ? "animate-spin" : ""}`} />
             Sincronizar
           </Button>
-          <Button size="sm" variant="outline" className="text-amber-600 border-amber-300" disabled>
+          <Button size="sm" variant="outline" className="text-amber-600 border-amber-300" onClick={() => setComposeOpen(!composeOpen)}>
             <Edit className="w-3.5 h-3.5 mr-1.5" />
             Compor
           </Button>
         </div>
       </div>
+
+      {/* Compose area */}
+      {composeOpen && (
+        <div className="border-b p-4 bg-muted/30 space-y-3 shrink-0">
+          <h3 className="text-sm font-semibold">Novo e-mail</h3>
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              placeholder="Para (e-mail do destinatário)"
+              value={composeTo}
+              onChange={(e) => setComposeTo(e.target.value)}
+              className="text-sm"
+            />
+            <Input
+              placeholder="Assunto"
+              value={composeSubject}
+              onChange={(e) => setComposeSubject(e.target.value)}
+              className="text-sm"
+            />
+          </div>
+          <textarea
+            className="w-full border rounded-md p-2 text-sm min-h-[100px] resize-y bg-background"
+            placeholder="Escreva sua mensagem..."
+            value={composeBody}
+            onChange={(e) => setComposeBody(e.target.value)}
+          />
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-muted-foreground">
+              Enviando de: {selectedAccountId !== "all" ? accounts.find(a => a.id === selectedAccountId)?.email : accounts[0]?.email || "—"}
+            </p>
+            <div className="flex gap-2">
+              <Button variant="ghost" size="sm" onClick={() => setComposeOpen(false)}>
+                Cancelar
+              </Button>
+              <Button size="sm" disabled={sendingCompose} onClick={handleSendCompose}>
+                {sendingCompose ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Mail className="w-3.5 h-3.5 mr-1" />}
+                Enviar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {accounts.length === 0 ? (
         <div className="flex-1 flex items-center justify-center">
@@ -476,11 +582,11 @@ export default function MailPage() {
                       </Button>
                       <Button
                         size="sm"
-                        disabled
-                        title="Envio SMTP não configurado"
+                        disabled={sendingReply || !replyText.trim()}
+                        onClick={handleSendReply}
                       >
-                        <Reply className="w-3.5 h-3.5 mr-1" />
-                        Enviar (SMTP necessário)
+                        {sendingReply ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Reply className="w-3.5 h-3.5 mr-1" />}
+                        Enviar
                       </Button>
                     </div>
                   </div>
