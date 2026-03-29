@@ -32,23 +32,25 @@ function extractTag(xml: string, tag: string): string {
 }
 
 function parseSearchResponse(xml: string): LexMLResult[] {
-  // LexML uses crossQueryResult with docHit elements
   const docHitRegex = /<docHit[^>]*>([\s\S]*?)<\/docHit>/gi;
-  const results: LexMLResult[] = [];
+  const allResults: (LexMLResult & { isLei: boolean })[] = [];
   let match;
 
-  while ((match = docHitRegex.exec(xml)) !== null && results.length < 5) {
+  while ((match = docHitRegex.exec(xml)) !== null && allResults.length < 20) {
     const hit = match[1];
     const meta = extractTagRaw(hit, "meta");
     if (!meta) continue;
 
-    const urn = extractTag(meta, "urn").replace(/\s+/g, "");
-    const tipoDocumento = extractTag(meta, "tipoDocumento");
+    const urn = stripXml(extractTagRaw(meta, "urn")).replace(/\s+/g, "");
+    const tipoDocumento = stripXml(extractTagRaw(meta, "tipoDocumento"));
+    const facetTipo = extractTag(meta, "facet-tipoDocumento");
     const descritor = extractTag(meta, "descritor");
     const localidade = extractTag(meta, "localidade");
     const autoridade = extractTag(meta, "autoridade");
     const date = extractTag(meta, "date");
     const dataRepr = extractTag(meta, "dataRepresentativa");
+    const apelido = stripXml(extractTagRaw(meta, "apelido"));
+    const description = stripXml(extractTagRaw(meta, "description"));
 
     // Build a readable title
     let title = "";
@@ -57,20 +59,28 @@ function parseSearchResponse(xml: string): LexMLResult[] {
     } else if (tipoDocumento) {
       title = tipoDocumento;
     }
+    if (apelido) title += ` - ${apelido}`;
     if (localidade) title += ` — ${localidade}`;
 
     const url = urn ? `https://www.lexml.gov.br/urn/${encodeURIComponent(urn)}` : "";
 
-    results.push({
+    // Determine if this is an actual Lei (not a projeto, decreto, etc.)
+    const isLei = /^Legislação::Lei/i.test(facetTipo) || /^Lei$/i.test(tipoDocumento);
+
+    allResults.push({
       title: title || "Documento legislativo",
       urn: urn || "",
       date: dataRepr || date || "",
-      summary: `${tipoDocumento || "Norma"} ${autoridade ? `(${autoridade})` : ""}`.trim(),
+      summary: description || `${tipoDocumento || "Norma"} ${autoridade ? `(${autoridade})` : ""}`.trim(),
       url,
+      isLei,
     });
   }
 
-  return results;
+  // Sort: actual Lei types first, then by original order
+  allResults.sort((a, b) => (a.isLei === b.isLei ? 0 : a.isLei ? -1 : 1));
+
+  return allResults.slice(0, 5).map(({ isLei, ...rest }) => rest);
 }
 
 Deno.serve(async (req: Request) => {
