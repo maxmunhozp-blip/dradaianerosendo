@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -17,6 +17,17 @@ import {
   CalendarDays,
 } from "lucide-react";
 import { toast } from "sonner";
+
+const statusLabels: Record<string, string> = {
+  documentacao: "Documentação",
+  montagem: "Montagem",
+  protocolo: "Protocolo",
+  andamento: "Em andamento",
+  encerrado: "Encerrado",
+};
+function formatStatus(s: string) {
+  return statusLabels[s] || s;
+}
 
 export default function PortalDashboard() {
   const { user } = useAuth();
@@ -56,6 +67,35 @@ export default function PortalDashboard() {
     },
     enabled: !!client,
   });
+
+  // Realtime: listen for case status changes
+  useEffect(() => {
+    if (!client) return;
+    const channel = supabase
+      .channel("portal-case-updates")
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "cases",
+          filter: `client_id=eq.${client.id}`,
+        },
+        (payload) => {
+          const updated = payload.new as any;
+          const old = payload.old as any;
+          if (updated.status !== old.status) {
+            toast.info(`Status atualizado: ${formatStatus(updated.status)}`, {
+              description: updated.case_type,
+              duration: 8000,
+            });
+          }
+          queryClient.invalidateQueries({ queryKey: ["portal-cases"] });
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [client, queryClient]);
 
   const caseIds = cases.map((c) => c.id);
 
