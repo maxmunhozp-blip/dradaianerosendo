@@ -295,21 +295,26 @@ export default function EmailAccountsSection() {
     };
 
     const handleOAuthRedirect = async () => {
-      setOauthStep("Autenticando com Google...");
+      const pending = localStorage.getItem("pending_email_account");
       if (!pending) return;
+
+      setOauthStep("Autenticando com Google...");
 
       const hasOAuthParams =
         window.location.search.includes("code=") ||
         window.location.hash.includes("access_token");
 
       if (hasOAuthParams && window.location.search.includes("code=")) {
+        setOauthStep("Trocando código de autenticação...");
         const { error } = await supabase.auth.exchangeCodeForSession(window.location.href);
         if (error) {
           toast.error("Erro ao finalizar autenticação Google: " + error.message);
+          setOauthStep(null);
           return;
         }
       }
 
+      setOauthStep("Aguardando token do Google...");
       let session = (await supabase.auth.getSession()).data.session;
 
       for (let i = 0; i < 8 && !session?.provider_token; i++) {
@@ -322,6 +327,7 @@ export default function EmailAccountsSection() {
           toast.error("Autenticação concluída, mas o token do Gmail não foi liberado. Tente novamente.");
           window.history.replaceState(null, "", window.location.pathname);
         }
+        setOauthStep(null);
         return;
       }
 
