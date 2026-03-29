@@ -118,7 +118,7 @@ Deno.serve(async (req) => {
     }
 
     // Fetch accounts to sync
-    let query = admin.from("email_accounts").select("*").eq("status", "conectado");
+    let query = admin.from("email_accounts").select("*").in("status", ["conectado", "sincronizando"]);
     if (accountId) {
       query = query.eq("id", accountId);
     }

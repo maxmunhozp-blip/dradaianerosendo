@@ -362,7 +362,8 @@ Deno.serve(async (req) => {
     let query = admin
       .from("email_accounts")
       .select("*")
-      .in("provider", ["hostinger", "imap"]);
+      .in("provider", ["hostinger", "imap"])
+      .in("status", ["conectado", "sincronizando"]);
 
     if (accountId) query = query.eq("id", accountId);
 
