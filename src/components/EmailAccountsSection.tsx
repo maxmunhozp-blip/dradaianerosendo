@@ -413,7 +413,9 @@ export default function EmailAccountsSection() {
         imap_host: imapHost,
         imap_port: parseInt(imapPort),
         imap_user: hostEmail,
-        imap_password: btoa(hostPassword), // base64 encode
+        imap_password: btoa(hostPassword),
+        smtp_host: smtpHost,
+        smtp_port: parseInt(smtpPort),
       });
 
       if (insertError) throw insertError;
