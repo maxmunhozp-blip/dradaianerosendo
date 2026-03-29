@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCreateDocument, useUploadDocument } from "@/hooks/use-documents";
+import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import jsPDF from "jspdf";
 
@@ -60,6 +61,22 @@ export function PeticaoModal({
   const editorRef = useRef<HTMLDivElement>(null);
   const createDoc = useCreateDocument();
   const uploadDoc = useUploadDocument();
+
+  // Load office settings for PDF header
+  const { data: officeSettings } = useQuery({
+    queryKey: ["settings-office-pdf"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("settings")
+        .select("key, value")
+        .in("key", ["office_name", "office_oab", "office_address", "office_phone", "office_email"]);
+      if (error) throw error;
+      const map: Record<string, string> = {};
+      data.forEach((s) => { map[s.key] = s.value; });
+      return map;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
   // Initialize all docs as selected
   useEffect(() => {
@@ -184,20 +201,97 @@ export function PeticaoModal({
   const handleDownloadPdf = () => {
     const text = editorRef.current?.innerText || generatedText;
     const doc = new jsPDF();
-    const margin = 20;
-    const pageWidth = doc.internal.pageSize.getWidth() - margin * 2;
-    const lines = doc.splitTextToSize(text, pageWidth);
-    let y = margin;
+    const margin = 25;
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const contentWidth = pageWidth - margin * 2;
+
+    const officeName = officeSettings?.office_name || "Escritório de Advocacia";
+    const officeOab = officeSettings?.office_oab || "";
+    const officeAddress = officeSettings?.office_address || "";
+    const officePhone = officeSettings?.office_phone || "";
+    const officeEmail = officeSettings?.office_email || "";
+
+    const drawHeader = (pageNum: number) => {
+      // Top line accent
+      doc.setDrawColor(245, 158, 11); // amber-500
+      doc.setLineWidth(0.8);
+      doc.line(margin, 12, pageWidth - margin, 12);
+
+      // Office name
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
+      doc.setTextColor(15, 23, 42); // navy
+      doc.text(officeName, margin, 22);
+
+      // OAB + contact info line
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(100, 116, 139); // slate-500
+      const infoLine = [officeOab, officePhone, officeEmail].filter(Boolean).join("  •  ");
+      if (infoLine) doc.text(infoLine, margin, 28);
+      if (officeAddress) doc.text(officeAddress, margin, 33);
+
+      // Separator line
+      doc.setDrawColor(226, 232, 240); // slate-200
+      doc.setLineWidth(0.3);
+      const sepY = officeAddress ? 37 : 32;
+      doc.line(margin, sepY, pageWidth - margin, sepY);
+
+      return sepY + 8; // return start Y for content
+    };
+
+    const drawFooter = (pageNum: number, totalPages: number) => {
+      doc.setDrawColor(226, 232, 240);
+      doc.setLineWidth(0.3);
+      doc.line(margin, pageHeight - 18, pageWidth - margin, pageHeight - 18);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7);
+      doc.setTextColor(148, 163, 184);
+      doc.text(`${officeName}`, margin, pageHeight - 12);
+      doc.text(`Página ${pageNum} de ${totalPages}`, pageWidth - margin, pageHeight - 12, { align: "right" });
+    };
+
+    // Split text into lines
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(11);
+    const lines = doc.splitTextToSize(text, contentWidth);
+    const lineHeight = 5.5;
+
+    // Calculate total pages first
+    let tempY = drawHeader(1);
+    let totalPages = 1;
+    for (const line of lines) {
+      if (tempY + lineHeight > pageHeight - 25) {
+        totalPages++;
+        tempY = 45; // subsequent page header space
+      }
+      tempY += lineHeight;
+    }
+
+    // Now render
+    let y = drawHeader(1);
+    let currentPage = 1;
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(11);
+    doc.setTextColor(30, 41, 59); // slate-800
 
     for (const line of lines) {
-      if (y > doc.internal.pageSize.getHeight() - margin) {
+      if (y + lineHeight > pageHeight - 25) {
+        drawFooter(currentPage, totalPages);
         doc.addPage();
-        y = margin;
+        currentPage++;
+        y = drawHeader(currentPage);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(11);
+        doc.setTextColor(30, 41, 59);
       }
-      doc.setFontSize(11);
       doc.text(line, margin, y);
-      y += 6;
+      y += lineHeight;
     }
+
+    drawFooter(currentPage, totalPages);
 
     const clientFirstName = clientData.name?.split(" ")[0] || "cliente";
     doc.save(`peticao-inicial-${clientFirstName}.pdf`);
