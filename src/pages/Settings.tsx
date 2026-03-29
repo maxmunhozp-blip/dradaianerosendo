@@ -239,6 +239,33 @@ export default function Settings() {
     }
   };
 
+  const maskPhone = (v: string) => {
+    const d = v.replace(/\D/g, "").slice(0, 11);
+    if (d.length <= 2) return d.length ? `(${d}` : "";
+    if (d.length <= 7) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+    return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+  };
+
+  const maskOab = (v: string) => {
+    const upper = v.toUpperCase();
+    // Allow typing "OAB/XX 123456"
+    const match = upper.match(/^(OAB\/?)([A-Z]{0,2})\s?(\d{0,6})$/);
+    if (!match && upper.length > 0) {
+      // If starts with just letters, prepend OAB/
+      const digits = v.replace(/\D/g, "").slice(0, 6);
+      const letters = v.replace(/[^a-zA-Z]/g, "").toUpperCase().slice(0, 2);
+      if (letters.length > 0 || digits.length > 0) {
+        return `OAB/${letters}${letters.length && digits.length ? " " : ""}${digits}`;
+      }
+      return v;
+    }
+    if (match) {
+      const [, , state, num] = match;
+      return `OAB/${state}${state.length === 2 && num.length > 0 ? " " : ""}${num}`;
+    }
+    return v;
+  };
+
   const toggle = (key: keyof typeof openSections) =>
     setOpenSections((p) => ({ ...p, [key]: !p[key] }));
 
@@ -294,7 +321,7 @@ export default function Settings() {
             <Input
               placeholder="OAB/SP 123456"
               value={val("office_oab")}
-              onChange={(e) => set("office_oab", e.target.value)}
+              onChange={(e) => set("office_oab", maskOab(e.target.value))}
               className={errors.office_oab ? "border-destructive" : ""}
             />
             {errors.office_oab && (
@@ -306,7 +333,7 @@ export default function Settings() {
             <Input
               placeholder="(11) 99999-9999"
               value={val("office_phone")}
-              onChange={(e) => set("office_phone", e.target.value)}
+              onChange={(e) => set("office_phone", maskPhone(e.target.value))}
               className={errors.office_phone ? "border-destructive" : ""}
             />
             {errors.office_phone && (
