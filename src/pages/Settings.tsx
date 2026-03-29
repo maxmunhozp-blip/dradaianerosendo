@@ -321,7 +321,7 @@ export default function Settings() {
             <Input
               placeholder="OAB/SP 123456"
               value={val("office_oab")}
-              onChange={(e) => set("office_oab", e.target.value)}
+              onChange={(e) => set("office_oab", maskOab(e.target.value))}
               className={errors.office_oab ? "border-destructive" : ""}
             />
             {errors.office_oab && (
@@ -333,7 +333,7 @@ export default function Settings() {
             <Input
               placeholder="(11) 99999-9999"
               value={val("office_phone")}
-              onChange={(e) => set("office_phone", e.target.value)}
+              onChange={(e) => set("office_phone", maskPhone(e.target.value))}
               className={errors.office_phone ? "border-destructive" : ""}
             />
             {errors.office_phone && (
