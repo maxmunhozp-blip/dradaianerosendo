@@ -57,6 +57,35 @@ export default function PortalDashboard() {
     enabled: !!client,
   });
 
+  // Realtime: listen for case status changes
+  useEffect(() => {
+    if (!client) return;
+    const channel = supabase
+      .channel("portal-case-updates")
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "cases",
+          filter: `client_id=eq.${client.id}`,
+        },
+        (payload) => {
+          const updated = payload.new as any;
+          const old = payload.old as any;
+          if (updated.status !== old.status) {
+            toast.info(`Status atualizado: ${formatStatus(updated.status)}`, {
+              description: updated.case_type,
+              duration: 8000,
+            });
+          }
+          queryClient.invalidateQueries({ queryKey: ["portal-cases"] });
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [client, queryClient]);
+
   const caseIds = cases.map((c) => c.id);
 
   // Documents
