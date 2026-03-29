@@ -94,6 +94,22 @@ export default function CaseDetail() {
 
   const clientName = (caseData as any).clients?.name || "Cliente";
 
+  const handleSaveCase = async () => {
+    try {
+      await updateCase.mutateAsync({
+        id: id!,
+        case_type: editCaseType,
+        description: editDescription || null,
+        cnj_number: editCnj || null,
+        court: editCourt || null,
+      });
+      toast.success("Caso atualizado");
+      setShowEditCase(false);
+    } catch {
+      toast.error("Erro ao atualizar caso");
+    }
+  };
+
   const handleStatusChange = async (newStatus: string) => {
     try {
       await updateCase.mutateAsync({ id: id!, status: newStatus });
