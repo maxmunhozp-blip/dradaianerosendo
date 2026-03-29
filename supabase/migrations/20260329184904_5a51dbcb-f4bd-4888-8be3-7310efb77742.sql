@@ -1,0 +1,1 @@
+ALTER TABLE public.intimacoes ADD COLUMN urgent_alert_sent boolean NOT NULL DEFAULT false;
