@@ -12,6 +12,7 @@ import { ChecklistItemRow } from "@/components/ChecklistItemRow";
 import { LaraChat } from "@/components/LaraChat";
 import { EmptyState } from "@/components/EmptyState";
 import { DetailSkeleton } from "@/components/Skeletons";
+import { CaseTimeline } from "@/components/CaseTimeline";
 import { ArrowLeft, Upload, Plus, FileText, ClipboardList, FolderOpen, FileDown, Scale } from "lucide-react";
 import { GenerateDocumentsModal } from "@/components/GenerateDocumentsModal";
 import { PeticaoModal } from "@/components/PeticaoModal";
