@@ -1,0 +1,1 @@
+DELETE FROM intimacoes WHERE process_number = '0001234-56.2026.8.26.0100';
