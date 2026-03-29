@@ -95,8 +95,8 @@ function useSyncAccount() {
         .update({ status: "sincronizando" })
         .eq("id", accountId);
 
-      const funcName = (provider === "gmail" && !(await (supabase.from("email_accounts") as any).select("imap_password").eq("id", accountId).single()).data?.imap_password)
-        ? "sync-gmail" : "sync-imap";
+      // All IMAP-based accounts (including Gmail with app password) use sync-imap
+      const funcName = "sync-imap";
 
       // Add a 25s timeout to prevent infinite loading
       const controller = new AbortController();
