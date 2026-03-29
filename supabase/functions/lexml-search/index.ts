@@ -17,7 +17,12 @@ interface LexMLResult {
 function extractTag(xml: string, tag: string): string {
   const regex = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`, "i");
   const match = xml.match(regex);
-  return match ? match[1].trim() : "";
+  return match ? stripXmlTags(match[1].trim()) : "";
+}
+
+/** Strip all XML/HTML tags and collapse whitespace */
+function stripXmlTags(s: string): string {
+  return s.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
 }
 
 function parseSearchResponse(xml: string): LexMLResult[] {
