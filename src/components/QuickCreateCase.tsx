@@ -122,6 +122,20 @@ export function QuickCreateCase() {
             </Select>
           </div>
           <div>
+            <Label>Etapa inicial</Label>
+            <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
+              <SelectTrigger className="mt-1.5">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="documentacao">Documentação</SelectItem>
+                <SelectItem value="montagem">Montagem</SelectItem>
+                <SelectItem value="protocolo">Protocolo</SelectItem>
+                <SelectItem value="andamento">Em andamento</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
             <Label>Descrição</Label>
             <Textarea
               value={form.description}
