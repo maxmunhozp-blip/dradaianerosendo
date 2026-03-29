@@ -185,6 +185,21 @@ export default function CaseDetail() {
             <div className="flex items-center gap-3">
               <h1 className="text-xl font-semibold text-foreground">{caseData.case_type}</h1>
               <StatusBadge status={caseData.status} />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                title="Editar caso"
+                onClick={() => {
+                  setEditCaseType(caseData.case_type);
+                  setEditDescription(caseData.description || "");
+                  setEditCnj(caseData.cnj_number || "");
+                  setEditCourt(caseData.court || "");
+                  setShowEditCase(true);
+                }}
+              >
+                <Pencil className="w-3.5 h-3.5" />
+              </Button>
             </div>
             <p className="text-sm text-muted-foreground mt-1">{caseData.description}</p>
             {caseData.cnj_number && (
