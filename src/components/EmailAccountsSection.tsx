@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Mail, Plus, RefreshCw, Trash2, Loader2, CheckCircle2, XCircle, Server, Eye, EyeOff } from "lucide-react";
+import { Mail, Plus, RefreshCw, Trash2, Loader2, CheckCircle2, XCircle, Server, Eye, EyeOff, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { lovable } from "@/integrations/lovable/index";
 import { Input } from "@/components/ui/input";
@@ -149,6 +149,14 @@ export default function EmailAccountsSection() {
   const [newPlatform, setNewPlatform] = useState("Todos");
   const [saving, setSaving] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [editingAccount, setEditingAccount] = useState<EmailAccount | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editPassword, setEditPassword] = useState("");
+  const [editHost, setEditHost] = useState("");
+  const [editPort, setEditPort] = useState("");
+  const [editLabel, setEditLabel] = useState("");
+  const [editPlatform, setEditPlatform] = useState("Todos");
+  const [showEditPassword, setShowEditPassword] = useState(false);
 
   // Hostinger fields
   const [hostEmail, setHostEmail] = useState("");
@@ -275,6 +283,63 @@ export default function EmailAccountsSection() {
       qc.invalidateQueries({ queryKey: ["email-accounts"] });
       setDialogOpen(false);
       resetForm();
+    } catch (err: any) {
+      toast.error("Erro: " + err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const openEditDialog = (account: EmailAccount) => {
+    setEditingAccount(account);
+    setEditLabel(account.label);
+    setEditPlatform(account.platform);
+    setEditPassword("");
+    setEditHost(account.imap_host || "imap.hostinger.com");
+    setEditPort(String(account.imap_port || 993));
+    setShowEditPassword(false);
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingAccount) return;
+    setSaving(true);
+    try {
+      const updates: any = {
+        label: editLabel,
+        platform: editPlatform,
+      };
+
+      if (editingAccount.provider !== "gmail") {
+        updates.imap_host = editHost;
+        updates.imap_port = parseInt(editPort);
+
+        // If password changed, test and update
+        if (editPassword.trim()) {
+          const { data, error } = await supabase.functions.invoke("test-imap", {
+            body: {
+              host: editHost,
+              port: parseInt(editPort),
+              user: editingAccount.email,
+              password: editPassword,
+            },
+          });
+          if (error) throw error;
+          if (!data?.success) throw new Error(data?.error || "Falha na conexão IMAP");
+          updates.imap_password = btoa(editPassword);
+          updates.status = "conectado";
+        }
+      }
+
+      const { error: updateError } = await (supabase.from("email_accounts") as any)
+        .update(updates)
+        .eq("id", editingAccount.id);
+      if (updateError) throw updateError;
+
+      toast.success("Conta atualizada com sucesso!");
+      qc.invalidateQueries({ queryKey: ["email-accounts"] });
+      setEditDialogOpen(false);
+      setEditingAccount(null);
     } catch (err: any) {
       toast.error("Erro: " + err.message);
     } finally {
@@ -484,6 +549,15 @@ export default function EmailAccountsSection() {
                   variant="ghost"
                   size="icon"
                   className="h-7 w-7"
+                  onClick={() => openEditDialog(account)}
+                  title="Editar credenciais"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
                   disabled={syncMutation.isPending}
                   onClick={() => syncMutation.mutate({ accountId: account.id, provider: account.provider })}
                   title="Sincronizar agora"
@@ -519,6 +593,74 @@ export default function EmailAccountsSection() {
           <li>Você receberá notificações push para prazos urgentes</li>
         </ol>
       </div>
+
+      {/* Edit Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={(v) => { setEditDialogOpen(v); if (!v) setEditingAccount(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar conta</DialogTitle>
+            <DialogDescription>
+              {editingAccount?.email}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Nome da conta</Label>
+              <Input value={editLabel} onChange={(e) => setEditLabel(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Plataforma</Label>
+              <Select value={editPlatform} onValueChange={setEditPlatform}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {PLATFORMS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            {editingAccount?.provider !== "gmail" && (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Host IMAP</Label>
+                    <Input value={editHost} onChange={(e) => setEditHost(e.target.value)} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Porta</Label>
+                    <Input type="number" value={editPort} onChange={(e) => setEditPort(e.target.value)} />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Nova senha (deixe vazio para manter)</Label>
+                  <div className="relative">
+                    <Input
+                      type={showEditPassword ? "text" : "password"}
+                      placeholder="••••••••"
+                      value={editPassword}
+                      onChange={(e) => setEditPassword(e.target.value)}
+                      className="pr-9"
+                    />
+                    <button
+                      type="button"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      onClick={() => setShowEditPassword(!showEditPassword)}
+                    >
+                      {showEditPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">Se preencher, a conexão será testada antes de salvar.</p>
+                </div>
+              </>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={handleSaveEdit} disabled={saving} className="bg-amber-600 hover:bg-amber-700">
+              {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Pencil className="w-4 h-4 mr-1" />}
+              Salvar alterações
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
