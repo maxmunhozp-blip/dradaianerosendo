@@ -155,6 +155,10 @@ export default function Settings() {
   };
 
   const saveAll = async () => {
+    if (!validate()) {
+      toast.error("Corrija os campos destacados antes de salvar.");
+      return;
+    }
     setSaving(true);
     try {
       const entries = Object.entries(values).filter(([_, v]) => v.trim() !== "");
