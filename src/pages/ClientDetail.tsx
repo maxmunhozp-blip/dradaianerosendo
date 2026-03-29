@@ -5,7 +5,16 @@ import { useCasesByClient, useCreateCase } from "@/hooks/use-cases";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyState } from "@/components/EmptyState";
 import { DetailSkeleton } from "@/components/Skeletons";
-import { ConfirmDelete } from "@/components/ConfirmDelete";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { ArrowLeft, Phone, Mail, Plus, FolderOpen, Send, Loader2, Pencil, Trash2, Save, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
