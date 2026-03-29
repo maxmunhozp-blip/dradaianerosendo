@@ -391,13 +391,40 @@ export default function MailPage() {
                     <h2 className="text-base font-semibold text-foreground pr-4">
                       {selectedEmail.subject}
                     </h2>
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-1 shrink-0">
                       {selectedEmail.is_judicial && (
-                        <Badge className="bg-amber-500/10 text-amber-600 border-amber-200 text-[10px]">
+                        <Badge className="bg-amber-500/10 text-amber-600 border-amber-200 text-[10px] mr-1">
                           <AlertTriangle className="w-3 h-3 mr-0.5" />
                           Judicial
                         </Badge>
                       )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        title="Responder"
+                        onClick={() => { setReplyOpen(!replyOpen); setReplyText(""); }}
+                      >
+                        <Reply className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        title="Arquivar"
+                        onClick={() => handleArchive(selectedEmail)}
+                      >
+                        <Archive className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-destructive hover:text-destructive"
+                        title="Excluir"
+                        onClick={() => handleDelete(selectedEmail)}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
                     </div>
                   </div>
                   <div className="flex items-center gap-3 text-xs text-muted-foreground">
@@ -430,18 +457,52 @@ export default function MailPage() {
                     </Badge>
                   )}
                 </div>
-                <ScrollArea className="flex-1 p-4">
+
+                {/* Reply area */}
+                {replyOpen && (
+                  <div className="p-3 border-b bg-muted/30 space-y-2 shrink-0">
+                    <p className="text-xs text-muted-foreground">
+                      Responder para: {selectedEmail.from_email}
+                    </p>
+                    <textarea
+                      className="w-full border rounded-md p-2 text-sm min-h-[80px] resize-y bg-background"
+                      placeholder="Escreva sua resposta..."
+                      value={replyText}
+                      onChange={(e) => setReplyText(e.target.value)}
+                    />
+                    <div className="flex gap-2 justify-end">
+                      <Button variant="ghost" size="sm" onClick={() => setReplyOpen(false)}>
+                        Cancelar
+                      </Button>
+                      <Button
+                        size="sm"
+                        disabled
+                        title="Envio SMTP não configurado"
+                      >
+                        <Reply className="w-3.5 h-3.5 mr-1" />
+                        Enviar (SMTP necessário)
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Email body */}
+                <div className="flex-1 min-h-0">
                   {selectedEmail.body_html ? (
-                    <div
-                      className="prose prose-sm max-w-none text-foreground"
-                      dangerouslySetInnerHTML={{ __html: selectedEmail.body_html }}
+                    <iframe
+                      ref={iframeRef}
+                      className="w-full h-full border-0"
+                      sandbox="allow-same-origin"
+                      title="Conteúdo do e-mail"
                     />
                   ) : (
-                    <pre className="text-sm whitespace-pre-wrap font-sans text-foreground">
-                      {selectedEmail.body_text}
-                    </pre>
+                    <ScrollArea className="h-full p-4">
+                      <pre className="text-sm whitespace-pre-wrap font-sans text-foreground">
+                        {selectedEmail.body_text}
+                      </pre>
+                    </ScrollArea>
                   )}
-                </ScrollArea>
+                </div>
               </>
             ) : (
               <div className="flex-1 flex items-center justify-center">
