@@ -14,16 +14,233 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      cases: {
+        Row: {
+          case_type: string
+          client_id: string
+          cnj_number: string | null
+          court: string | null
+          created_at: string
+          description: string | null
+          id: string
+          status: string
+        }
+        Insert: {
+          case_type: string
+          client_id: string
+          cnj_number?: string | null
+          court?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          status?: string
+        }
+        Update: {
+          case_type?: string
+          client_id?: string
+          cnj_number?: string | null
+          court?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cases_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checklist_items: {
+        Row: {
+          case_id: string
+          created_at: string
+          done: boolean
+          id: string
+          label: string
+          required_by: string | null
+        }
+        Insert: {
+          case_id: string
+          created_at?: string
+          done?: boolean
+          id?: string
+          label: string
+          required_by?: string | null
+        }
+        Update: {
+          case_id?: string
+          created_at?: string
+          done?: boolean
+          id?: string
+          label?: string
+          required_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_items_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clients: {
+        Row: {
+          cpf: string | null
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          notes: string | null
+          origin: string | null
+          phone: string | null
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          cpf?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          origin?: string | null
+          phone?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Update: {
+          cpf?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          origin?: string | null
+          phone?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      documents: {
+        Row: {
+          case_id: string
+          category: string
+          created_at: string
+          file_url: string | null
+          id: string
+          name: string
+          notes: string | null
+          status: string
+          uploaded_by: string
+        }
+        Insert: {
+          case_id: string
+          category?: string
+          created_at?: string
+          file_url?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          status?: string
+          uploaded_by?: string
+        }
+        Update: {
+          case_id?: string
+          category?: string
+          created_at?: string
+          file_url?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          status?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messages: {
+        Row: {
+          attachments: Json | null
+          case_id: string
+          content: string
+          created_at: string
+          id: string
+          role: string
+        }
+        Insert: {
+          attachments?: Json | null
+          case_id: string
+          content: string
+          created_at?: string
+          id?: string
+          role: string
+        }
+        Update: {
+          attachments?: Json | null
+          case_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "client"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +367,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "client"],
+    },
   },
 } as const
