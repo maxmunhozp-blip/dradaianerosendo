@@ -180,9 +180,14 @@ export type Database = {
           email: string
           gmail_message_id_cursor: string | null
           id: string
+          imap_host: string | null
+          imap_password: string | null
+          imap_port: number | null
+          imap_user: string | null
           label: string
           last_sync: string | null
           platform: string
+          provider: string
           refresh_token: string | null
           status: string
         }
@@ -192,9 +197,14 @@ export type Database = {
           email: string
           gmail_message_id_cursor?: string | null
           id?: string
+          imap_host?: string | null
+          imap_password?: string | null
+          imap_port?: number | null
+          imap_user?: string | null
           label: string
           last_sync?: string | null
           platform?: string
+          provider?: string
           refresh_token?: string | null
           status?: string
         }
@@ -204,13 +214,81 @@ export type Database = {
           email?: string
           gmail_message_id_cursor?: string | null
           id?: string
+          imap_host?: string | null
+          imap_password?: string | null
+          imap_port?: number | null
+          imap_user?: string | null
           label?: string
           last_sync?: string | null
           platform?: string
+          provider?: string
           refresh_token?: string | null
           status?: string
         }
         Relationships: []
+      }
+      email_messages: {
+        Row: {
+          body_html: string | null
+          body_text: string
+          created_at: string
+          email_account_id: string
+          from_email: string | null
+          from_name: string | null
+          id: string
+          intimacao_id: string | null
+          is_judicial: boolean
+          is_read: boolean
+          message_uid: string
+          received_at: string | null
+          subject: string
+        }
+        Insert: {
+          body_html?: string | null
+          body_text?: string
+          created_at?: string
+          email_account_id: string
+          from_email?: string | null
+          from_name?: string | null
+          id?: string
+          intimacao_id?: string | null
+          is_judicial?: boolean
+          is_read?: boolean
+          message_uid: string
+          received_at?: string | null
+          subject?: string
+        }
+        Update: {
+          body_html?: string | null
+          body_text?: string
+          created_at?: string
+          email_account_id?: string
+          from_email?: string | null
+          from_name?: string | null
+          id?: string
+          intimacao_id?: string | null
+          is_judicial?: boolean
+          is_read?: boolean
+          message_uid?: string
+          received_at?: string | null
+          subject?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_messages_email_account_id_fkey"
+            columns: ["email_account_id"]
+            isOneToOne: false
+            referencedRelation: "email_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_messages_intimacao_id_fkey"
+            columns: ["intimacao_id"]
+            isOneToOne: false
+            referencedRelation: "intimacoes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       hearings: {
         Row: {
