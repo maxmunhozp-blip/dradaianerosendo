@@ -334,7 +334,7 @@ export default function MailPage() {
             <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isSyncing ? "animate-spin" : ""}`} />
             Sincronizar
           </Button>
-          <Button size="sm" variant="outline" className="text-amber-600 border-amber-300" disabled>
+          <Button size="sm" variant="outline" className="text-amber-600 border-amber-300" onClick={() => setComposeOpen(!composeOpen)}>
             <Edit className="w-3.5 h-3.5 mr-1.5" />
             Compor
           </Button>
