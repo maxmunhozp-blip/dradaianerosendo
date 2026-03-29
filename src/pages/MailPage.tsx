@@ -135,6 +135,9 @@ export default function MailPage() {
   const [filter, setFilter] = useState<EmailFilter>("all");
   const [search, setSearch] = useState("");
   const [selectedEmail, setSelectedEmail] = useState<EmailMessage | null>(null);
+  const [replyOpen, setReplyOpen] = useState(false);
+  const [replyText, setReplyText] = useState("");
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const { data: accounts = [] } = useEmailAccounts();
   const { data: emails = [], isLoading } = useEmailMessages(
@@ -159,7 +162,6 @@ export default function MailPage() {
     } else if (account?.provider === "gmail") {
       syncGmail.mutate(accountId);
     } else {
-      // Sync all
       syncGmail.mutate(undefined);
       syncImap.mutate(undefined);
     }
@@ -173,6 +175,50 @@ export default function MailPage() {
       qc.invalidateQueries({ queryKey: ["email-messages"] });
     }
   };
+
+  const handleDelete = async (email: EmailMessage) => {
+    await (supabase.from("email_messages") as any)
+      .delete()
+      .eq("id", email.id);
+    qc.invalidateQueries({ queryKey: ["email-messages"] });
+    if (selectedEmail?.id === email.id) setSelectedEmail(null);
+    toast.success("E-mail excluído");
+  };
+
+  const handleArchive = async (email: EmailMessage) => {
+    await (supabase.from("email_messages") as any)
+      .update({ is_read: true })
+      .eq("id", email.id);
+    qc.invalidateQueries({ queryKey: ["email-messages"] });
+    if (selectedEmail?.id === email.id) setSelectedEmail(null);
+    toast.success("E-mail arquivado");
+  };
+
+  // Write HTML content to iframe for safe rendering
+  useEffect(() => {
+    if (selectedEmail?.body_html && iframeRef.current) {
+      const doc = iframeRef.current.contentDocument;
+      if (doc) {
+        doc.open();
+        doc.write(`
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <style>
+              body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; color: #1a1a1a; margin: 0; padding: 16px; line-height: 1.6; }
+              img { max-width: 100%; height: auto; }
+              a { color: #2563eb; }
+              table { max-width: 100%; }
+            </style>
+          </head>
+          <body>${selectedEmail.body_html}</body>
+          </html>
+        `);
+        doc.close();
+      }
+    }
+  }, [selectedEmail]);
 
   const accountsMap = Object.fromEntries(accounts.map(a => [a.id, a]));
 
