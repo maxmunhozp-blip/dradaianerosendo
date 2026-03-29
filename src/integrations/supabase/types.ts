@@ -14,6 +14,69 @@ export type Database = {
   }
   public: {
     Tables: {
+      case_timeline: {
+        Row: {
+          case_id: string
+          created_at: string
+          description: string
+          event_date: string
+          id: string
+          pinned: boolean
+          responsible: string | null
+          source_email_id: string | null
+          status: string
+          title: string
+          type: string
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          case_id: string
+          created_at?: string
+          description?: string
+          event_date?: string
+          id?: string
+          pinned?: boolean
+          responsible?: string | null
+          source_email_id?: string | null
+          status?: string
+          title?: string
+          type?: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          case_id?: string
+          created_at?: string
+          description?: string
+          event_date?: string
+          id?: string
+          pinned?: boolean
+          responsible?: string | null
+          source_email_id?: string | null
+          status?: string
+          title?: string
+          type?: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_timeline_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_timeline_source_email_id_fkey"
+            columns: ["source_email_id"]
+            isOneToOne: false
+            referencedRelation: "email_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cases: {
         Row: {
           case_type: string
