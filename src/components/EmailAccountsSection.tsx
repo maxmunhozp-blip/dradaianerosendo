@@ -504,7 +504,7 @@ export default function EmailAccountsSection() {
               Adicionar conta
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Conectar conta de e-mail</DialogTitle>
               <DialogDescription>
@@ -770,7 +770,7 @@ export default function EmailAccountsSection() {
 
       {/* Edit Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={(v) => { setEditDialogOpen(v); if (!v) setEditingAccount(null); }}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Editar conta</DialogTitle>
             <DialogDescription>
