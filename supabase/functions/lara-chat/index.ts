@@ -62,6 +62,10 @@ Quando a mensagem começar com um comando:
 - /checklist → Gere uma lista completa de documentos necessários para o tipo de caso
 - /analise → Analise o documento ou informação fornecida e dê um parecer técnico
 - /lei [número ou nome] → Busque a lei no LexML e retorne título, resumo e link oficial
+- /intimacoes → Mostre um resumo formatado de todas as intimações pendentes com prazos
+
+## Intimações
+Quando o usuário perguntar sobre intimações, prazos urgentes, ou o que chegou em determinado processo, use os dados da seção "INTIMAÇÕES RECENTES" do contexto.
 
 ## Envio de WhatsApp — Cobrança de documentos pendentes
 Quando a advogada pedir para cobrar documentos pendentes, enviar lembretes por WhatsApp, ou usar o comando /cobrar:
@@ -240,6 +244,30 @@ Total de itens de checklist pendentes: ${pendingChecklist.length}
 ---`;
 }
 
+async function fetchIntimacoesContext(supabase: any): Promise<string> {
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  const { data: intimacoes } = await supabase
+    .from("intimacoes")
+    .select("process_number, tribunal, movement_type, deadline_date, status, ai_summary, created_at, cases(case_type, clients(name))")
+    .gte("created_at", thirtyDaysAgo.toISOString())
+    .order("created_at", { ascending: false })
+    .limit(20);
+
+  if (!intimacoes || intimacoes.length === 0) {
+    return "\n\n## INTIMAÇÕES RECENTES (últimos 30 dias)\nNenhuma intimação recebida nos últimos 30 dias.";
+  }
+
+  let ctx = "\n\n## INTIMAÇÕES RECENTES (últimos 30 dias)\n";
+  for (const i of intimacoes) {
+    const caseName = i.cases ? `${i.cases.case_type} — ${i.cases.clients?.name}` : "Não vinculado";
+    ctx += `- Processo: ${i.process_number || "N/I"} | Tribunal: ${i.tribunal || "N/I"} | Tipo: ${i.movement_type || "N/I"} | Prazo: ${i.deadline_date || "sem prazo"} | Status: ${i.status} | Caso: ${caseName}\n`;
+    if (i.ai_summary) ctx += `  Resumo: ${i.ai_summary}\n`;
+  }
+  return ctx;
+}
+
 async function fetchCaseContext(supabase: any, caseId: string): Promise<string> {
   const { data: caseData } = await supabase
     .from("cases")
@@ -389,11 +417,12 @@ Deno.serve(async (req: Request) => {
     const isLeiCommand = lastMsg?.role === "user" && /^\/lei\s+/i.test(lastMsg.content.trim());
 
     // Fetch all context in parallel (including LexML if needed)
-    const [officeContext, caseContext, settings, lexmlContext] = await Promise.all([
+    const [officeContext, caseContext, settings, lexmlContext, intimacoesContext] = await Promise.all([
       fetchOfficeContext(supabase),
       caseId ? fetchCaseContext(supabase, caseId) : Promise.resolve(""),
       fetchSettings(supabase),
       legalQuery ? fetchLexMLContext(legalQuery, supabaseUrl) : Promise.resolve(""),
+      fetchIntimacoesContext(supabase),
     ]);
     
     // If /lei command but LexML returned nothing, return error immediately
@@ -454,7 +483,7 @@ Use seu conhecimento jurídico para complementar os dados do LexML com explicaç
       settingsContext += `\n### TEMPLATE DE ASSINATURA:\n${settings.template_signing}\n`;
     }
 
-    const fullSystemPrompt = SYSTEM_PROMPT + "\n\n" + officeContext + settingsContext + (caseContext ? "\n\n" + caseContext : "") + lexmlContext;
+    const fullSystemPrompt = SYSTEM_PROMPT + "\n\n" + officeContext + settingsContext + intimacoesContext + (caseContext ? "\n\n" + caseContext : "") + lexmlContext;
 
     // Build messages for the AI API
     const aiMessages: any[] = [

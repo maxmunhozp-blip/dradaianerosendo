@@ -1,4 +1,4 @@
-import { Users, FolderOpen, FileText, TrendingUp, Plus, Bot, MessageSquare, CalendarDays, Clock, MapPin } from "lucide-react";
+import { Users, FolderOpen, FileText, TrendingUp, Plus, Bot, MessageSquare, CalendarDays, Clock, MapPin, Bell, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/StatusBadge";
 import { AnimatedCounter } from "@/components/AnimatedCounter";
@@ -11,7 +11,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { useUpcomingHearings } from "@/hooks/use-hearings";
-import { format, differenceInHours } from "date-fns";
+import { useIntimacaoCount, useUrgentIntimacoes } from "@/hooks/use-intimacoes";
+import { format, differenceInHours, differenceInDays } from "date-fns";
 
 export default function Dashboard() {
   const { data: clients = [], isLoading: clientsLoading } = useClients();
@@ -33,21 +34,17 @@ export default function Dashboard() {
   });
 
   const isLoading = clientsLoading || casesLoading || docsLoading;
+  const { data: intimacaoCount = 0 } = useIntimacaoCount();
 
   const activeClients = clients.filter((c) => c.status === "ativo").length;
   const casesInProgress = cases.filter((c) => c.status !== "encerrado").length;
   const pendingDocs = docs.length;
-  const now = new Date();
-  const casesThisMonth = cases.filter((c) => {
-    const d = new Date(c.created_at);
-    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-  }).length;
 
   const stats = [
     { label: "Clientes ativos", value: activeClients, icon: Users },
     { label: "Casos em andamento", value: casesInProgress, icon: FolderOpen },
     { label: "Docs. pendentes", value: pendingDocs, icon: FileText },
-    { label: "Casos este mês", value: casesThisMonth, icon: TrendingUp },
+    { label: "Intimações novas", value: intimacaoCount, icon: Bell },
   ];
 
   const recentCases = cases.slice(0, 5);
@@ -141,6 +138,9 @@ export default function Dashboard() {
 
       {/* Upcoming hearings */}
       <UpcomingHearings />
+
+      {/* Urgent intimacoes */}
+      <UrgentIntimacoes />
     </div>
   );
 }
@@ -204,6 +204,60 @@ function UpcomingHearings() {
                 {isSoon && (
                   <Badge variant="destructive" className="text-[10px]">
                     {hoursUntil <= 24 ? "Hoje" : "Amanhã"}
+                  </Badge>
+                )}
+              </Link>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
+function UrgentIntimacoes() {
+  const { data: intimacoes = [], isLoading } = useUrgentIntimacoes(7);
+
+  return (
+    <div className="mt-8">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-sm font-medium text-foreground">Intimações urgentes</h2>
+        <Button variant="ghost" size="sm" asChild>
+          <Link to="/intimacoes">
+            <Bell className="w-3.5 h-3.5 mr-1.5" />
+            Ver todas
+          </Link>
+        </Button>
+      </div>
+      <div className="border border-border rounded-lg divide-y divide-border">
+        {isLoading ? (
+          Array.from({ length: 2 }).map((_, i) => (
+            <div key={i} className="px-4 py-3">
+              <Skeleton className="h-4 w-48" />
+              <Skeleton className="h-3 w-24 mt-1.5" />
+            </div>
+          ))
+        ) : intimacoes.length === 0 ? (
+          <div className="px-4 py-6 text-center">
+            <AlertTriangle className="w-5 h-5 text-muted-foreground mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">Nenhuma intimação com prazo urgente</p>
+          </div>
+        ) : (
+          intimacoes.map((item: any) => {
+            const days = item.deadline_date ? differenceInDays(new Date(item.deadline_date), new Date()) : null;
+            return (
+              <Link key={item.id} to="/intimacoes" className="flex items-center justify-between px-4 py-3 hover:bg-muted/50 transition-colors">
+                <div>
+                  <p className="text-sm font-medium text-foreground">
+                    {item.process_number || "Processo não identificado"} — {item.movement_type || "Movimentação"}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {item.tribunal || ""} {item.cases ? `— ${item.cases.case_type} — ${item.cases.clients?.name}` : ""}
+                  </p>
+                </div>
+                {days !== null && (
+                  <Badge variant={days <= 3 ? "destructive" : "outline"} className="text-[10px]">
+                    {days <= 0 ? "Vencido" : `${days}d restantes`}
                   </Badge>
                 )}
               </Link>
