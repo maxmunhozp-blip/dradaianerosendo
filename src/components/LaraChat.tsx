@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, Paperclip, FileText, Image, X, Loader2 } from "lucide-react";
+import { Send, Paperclip, FileText, Image, X, Loader2, MessageSquare, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ReactMarkdown from "react-markdown";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import type { ChatAttachment } from "@/lib/lara-stream";
 
 export interface ChatMessage {
@@ -10,6 +12,103 @@ export interface ChatMessage {
   content: string;
   attachments?: ChatAttachment[];
   isStreaming?: boolean;
+}
+
+interface WhatsAppAction {
+  phone: string;
+  message: string;
+  name: string;
+}
+
+function parseWhatsAppActions(content: string): { cleanContent: string; actions: WhatsAppAction[] } {
+  const regex = /```whatsapp-action\s*\n([\s\S]*?)```/g;
+  let actions: WhatsAppAction[] = [];
+  const cleanContent = content.replace(regex, (_, json) => {
+    try {
+      const parsed = JSON.parse(json.trim());
+      if (Array.isArray(parsed)) actions = parsed;
+    } catch { /* ignore */ }
+    return "";
+  }).trim();
+  return { cleanContent, actions };
+}
+
+function WhatsAppActionBlock({ actions }: { actions: WhatsAppAction[] }) {
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [results, setResults] = useState<{ name: string; success: boolean }[]>([]);
+
+  const handleSend = async () => {
+    setSending(true);
+    const sendResults: { name: string; success: boolean }[] = [];
+
+    for (const action of actions) {
+      try {
+        const { error } = await supabase.functions.invoke("whatsapp", {
+          body: { phone: action.phone, message: action.message },
+        });
+        sendResults.push({ name: action.name, success: !error });
+      } catch {
+        sendResults.push({ name: action.name, success: false });
+      }
+    }
+
+    setResults(sendResults);
+    setSending(false);
+    setSent(true);
+
+    const successCount = sendResults.filter((r) => r.success).length;
+    if (successCount === actions.length) {
+      toast.success(`Mensagens enviadas para ${successCount} cliente(s)!`);
+    } else {
+      toast.warning(`${successCount}/${actions.length} mensagens enviadas.`);
+    }
+  };
+
+  if (sent) {
+    return (
+      <div className="mt-3 rounded-md border border-border bg-muted/50 p-3 space-y-1.5">
+        <div className="flex items-center gap-2 text-xs font-medium text-foreground">
+          <CheckCircle2 className="w-3.5 h-3.5 text-accent" />
+          Envio concluído
+        </div>
+        {results.map((r, i) => (
+          <div key={i} className="text-[11px] text-muted-foreground">
+            {r.success ? "✓" : "✗"} {r.name}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3 rounded-md border border-border bg-muted/50 p-3">
+      <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+        <MessageSquare className="w-3.5 h-3.5" />
+        {actions.length} mensagem(ns) para enviar via WhatsApp
+      </div>
+      <div className="space-y-1 mb-3">
+        {actions.map((a, i) => (
+          <div key={i} className="text-[11px] text-muted-foreground">
+            • {a.name} — {a.phone}
+          </div>
+        ))}
+      </div>
+      <Button
+        size="sm"
+        onClick={handleSend}
+        disabled={sending}
+        className="w-full"
+      >
+        {sending ? (
+          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+        ) : (
+          <Send className="w-3.5 h-3.5" />
+        )}
+        {sending ? "Enviando..." : "Confirmar envio"}
+      </Button>
+    </div>
+  );
 }
 
 export function LaraChat({
@@ -81,6 +180,28 @@ export function LaraChat({
     setAttachments((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const renderMessageContent = (msg: ChatMessage) => {
+    if (msg.role !== "assistant") {
+      return <p className="whitespace-pre-wrap">{msg.content}</p>;
+    }
+
+    const { cleanContent, actions } = parseWhatsAppActions(msg.content);
+
+    return (
+      <>
+        <div className="prose prose-sm max-w-none prose-headings:text-secondary-foreground prose-p:text-secondary-foreground prose-li:text-secondary-foreground prose-strong:text-secondary-foreground prose-code:text-secondary-foreground">
+          <ReactMarkdown>{cleanContent}</ReactMarkdown>
+          {msg.isStreaming && (
+            <span className="inline-block w-1.5 h-4 bg-current animate-pulse ml-0.5" />
+          )}
+        </div>
+        {actions.length > 0 && !msg.isStreaming && (
+          <WhatsAppActionBlock actions={actions} />
+        )}
+      </>
+    );
+  };
+
   return (
     <div className={`flex flex-col h-full ${className || ""}`}>
       {/* Header */}
@@ -96,7 +217,7 @@ export function LaraChat({
           <div className="text-center py-8">
             <p className="text-sm text-muted-foreground">Inicie uma conversa com a LARA.</p>
             <p className="text-xs text-muted-foreground mt-2">
-              Comandos: /procuracao · /contrato · /peticao · /checklist · /analise
+              Comandos: /procuracao · /contrato · /peticao · /checklist · /analise · /cobrar
             </p>
           </div>
         )}
@@ -131,16 +252,7 @@ export function LaraChat({
                 </div>
               )}
 
-              {msg.role === "assistant" ? (
-                <div className="prose prose-sm max-w-none prose-headings:text-secondary-foreground prose-p:text-secondary-foreground prose-li:text-secondary-foreground prose-strong:text-secondary-foreground prose-code:text-secondary-foreground">
-                  <ReactMarkdown>{msg.content}</ReactMarkdown>
-                  {msg.isStreaming && (
-                    <span className="inline-block w-1.5 h-4 bg-current animate-pulse ml-0.5" />
-                  )}
-                </div>
-              ) : (
-                <p className="whitespace-pre-wrap">{msg.content}</p>
-              )}
+              {renderMessageContent(msg)}
             </div>
           </div>
         ))}
@@ -209,7 +321,7 @@ export function LaraChat({
                 handleSend();
               }
             }}
-            placeholder="Pergunte algo à LARA ou use um comando como /procuracao..."
+            placeholder="Pergunte algo à LARA ou use /cobrar para enviar lembretes..."
             className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
             disabled={isLoading}
           />
