@@ -140,7 +140,13 @@ function useRegisterIntimacao() {
 }
 
 export default function MailPage() {
-  const [selectedAccountId, setSelectedAccountId] = useState<string>("all");
+  const [selectedAccountId, setSelectedAccountId] = useState<string>(() => {
+    return localStorage.getItem("mail_selected_account") || "all";
+  });
+
+  useEffect(() => {
+    localStorage.setItem("mail_selected_account", selectedAccountId);
+  }, [selectedAccountId]);
   const [filter, setFilter] = useState<EmailFilter>("all");
   const [search, setSearch] = useState("");
   const [selectedEmail, setSelectedEmail] = useState<EmailMessage | null>(null);
