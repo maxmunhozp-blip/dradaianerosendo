@@ -71,7 +71,8 @@ function decodeQuotedPrintable(str: string): string {
 }
 
 // Parse MIME parts from raw email
-function parseMimeParts(raw: string): { html: string | null; text: string } {
+function parseMimeParts(raw: string, depth = 0): { html: string | null; text: string } {
+  if (depth > 5) return { html: null, text: "" };
   // Find boundary
   const boundaryMatch = raw.match(/boundary="?([^"\s;]+)"?/i);
   
@@ -116,7 +117,7 @@ function parseMimeParts(raw: string): { html: string | null; text: string } {
     // Check for nested multipart
     const nestedBoundary = part.match(/boundary="?([^"\s;]+)"?/i);
     if (nestedBoundary) {
-      const nested = parseMimeParts(part);
+      const nested = parseMimeParts(part, depth + 1);
       if (nested.html) htmlContent = nested.html;
       if (nested.text && !textContent) textContent = nested.text;
       continue;
