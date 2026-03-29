@@ -173,6 +173,45 @@ export type Database = {
           },
         ]
       }
+      email_accounts: {
+        Row: {
+          access_token: string | null
+          created_at: string
+          email: string
+          gmail_message_id_cursor: string | null
+          id: string
+          label: string
+          last_sync: string | null
+          platform: string
+          refresh_token: string | null
+          status: string
+        }
+        Insert: {
+          access_token?: string | null
+          created_at?: string
+          email: string
+          gmail_message_id_cursor?: string | null
+          id?: string
+          label: string
+          last_sync?: string | null
+          platform?: string
+          refresh_token?: string | null
+          status?: string
+        }
+        Update: {
+          access_token?: string | null
+          created_at?: string
+          email?: string
+          gmail_message_id_cursor?: string | null
+          id?: string
+          label?: string
+          last_sync?: string | null
+          platform?: string
+          refresh_token?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       hearings: {
         Row: {
           alert_whatsapp: boolean
