@@ -174,6 +174,33 @@ export default function EmailAccountsSection() {
     setImapHost("imap.hostinger.com");
     setImapPort("993");
     setProviderTab("gmail");
+    setTestResult(null);
+  };
+
+  const handleTestConnection = async () => {
+    if (!hostEmail.trim()) { toast.error("Informe o e-mail"); return; }
+    if (!hostPassword.trim()) { toast.error("Informe a senha"); return; }
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("test-imap", {
+        body: {
+          host: imapHost,
+          port: parseInt(imapPort),
+          user: hostEmail,
+          password: hostPassword,
+        },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || "Falha na conexão IMAP");
+      setTestResult("success");
+      toast.success("Conexão IMAP testada com sucesso!");
+    } catch (err: any) {
+      setTestResult("error");
+      toast.error("Falha no teste: " + err.message);
+    } finally {
+      setTesting(false);
+    }
   };
 
   // Handle OAuth redirect
