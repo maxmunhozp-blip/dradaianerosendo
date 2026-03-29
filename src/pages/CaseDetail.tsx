@@ -184,6 +184,16 @@ export default function CaseDetail() {
     }
   };
 
+  const handleDeleteCase = async () => {
+    try {
+      await deleteCase.mutateAsync(id!);
+      toast.success("Caso excluído");
+      navigate(`/clients/${caseData.client_id}`);
+    } catch {
+      toast.error("Erro ao excluir caso");
+    }
+  };
+
   return (
     <div className="relative flex h-[calc(100vh-3rem)]">
       {/* Left column */}
