@@ -362,6 +362,23 @@ export function ProcessTimeline({ caseId }: ProcessTimelineProps) {
                             </span>
                           )}
                         </div>
+                        {/* Attachments */}
+                        {entry.file_urls && entry.file_urls.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 mt-2">
+                            {entry.file_urls.map((file, fi) => (
+                              <a
+                                key={fi}
+                                href={file.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded bg-muted hover:bg-muted/80 text-foreground transition-colors"
+                              >
+                                <Paperclip className="w-3 h-3 shrink-0" />
+                                <span className="truncate max-w-[120px]">{file.name}</span>
+                              </a>
+                            ))}
+                          </div>
+                        )}
                       </div>
 
                       {/* Actions */}
@@ -454,6 +471,51 @@ export function ProcessTimeline({ caseId }: ProcessTimelineProps) {
                 value={formDescription}
                 onChange={(e) => setFormDescription(e.target.value)}
               />
+            </div>
+            {/* File upload */}
+            <div className="space-y-2">
+              <Label className="text-xs">Documentos anexos</Label>
+              <div className="flex items-center gap-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  className="hidden"
+                  onChange={handleFileUpload}
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-xs gap-1.5"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                >
+                  {uploading ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <Upload className="w-3 h-3" />
+                  )}
+                  {uploading ? "Enviando..." : "Anexar arquivo"}
+                </Button>
+              </div>
+              {formFiles.length > 0 && (
+                <div className="space-y-1">
+                  {formFiles.map((file, i) => (
+                    <div key={i} className="flex items-center gap-2 text-xs bg-muted rounded px-2 py-1">
+                      <Paperclip className="w-3 h-3 shrink-0 text-muted-foreground" />
+                      <span className="truncate flex-1">{file.name}</span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-5 w-5 shrink-0"
+                        onClick={() => removeFormFile(i)}
+                      >
+                        <X className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <input
