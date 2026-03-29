@@ -402,7 +402,7 @@ export default function EmailAccountsSection() {
         label: newLabel,
         email: hostEmail,
         platform: newPlatform,
-        provider: "hostinger",
+        provider: providerTab === "gmail" ? "gmail" : "hostinger",
         status: "conectado",
         imap_host: imapHost,
         imap_port: parseInt(imapPort),
