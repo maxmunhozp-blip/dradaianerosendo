@@ -228,9 +228,7 @@ export default function MailPage() {
 
   const handleSync = () => {
     const accountId = selectedAccountId === "all" ? undefined : selectedAccountId;
-    // All accounts use sync-imap since Gmail is also connected via IMAP (app password)
     syncImap.mutate(accountId);
-    }
   };
 
   const handleMarkRead = async (email: EmailMessage) => {
