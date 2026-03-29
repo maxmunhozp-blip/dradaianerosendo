@@ -104,6 +104,65 @@ const VALIDATORS: Record<string, { regex: RegExp; msg: string }> = {
   },
 };
 
+function TemplateField({
+  label,
+  placeholder,
+  value,
+  onChange,
+  variables,
+}: {
+  label: string;
+  placeholder: string;
+  value: string;
+  onChange: (v: string) => void;
+  variables: { tag: string; desc: string }[];
+}) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const insertVariable = (tag: string) => {
+    const ta = textareaRef.current;
+    if (!ta) {
+      onChange(value + tag);
+      return;
+    }
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const newVal = value.substring(0, start) + tag + value.substring(end);
+    onChange(newVal);
+    requestAnimationFrame(() => {
+      ta.focus();
+      ta.selectionStart = ta.selectionEnd = start + tag.length;
+    });
+  };
+
+  return (
+    <div className="space-y-2">
+      <Label className="text-xs">{label}</Label>
+      <Textarea
+        ref={textareaRef}
+        rows={5}
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="text-[10px] text-muted-foreground mr-1">Variáveis:</span>
+        {variables.map((v) => (
+          <Badge
+            key={v.tag}
+            variant="outline"
+            className="text-[10px] px-1.5 py-0 cursor-pointer hover:bg-primary/10 hover:text-primary hover:border-primary/30 transition-colors font-mono"
+            title={`${v.desc} — clique para inserir`}
+            onClick={() => insertVariable(v.tag)}
+          >
+            {v.tag}
+          </Badge>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function Settings() {
   const [values, setValues] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
