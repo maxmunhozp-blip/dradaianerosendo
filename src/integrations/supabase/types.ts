@@ -189,6 +189,8 @@ export type Database = {
           platform: string
           provider: string
           refresh_token: string | null
+          smtp_host: string | null
+          smtp_port: number | null
           status: string
         }
         Insert: {
@@ -206,6 +208,8 @@ export type Database = {
           platform?: string
           provider?: string
           refresh_token?: string | null
+          smtp_host?: string | null
+          smtp_port?: number | null
           status?: string
         }
         Update: {
@@ -223,6 +227,8 @@ export type Database = {
           platform?: string
           provider?: string
           refresh_token?: string | null
+          smtp_host?: string | null
+          smtp_port?: number | null
           status?: string
         }
         Relationships: []
