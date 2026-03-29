@@ -47,6 +47,7 @@ export default function ClientDetail() {
   const updateClient = useUpdateClient();
   const deleteClient = useDeleteClient();
   const createCase = useCreateCase();
+  const { data: caseTypesList = ["Divórcio", "Guarda", "Alimentos", "Inventário", "Outro"] } = useCaseTypes();
 
   const [notes, setNotes] = useState<string | null>(null);
   const [caseDialogOpen, setCaseDialogOpen] = useState(false);
