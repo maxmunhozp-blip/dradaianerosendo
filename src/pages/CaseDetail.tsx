@@ -12,7 +12,8 @@ import { ChecklistItemRow } from "@/components/ChecklistItemRow";
 import { LaraChat } from "@/components/LaraChat";
 import { EmptyState } from "@/components/EmptyState";
 import { DetailSkeleton } from "@/components/Skeletons";
-import { ArrowLeft, Upload, Plus, FileText, ClipboardList, FolderOpen } from "lucide-react";
+import { ArrowLeft, Upload, Plus, FileText, ClipboardList, FolderOpen, FileDown } from "lucide-react";
+import { GenerateDocumentsModal } from "@/components/GenerateDocumentsModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -45,6 +46,7 @@ export default function CaseDetail() {
   const [newItem, setNewItem] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [historyLoaded, setHistoryLoaded] = useState(false);
+  const [showDocGen, setShowDocGen] = useState(false);
 
   useEffect(() => {
     if (dbMessages.length > 0 && !historyLoaded) {
