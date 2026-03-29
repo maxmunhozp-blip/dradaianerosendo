@@ -69,8 +69,27 @@ export function CaseStatusStepper({ currentStatus }: { currentStatus: string }) 
   const currentIndex = steps.findIndex((s) => s.key === currentStatus);
   const [expandedStep, setExpandedStep] = useState<string | null>(null);
 
+  // Track manually checked tasks: { "documentacao-0": true, ... }
+  const [checkedTasks, setCheckedTasks] = useState<Record<string, boolean>>(() => {
+    // Pre-check all tasks for completed steps
+    const initial: Record<string, boolean> = {};
+    steps.forEach((step, i) => {
+      if (i < currentIndex) {
+        step.tasks.forEach((_, ti) => {
+          initial[`${step.key}-${ti}`] = true;
+        });
+      }
+    });
+    return initial;
+  });
+
   const handleStepClick = (key: string) => {
     setExpandedStep(expandedStep === key ? null : key);
+  };
+
+  const toggleTask = (stepKey: string, taskIndex: number) => {
+    const key = `${stepKey}-${taskIndex}`;
+    setCheckedTasks((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
   return (
@@ -159,26 +178,37 @@ export function CaseStatusStepper({ currentStatus }: { currentStatus: string }) 
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5">{step.description}</p>
-                <ul className="mt-2 space-y-1">
-                  {step.tasks.map((task, ti) => (
-                    <li key={ti} className="flex items-center gap-2 text-xs">
-                      <div
-                        className={cn(
-                          "w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0",
-                          isCompleted
-                            ? "border-emerald-500 bg-emerald-500 text-white"
-                            : "border-border"
-                        )}
-                      >
-                        {isCompleted && <Check className="w-2 h-2" />}
-                      </div>
-                      <span className={cn(
-                        isCompleted ? "text-muted-foreground line-through" : "text-foreground"
-                      )}>
-                        {task}
-                      </span>
-                    </li>
-                  ))}
+                <ul className="mt-2 space-y-1.5">
+                  {step.tasks.map((task, ti) => {
+                    const taskKey = `${step.key}-${ti}`;
+                    const isChecked = !!checkedTasks[taskKey];
+
+                    return (
+                      <li key={ti} className="flex items-center gap-2 text-xs">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleTask(step.key, ti);
+                          }}
+                          className={cn(
+                            "w-4 h-4 rounded-full border flex items-center justify-center shrink-0 transition-all cursor-pointer",
+                            "hover:ring-2 hover:ring-primary/20",
+                            isChecked
+                              ? "border-emerald-500 bg-emerald-500 text-white"
+                              : "border-muted-foreground/40 hover:border-primary"
+                          )}
+                        >
+                          {isChecked && <Check className="w-2.5 h-2.5" />}
+                        </button>
+                        <span className={cn(
+                          isChecked ? "text-muted-foreground line-through" : "text-foreground"
+                        )}>
+                          {task}
+                        </span>
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             </div>
