@@ -36,6 +36,7 @@ const stripHtml = (html?: string | null): string => {
 };
 
 interface EmailMessage {
+  id: string;
   created_at: string;
   email_account_id: string;
   message_uid: string;
