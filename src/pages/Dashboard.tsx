@@ -1,4 +1,4 @@
-import { Users, FolderOpen, FileText, TrendingUp, Plus, Bot, MessageSquare, CalendarDays, Clock, MapPin, Bell, AlertTriangle } from "lucide-react";
+import { Users, FolderOpen, FileText, TrendingUp, Plus, Bot, MessageSquare, CalendarDays, Clock, MapPin, Bell, AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/StatusBadge";
 import { AnimatedCounter } from "@/components/AnimatedCounter";
@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { useUpcomingHearings } from "@/hooks/use-hearings";
 import { useIntimacaoCount, useUrgentIntimacoes } from "@/hooks/use-intimacoes";
+import { useSyncGmail } from "@/components/EmailAccountsSection";
 import { format, differenceInHours, differenceInDays } from "date-fns";
 
 export default function Dashboard() {
@@ -57,6 +58,7 @@ export default function Dashboard() {
           <p className="text-sm text-muted-foreground mt-0.5">Visão geral do escritório</p>
         </div>
         <div className="flex gap-2">
+          <SyncEmailsButton />
           <Button variant="outline" size="sm" asChild>
             <Link to="/lara?cmd=/cobrar">
               <MessageSquare className="w-3.5 h-3.5 mr-1.5" />
