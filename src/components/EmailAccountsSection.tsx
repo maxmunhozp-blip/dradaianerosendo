@@ -501,6 +501,13 @@ export default function EmailAccountsSection() {
               )}
             </div>
 
+            {providerTab === "hostinger" && testResult && (
+              <div className={`flex items-center gap-2 text-xs px-3 py-2 rounded-md ${testResult === "success" ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-700 border border-red-200"}`}>
+                {testResult === "success" ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+                {testResult === "success" ? "Conexão IMAP válida! Pode salvar a conta." : "Falha na conexão. Verifique as credenciais."}
+              </div>
+            )}
+
             <DialogFooter>
               {providerTab === "gmail" ? (
                 <Button onClick={handleConnectGmail} disabled={saving} className="bg-amber-600 hover:bg-amber-700">
@@ -508,10 +515,16 @@ export default function EmailAccountsSection() {
                   Conectar Gmail
                 </Button>
               ) : (
-                <Button onClick={handleConnectHostinger} disabled={saving} className="bg-amber-600 hover:bg-amber-700">
-                  {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Server className="w-4 h-4 mr-1" />}
-                  Testar e conectar
-                </Button>
+                <div className="flex gap-2 w-full justify-end">
+                  <Button variant="outline" onClick={handleTestConnection} disabled={testing || saving}>
+                    {testing ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <RefreshCw className="w-4 h-4 mr-1" />}
+                    Testar conexão
+                  </Button>
+                  <Button onClick={handleConnectHostinger} disabled={saving} className="bg-amber-600 hover:bg-amber-700">
+                    {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Server className="w-4 h-4 mr-1" />}
+                    Salvar conta
+                  </Button>
+                </div>
               )}
             </DialogFooter>
           </DialogContent>
