@@ -1,4 +1,4 @@
-import { Users, FolderOpen, FileText, TrendingUp, Plus, Bot, MessageSquare, CalendarDays, Clock, MapPin } from "lucide-react";
+import { Users, FolderOpen, FileText, TrendingUp, Plus, Bot, MessageSquare, CalendarDays, Clock, MapPin, Bell, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/StatusBadge";
 import { AnimatedCounter } from "@/components/AnimatedCounter";
@@ -11,7 +11,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { useUpcomingHearings } from "@/hooks/use-hearings";
-import { format, differenceInHours } from "date-fns";
+import { useIntimacaoCount, useUrgentIntimacoes } from "@/hooks/use-intimacoes";
+import { format, differenceInHours, differenceInDays } from "date-fns";
 
 export default function Dashboard() {
   const { data: clients = [], isLoading: clientsLoading } = useClients();
@@ -33,21 +34,17 @@ export default function Dashboard() {
   });
 
   const isLoading = clientsLoading || casesLoading || docsLoading;
+  const { data: intimacaoCount = 0 } = useIntimacaoCount();
 
   const activeClients = clients.filter((c) => c.status === "ativo").length;
   const casesInProgress = cases.filter((c) => c.status !== "encerrado").length;
   const pendingDocs = docs.length;
-  const now = new Date();
-  const casesThisMonth = cases.filter((c) => {
-    const d = new Date(c.created_at);
-    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-  }).length;
 
   const stats = [
     { label: "Clientes ativos", value: activeClients, icon: Users },
     { label: "Casos em andamento", value: casesInProgress, icon: FolderOpen },
     { label: "Docs. pendentes", value: pendingDocs, icon: FileText },
-    { label: "Casos este mês", value: casesThisMonth, icon: TrendingUp },
+    { label: "Intimações novas", value: intimacaoCount, icon: Bell },
   ];
 
   const recentCases = cases.slice(0, 5);
@@ -141,6 +138,9 @@ export default function Dashboard() {
 
       {/* Upcoming hearings */}
       <UpcomingHearings />
+
+      {/* Urgent intimacoes */}
+      <UrgentIntimacoes />
     </div>
   );
 }
