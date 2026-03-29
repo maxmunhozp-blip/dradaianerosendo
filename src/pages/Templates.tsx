@@ -196,6 +196,8 @@ export default function Templates() {
     }
   };
 
+  const selectedCaseData = cases?.find((c) => c.id === selectedCase);
+
   return (
     <div className="space-y-6">
       {/* Header */}
