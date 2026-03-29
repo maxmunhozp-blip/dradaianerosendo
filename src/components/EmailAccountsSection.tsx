@@ -437,6 +437,8 @@ export default function EmailAccountsSection() {
     setEditPassword("");
     setEditHost(account.imap_host || "imap.hostinger.com");
     setEditPort(String(account.imap_port || 993));
+    setEditSmtpHost((account as any).smtp_host || "smtp.hostinger.com");
+    setEditSmtpPort(String((account as any).smtp_port || 465));
     setShowEditPassword(false);
     setEditDialogOpen(true);
   };
@@ -453,6 +455,8 @@ export default function EmailAccountsSection() {
       if (editingAccount.provider !== "gmail") {
         updates.imap_host = editHost;
         updates.imap_port = parseInt(editPort);
+        updates.smtp_host = editSmtpHost;
+        updates.smtp_port = parseInt(editSmtpPort);
 
         // If password changed, test and update
         if (editPassword.trim()) {
