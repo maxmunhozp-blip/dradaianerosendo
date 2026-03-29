@@ -276,7 +276,7 @@ async function syncAccount(admin: any, account: ImapAccount): Promise<number> {
     const isJudicial = /\.jus\.br/i.test(fromEmail);
 
     // Parse MIME parts for proper HTML/text extraction
-    const { html: bodyHtml, text: bodyText } = parseMimeParts(fetchResp);
+    const { html: bodyHtml, text: bodyText } = extractEmailBody(fetchResp);
 
     // Filter: only import legal-related emails
     const textToCheck =
