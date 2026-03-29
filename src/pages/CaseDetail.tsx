@@ -11,6 +11,7 @@ import { DocumentRow } from "@/components/DocumentRow";
 import { ChecklistItemRow } from "@/components/ChecklistItemRow";
 import { LaraChat } from "@/components/LaraChat";
 import { EmptyState } from "@/components/EmptyState";
+import { ProcessTimeline } from "@/components/ProcessTimeline";
 import { DetailSkeleton } from "@/components/Skeletons";
 import { CaseTimeline } from "@/components/CaseTimeline";
 import { ArrowLeft, Upload, Plus, FileText, ClipboardList, FolderOpen, FileDown, Scale, PanelRightClose, PanelRightOpen, CalendarDays, Clock, MapPin, MessageSquare, Pencil } from "lucide-react";
@@ -464,7 +465,12 @@ export default function CaseDetail() {
           <HearingModal open={showHearingModal} onOpenChange={setShowHearingModal} defaultCaseId={id} />
         </div>
 
-        {/* Timeline */}
+        {/* Process Timeline */}
+        <div className="mb-8">
+          <ProcessTimeline caseId={id!} />
+        </div>
+
+        {/* Activity Timeline */}
         <CaseTimeline
           documents={documents}
           messages={dbMessages}
