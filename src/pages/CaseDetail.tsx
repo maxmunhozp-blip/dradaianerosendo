@@ -253,6 +253,58 @@ export default function CaseDetail() {
           checklist={checklist}
         />
 
+        {/* Edit Case Modal */}
+        <Dialog open={showEditCase} onOpenChange={setShowEditCase}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Editar Caso</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label>Tipo do caso</Label>
+                <Input
+                  value={editCaseType}
+                  onChange={(e) => setEditCaseType(e.target.value)}
+                  placeholder="Ex: Alimentos, Divórcio, Trabalhista..."
+                />
+              </div>
+              <div>
+                <Label>Descrição</Label>
+                <Textarea
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  placeholder="Descrição do caso"
+                  rows={3}
+                />
+              </div>
+              <div>
+                <Label>Número CNJ</Label>
+                <Input
+                  value={editCnj}
+                  onChange={(e) => setEditCnj(e.target.value)}
+                  placeholder="0000000-00.0000.0.00.0000"
+                />
+              </div>
+              <div>
+                <Label>Vara / Tribunal</Label>
+                <Input
+                  value={editCourt}
+                  onChange={(e) => setEditCourt(e.target.value)}
+                  placeholder="Ex: 1ª Vara de Família"
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" onClick={() => setShowEditCase(false)}>
+                  Cancelar
+                </Button>
+                <Button onClick={handleSaveCase} disabled={!editCaseType.trim() || updateCase.isPending}>
+                  Salvar
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
         <div className="mb-8 border border-border rounded-lg p-4">
           <CaseStatusStepper currentStatus={caseData.status} />
         </div>
