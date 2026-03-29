@@ -548,6 +548,65 @@ export default function Settings() {
         </div>
       </CollapsibleSection>
 
+      {/* Tipos de Ação */}
+      <CollapsibleSection
+        open={openSections.caseTypes}
+        onOpenChange={() => toggle("caseTypes")}
+        icon={Scale}
+        iconBg="bg-primary/10 text-primary"
+        title="Tipos de Ação"
+        description="Gerencie os tipos de ação disponíveis nos casos"
+      >
+        <div className="space-y-3">
+          <div className="border rounded-lg divide-y">
+            {caseTypes.map((type, index) => (
+              <div key={index} className="flex items-center gap-2 px-3 py-2">
+                {editingIndex === index ? (
+                  <>
+                    <Input
+                      className="h-7 text-xs flex-1"
+                      value={editingValue}
+                      onChange={(e) => setEditingValue(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && confirmEdit()}
+                      autoFocus
+                    />
+                    <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={confirmEdit}>
+                      Salvar
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setEditingIndex(null)}>
+                      Cancelar
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <span className="flex-1 text-sm">{type}</span>
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => startEdit(index)}>
+                      <Pencil className="w-3 h-3" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => deleteCaseType(index)}>
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center gap-2">
+            <Input
+              className="h-8 text-xs flex-1"
+              placeholder="Novo tipo de ação..."
+              value={newCaseType}
+              onChange={(e) => setNewCaseType(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && addCaseType()}
+            />
+            <Button variant="outline" size="sm" className="h-8 text-xs gap-1" onClick={addCaseType}>
+              <Plus className="w-3 h-3" />
+              Adicionar
+            </Button>
+          </div>
+        </div>
+      </CollapsibleSection>
+
       {/* Z-API */}
       <CollapsibleSection
         open={openSections.zapi}
