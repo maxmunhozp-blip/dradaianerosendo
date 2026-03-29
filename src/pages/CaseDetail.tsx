@@ -155,19 +155,35 @@ export default function CaseDetail() {
               <p className="text-xs text-muted-foreground">Vara: {caseData.court}</p>
             )}
           </div>
-          <Select value={caseData.status} onValueChange={handleStatusChange}>
-            <SelectTrigger className="w-44 h-8 text-sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {statusSteps.map((s) => (
-                <SelectItem key={s} value={s}>
-                  {s === "documentacao" ? "Documentação" : s === "montagem" ? "Montagem" : s === "protocolo" ? "Protocolo" : s === "andamento" ? "Em andamento" : "Encerrado"}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setShowDocGen(true)}>
+              <FileDown className="w-3.5 h-3.5 mr-1.5" />
+              Gerar documentos
+            </Button>
+            <Select value={caseData.status} onValueChange={handleStatusChange}>
+              <SelectTrigger className="w-44 h-8 text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {statusSteps.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {s === "documentacao" ? "Documentação" : s === "montagem" ? "Montagem" : s === "protocolo" ? "Protocolo" : s === "andamento" ? "Em andamento" : "Encerrado"}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
+
+        <GenerateDocumentsModal
+          open={showDocGen}
+          onOpenChange={setShowDocGen}
+          caseId={id!}
+          caseType={caseData.case_type}
+          clientName={clientName}
+          clientCpf={(caseData as any).clients?.cpf || null}
+          clientEmail={(caseData as any).clients?.email || null}
+        />
 
         <div className="mb-8 border border-border rounded-lg p-4">
           <CaseStatusStepper currentStatus={caseData.status} />
