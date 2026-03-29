@@ -217,6 +217,68 @@ export type Database = {
           },
         ]
       }
+      intimacoes: {
+        Row: {
+          ai_summary: string | null
+          case_id: string | null
+          created_at: string
+          deadline_date: string | null
+          from_email: string | null
+          gmail_message_id: string | null
+          id: string
+          movement_type: string | null
+          notes: string | null
+          process_number: string | null
+          raw_email_body: string
+          raw_email_date: string | null
+          raw_email_subject: string
+          status: string
+          tribunal: string | null
+        }
+        Insert: {
+          ai_summary?: string | null
+          case_id?: string | null
+          created_at?: string
+          deadline_date?: string | null
+          from_email?: string | null
+          gmail_message_id?: string | null
+          id?: string
+          movement_type?: string | null
+          notes?: string | null
+          process_number?: string | null
+          raw_email_body?: string
+          raw_email_date?: string | null
+          raw_email_subject?: string
+          status?: string
+          tribunal?: string | null
+        }
+        Update: {
+          ai_summary?: string | null
+          case_id?: string | null
+          created_at?: string
+          deadline_date?: string | null
+          from_email?: string | null
+          gmail_message_id?: string | null
+          id?: string
+          movement_type?: string | null
+          notes?: string | null
+          process_number?: string | null
+          raw_email_body?: string
+          raw_email_date?: string | null
+          raw_email_subject?: string
+          status?: string
+          tribunal?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "intimacoes_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           attachments: Json | null
