@@ -117,7 +117,7 @@ function parseMimeParts(raw: string, depth = 0): { html: string | null; text: st
     // Check for nested multipart
     const nestedBoundary = part.match(/boundary="?([^"\s;]+)"?/i);
     if (nestedBoundary) {
-      const nested = parseMimeParts(part);
+      const nested = parseMimeParts(part, depth + 1);
       if (nested.html) htmlContent = nested.html;
       if (nested.text && !textContent) textContent = nested.text;
       continue;
