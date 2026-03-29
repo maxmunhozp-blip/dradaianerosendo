@@ -63,10 +63,12 @@ interface SyncConfigModalProps {
   saving?: boolean;
   initialConfig?: Partial<SyncConfig>;
   provider?: string;
+  accountEmail?: string;
 }
 
-export function SyncConfigModal({ open, onOpenChange, onSave, saving, initialConfig, provider }: SyncConfigModalProps) {
+export function SyncConfigModal({ open, onOpenChange, onSave, saving, initialConfig, provider, accountEmail }: SyncConfigModalProps) {
   const isCorporate = provider === "hostinger" || provider === "imap";
+  const accountDomain = accountEmail?.split("@")[1] ?? "";
   const [importAll, setImportAll] = useState(initialConfig?.sync_import_all ?? isCorporate);
   const [limit, setLimit] = useState(initialConfig?.sync_limit ?? 100);
   const [subjectFilters, setSubjectFilters] = useState<string[]>(
@@ -78,7 +80,7 @@ export function SyncConfigModal({ open, onOpenChange, onSave, saving, initialCon
   const [pdfOnly, setPdfOnly] = useState(initialConfig?.sync_attachments_pdf_only ?? true);
   const [periodDays, setPeriodDays] = useState(String(initialConfig?.sync_period_days ?? 30));
   const [syncFinancial, setSyncFinancial] = useState(initialConfig?.sync_financial ?? false);
-  const [extraDomains, setExtraDomains] = useState(initialConfig?.sync_extra_domains ?? "");
+  const [extraDomains, setExtraDomains] = useState(initialConfig?.sync_extra_domains ?? (isCorporate ? accountDomain : ""));
 
   const toggleFilter = (filter: string) => {
     setSubjectFilters((prev) =>
