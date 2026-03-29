@@ -261,6 +261,7 @@ export type Database = {
           sync_attachments: boolean | null
           sync_attachments_pdf_only: boolean | null
           sync_configured: boolean | null
+          sync_error_message: string | null
           sync_extra_senders: string | null
           sync_import_all: boolean | null
           sync_judicial_only: boolean | null
@@ -289,6 +290,7 @@ export type Database = {
           sync_attachments?: boolean | null
           sync_attachments_pdf_only?: boolean | null
           sync_configured?: boolean | null
+          sync_error_message?: string | null
           sync_extra_senders?: string | null
           sync_import_all?: boolean | null
           sync_judicial_only?: boolean | null
@@ -317,6 +319,7 @@ export type Database = {
           sync_attachments?: boolean | null
           sync_attachments_pdf_only?: boolean | null
           sync_configured?: boolean | null
+          sync_error_message?: string | null
           sync_extra_senders?: string | null
           sync_import_all?: boolean | null
           sync_judicial_only?: boolean | null
