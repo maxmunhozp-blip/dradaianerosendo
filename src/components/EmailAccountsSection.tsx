@@ -528,7 +528,7 @@ export default function EmailAccountsSection() {
           });
           if (error) throw error;
           if (!data?.success) throw new Error(data?.error || "Falha na conexão IMAP");
-          updates.imap_password = btoa(editPassword.replace(/\s/g, ""));
+          updates.imap_password = editPassword.replace(/\s/g, "");
           updates.status = "conectado";
         }
       }
