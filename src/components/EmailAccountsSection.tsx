@@ -43,6 +43,14 @@ interface EmailAccount {
   imap_port: number | null;
   imap_user: string | null;
   imap_password: string | null;
+  sync_configured: boolean;
+  sync_limit: number;
+  sync_subject_filters: string[];
+  sync_judicial_only: boolean;
+  sync_extra_senders: string;
+  sync_attachments: boolean;
+  sync_attachments_pdf_only: boolean;
+  sync_period_days: number;
 }
 
 const PLATFORMS = ["PJe", "eSAJ", "PROJUDI", "e-PROC", "Todos"];
