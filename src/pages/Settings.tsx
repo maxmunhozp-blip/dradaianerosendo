@@ -10,6 +10,7 @@ import {
   FileText,
   Bell,
   Copy,
+  Mail,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +25,7 @@ import {
 } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import EmailAccountsSection from "@/components/EmailAccountsSection";
 
 const ALL_KEYS = [
   "zapi_instance_id",
@@ -171,6 +173,7 @@ export default function Settings() {
   const [openSections, setOpenSections] = useState({
     office: true,
     zapi: false,
+    emailAccounts: false,
     templates: false,
     hours: false,
     intimacoes: false,
@@ -403,6 +406,18 @@ export default function Settings() {
             </ol>
           </div>
         </div>
+      </CollapsibleSection>
+
+      {/* Contas de E-mail Judicial */}
+      <CollapsibleSection
+        open={openSections.emailAccounts}
+        onOpenChange={() => toggle("emailAccounts")}
+        icon={Mail}
+        iconBg="bg-amber-500/10 text-amber-600"
+        title="Contas de E-mail Judicial"
+        description="Monitore intimações de múltiplas contas Gmail"
+      >
+        <EmailAccountsSection />
       </CollapsibleSection>
 
       {/* Templates de Mensagem */}
