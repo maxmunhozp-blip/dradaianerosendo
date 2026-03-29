@@ -25,6 +25,7 @@ interface EmailAccount {
   label: string;
   email: string;
   provider: string;
+  last_sync: string | null;
 }
 
 interface EmailMessage {
@@ -50,7 +51,7 @@ function useEmailAccounts() {
     queryKey: ["email-accounts"],
     queryFn: async () => {
       const { data, error } = await (supabase.from("email_accounts") as any)
-        .select("id, label, email, provider")
+        .select("id, label, email, provider, last_sync")
         .eq("status", "conectado")
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -199,6 +200,22 @@ export default function MailPage() {
               ))}
             </SelectContent>
           </Select>
+          {(() => {
+            const lastSyncDate = selectedAccountId === "all"
+              ? accounts.reduce<string | null>((latest, a) => {
+                  if (!a.last_sync) return latest;
+                  if (!latest) return a.last_sync;
+                  return a.last_sync > latest ? a.last_sync : latest;
+                }, null)
+              : accounts.find(a => a.id === selectedAccountId)?.last_sync ?? null;
+
+            return lastSyncDate ? (
+              <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                Última sync: {format(new Date(lastSyncDate), "dd/MM HH:mm")}
+              </span>
+            ) : null;
+          })()}
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" disabled={isSyncing} onClick={handleSync}>
