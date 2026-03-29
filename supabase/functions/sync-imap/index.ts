@@ -65,9 +65,9 @@ async function syncAccount(admin: any, account: ImapAccount): Promise<number> {
   // SEARCH for recent emails (last 7 days)
   const since = new Date();
   since.setDate(since.getDate() - 7);
-  const sinceStr = since.toUTCString().replace(/\d{2}:\d{2}:\d{2}\s*/, "").replace(/,\s*/, " ").split(" ").slice(0,3).join("-");
-  const searchResp = await imapCommand(conn, "A003", `SEARCH SINCE ${since.toISOString().split("T")[0].split("-").reverse().join("-").replace(/(\d{2})-(\d{2})-(\d{4})/, function(_, d, m, y) { const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]; return d + "-" + months[parseInt(m)-1] + "-" + y; })}`);
-
+  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const imapDate = `${since.getUTCDate()}-${months[since.getUTCMonth()]}-${since.getUTCFullYear()}`;
+  const searchResp = await imapCommand(conn, "A003", `SEARCH SINCE ${imapDate}`);
 
   // Parse UIDs from SEARCH response
   const searchLine = searchResp.split("\r\n").find(l => l.startsWith("* SEARCH"));
