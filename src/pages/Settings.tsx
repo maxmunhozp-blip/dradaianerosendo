@@ -427,6 +427,12 @@ export default function Settings() {
         <EmailAccountsSection />
       </CollapsibleSection>
 
+      {/* Histórico de Sincronização */}
+      <SyncLogSection
+        open={openSections.syncLog}
+        onOpenChange={() => toggle("syncLog")}
+      />
+
       {/* Templates de Mensagem */}
       <CollapsibleSection
         open={openSections.templates}
