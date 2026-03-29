@@ -13,6 +13,7 @@ export interface TimelineEntry {
   responsible: string | null;
   source_email_id: string | null;
   pinned: boolean;
+  file_urls: { name: string; url: string }[];
   updated_at: string | null;
   updated_by: string | null;
 }

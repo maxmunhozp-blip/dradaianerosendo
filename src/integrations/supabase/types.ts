@@ -20,6 +20,7 @@ export type Database = {
           created_at: string
           description: string
           event_date: string
+          file_urls: Json | null
           id: string
           pinned: boolean
           responsible: string | null
@@ -35,6 +36,7 @@ export type Database = {
           created_at?: string
           description?: string
           event_date?: string
+          file_urls?: Json | null
           id?: string
           pinned?: boolean
           responsible?: string | null
@@ -50,6 +52,7 @@ export type Database = {
           created_at?: string
           description?: string
           event_date?: string
+          file_urls?: Json | null
           id?: string
           pinned?: boolean
           responsible?: string | null

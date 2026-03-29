@@ -1,0 +1,1 @@
+ALTER TABLE public.case_timeline ADD COLUMN file_urls JSONB DEFAULT '[]'::jsonb;

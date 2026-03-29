@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useTimeline, useCreateTimelineEntry, useUpdateTimelineEntry, useDeleteTimelineEntry, type TimelineEntry } from "@/hooks/use-timeline";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,9 +34,14 @@ import {
   CheckCircle2,
   Loader2,
   ListFilter,
+  Upload,
+  Paperclip,
+  X,
+  Download,
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const TIMELINE_STATUSES = [
   { value: "atualização_recebida", label: "Atualização recebida", color: "bg-blue-100 text-blue-800" },
@@ -77,6 +82,9 @@ export function ProcessTimeline({ caseId }: ProcessTimelineProps) {
   const [formTitle, setFormTitle] = useState("");
   const [formDescription, setFormDescription] = useState("");
   const [formPinned, setFormPinned] = useState(false);
+  const [formFiles, setFormFiles] = useState<{ name: string; url: string }[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const filtered = useMemo(() => {
     let result = entries;
@@ -101,6 +109,7 @@ export function ProcessTimeline({ caseId }: ProcessTimelineProps) {
     setFormTitle("");
     setFormDescription("");
     setFormPinned(false);
+    setFormFiles([]);
     setShowModal(true);
   };
 
@@ -111,7 +120,35 @@ export function ProcessTimeline({ caseId }: ProcessTimelineProps) {
     setFormTitle(entry.title);
     setFormDescription(entry.description);
     setFormPinned(entry.pinned);
+    setFormFiles(entry.file_urls || []);
     setShowModal(true);
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setUploading(true);
+    try {
+      const newFiles: { name: string; url: string }[] = [];
+      for (const file of Array.from(files)) {
+        const path = `timeline/${caseId}/${Date.now()}_${file.name}`;
+        const { error } = await supabase.storage.from("case-documents").upload(path, file);
+        if (error) throw error;
+        const { data: urlData } = supabase.storage.from("case-documents").getPublicUrl(path);
+        newFiles.push({ name: file.name, url: urlData.publicUrl });
+      }
+      setFormFiles((prev) => [...prev, ...newFiles]);
+      toast.success(`${newFiles.length} arquivo(s) adicionado(s)`);
+    } catch (err: any) {
+      toast.error("Erro ao enviar arquivo: " + (err.message || ""));
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const removeFormFile = (index: number) => {
+    setFormFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async () => {
@@ -129,7 +166,8 @@ export function ProcessTimeline({ caseId }: ProcessTimelineProps) {
           status: formStatus,
           event_date: new Date(formDate).toISOString(),
           pinned: formPinned,
-        });
+          file_urls: formFiles,
+        } as any);
         toast.success("Movimentação atualizada");
       } else {
         await createEntry.mutateAsync({
@@ -140,7 +178,8 @@ export function ProcessTimeline({ caseId }: ProcessTimelineProps) {
           event_date: new Date(formDate).toISOString(),
           type: "manual",
           pinned: formPinned,
-        });
+          file_urls: formFiles,
+        } as any);
         toast.success("Movimentação adicionada");
       }
       setShowModal(false);
@@ -323,6 +362,23 @@ export function ProcessTimeline({ caseId }: ProcessTimelineProps) {
                             </span>
                           )}
                         </div>
+                        {/* Attachments */}
+                        {entry.file_urls && entry.file_urls.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 mt-2">
+                            {entry.file_urls.map((file, fi) => (
+                              <a
+                                key={fi}
+                                href={file.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded bg-muted hover:bg-muted/80 text-foreground transition-colors"
+                              >
+                                <Paperclip className="w-3 h-3 shrink-0" />
+                                <span className="truncate max-w-[120px]">{file.name}</span>
+                              </a>
+                            ))}
+                          </div>
+                        )}
                       </div>
 
                       {/* Actions */}
@@ -415,6 +471,51 @@ export function ProcessTimeline({ caseId }: ProcessTimelineProps) {
                 value={formDescription}
                 onChange={(e) => setFormDescription(e.target.value)}
               />
+            </div>
+            {/* File upload */}
+            <div className="space-y-2">
+              <Label className="text-xs">Documentos anexos</Label>
+              <div className="flex items-center gap-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  className="hidden"
+                  onChange={handleFileUpload}
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-xs gap-1.5"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                >
+                  {uploading ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <Upload className="w-3 h-3" />
+                  )}
+                  {uploading ? "Enviando..." : "Anexar arquivo"}
+                </Button>
+              </div>
+              {formFiles.length > 0 && (
+                <div className="space-y-1">
+                  {formFiles.map((file, i) => (
+                    <div key={i} className="flex items-center gap-2 text-xs bg-muted rounded px-2 py-1">
+                      <Paperclip className="w-3 h-3 shrink-0 text-muted-foreground" />
+                      <span className="truncate flex-1">{file.name}</span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-5 w-5 shrink-0"
+                        onClick={() => removeFormFile(i)}
+                      >
+                        <X className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <input
