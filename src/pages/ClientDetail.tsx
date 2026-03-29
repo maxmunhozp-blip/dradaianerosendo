@@ -441,13 +441,22 @@ export default function ClientDetail() {
         </TabsContent>
       </Tabs>
 
-      <ConfirmDelete
-        open={deleteOpen}
-        onOpenChange={setDeleteOpen}
-        title="Excluir cliente"
-        description={`Tem certeza que deseja excluir "${client.name}"? Esta ação não pode ser desfeita.`}
-        onConfirm={handleDelete}
-      />
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir cliente</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir "{client.name}"? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
