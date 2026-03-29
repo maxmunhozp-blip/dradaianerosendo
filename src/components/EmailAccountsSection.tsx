@@ -667,7 +667,6 @@ export default function EmailAccountsSection() {
                   Salvar conta
                 </Button>
               </div>
-              )}
             </DialogFooter>
           </DialogContent>
         </Dialog>
