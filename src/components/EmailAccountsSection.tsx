@@ -224,26 +224,36 @@ export default function EmailAccountsSection() {
   // Handle OAuth redirect (only once)
   useEffect(() => {
     const handleOAuthRedirect = async () => {
-      const hash = window.location.hash;
-      if (!hash.includes("access_token")) return;
-
-      // Prevent duplicate processing
+      // Check if we have a pending account to connect
       const pending = localStorage.getItem("pending_email_account");
       if (!pending) return;
 
+      // Wait a moment for the session to be established after OAuth redirect
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      // Check if we have a provider_token (Google access token)
+      const providerToken = session.provider_token;
+      if (!providerToken) {
+        // Listen for auth state change to get provider_token
+        return;
+      }
+
       // Remove immediately to prevent re-processing
       localStorage.removeItem("pending_email_account");
-
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.provider_token) return;
 
       const { label, platform } = JSON.parse(pending);
 
       try {
         const res = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
-          headers: { Authorization: `Bearer ${session.provider_token}` },
+          headers: { Authorization: `Bearer ${providerToken}` },
         });
         const userInfo = await res.json();
+
+        if (!userInfo.email) {
+          toast.error("Não foi possível obter o e-mail da conta Google");
+          return;
+        }
 
         // Check if account already exists
         const { data: existing } = await (supabase.from("email_accounts") as any)
@@ -254,7 +264,6 @@ export default function EmailAccountsSection() {
         if (existing) {
           toast.info(`Conta ${userInfo.email} já está conectada`);
           qc.invalidateQueries({ queryKey: ["email-accounts"] });
-          // Clean URL hash
           window.history.replaceState(null, "", window.location.pathname);
           return;
         }
@@ -265,21 +274,76 @@ export default function EmailAccountsSection() {
           platform,
           provider: "gmail",
           status: "conectado",
-          access_token: session.provider_token,
+          access_token: providerToken,
           refresh_token: session.provider_refresh_token || null,
         });
 
         if (error) throw error;
         toast.success(`Conta ${userInfo.email} conectada com sucesso!`);
         qc.invalidateQueries({ queryKey: ["email-accounts"] });
-        // Clean URL hash
         window.history.replaceState(null, "", window.location.pathname);
       } catch (err: any) {
         toast.error("Erro ao salvar conta: " + err.message);
+        console.error("OAuth save error:", err);
       }
     };
 
     handleOAuthRedirect();
+
+    // Also listen for auth state changes (provider_token comes with SIGNED_IN event)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === "SIGNED_IN" && session?.provider_token) {
+        const pending = localStorage.getItem("pending_email_account");
+        if (!pending) return;
+
+        localStorage.removeItem("pending_email_account");
+        const { label, platform } = JSON.parse(pending);
+
+        try {
+          const res = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
+            headers: { Authorization: `Bearer ${session.provider_token}` },
+          });
+          const userInfo = await res.json();
+
+          if (!userInfo.email) {
+            toast.error("Não foi possível obter o e-mail da conta Google");
+            return;
+          }
+
+          const { data: existing } = await (supabase.from("email_accounts") as any)
+            .select("id")
+            .eq("email", userInfo.email)
+            .maybeSingle();
+
+          if (existing) {
+            toast.info(`Conta ${userInfo.email} já está conectada`);
+            qc.invalidateQueries({ queryKey: ["email-accounts"] });
+            window.history.replaceState(null, "", window.location.pathname);
+            return;
+          }
+
+          const { error } = await (supabase.from("email_accounts") as any).insert({
+            label,
+            email: userInfo.email,
+            platform,
+            provider: "gmail",
+            status: "conectado",
+            access_token: session.provider_token,
+            refresh_token: session.provider_refresh_token || null,
+          });
+
+          if (error) throw error;
+          toast.success(`Conta ${userInfo.email} conectada com sucesso!`);
+          qc.invalidateQueries({ queryKey: ["email-accounts"] });
+          window.history.replaceState(null, "", window.location.pathname);
+        } catch (err: any) {
+          toast.error("Erro ao salvar conta: " + err.message);
+          console.error("OAuth save error:", err);
+        }
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, [qc]);
 
   const handleConnectGmail = async () => {
