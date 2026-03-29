@@ -21,6 +21,7 @@ import PortalLogin from "@/pages/PortalLogin";
 import Login from "@/pages/Login";
 import SettingsPage from "@/pages/Settings";
 import UsersManagement from "@/pages/UsersManagement";
+import Templates from "@/pages/Templates";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -49,6 +50,7 @@ const App = () => (
                 <Route path="/agenda" element={<Agenda />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/users" element={<UsersManagement />} />
+                <Route path="/templates" element={<Templates />} />
               </Route>
             </Route>
 
