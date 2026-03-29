@@ -68,10 +68,11 @@ export function QuickCreateCase() {
         description: form.description,
         cnj_number: form.cnj_number || null,
         court: form.court || null,
+        status: form.status,
       });
       toast.success("Caso criado com sucesso");
       setOpen(false);
-      setForm({ client_id: "", case_type: "Divórcio", description: "", cnj_number: "", court: "" });
+      setForm({ client_id: "", case_type: "Divórcio", description: "", cnj_number: "", court: "", status: "documentacao" });
       navigate(`/cases/${created.id}`);
     } catch {
       toast.error("Erro ao criar caso");
