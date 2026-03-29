@@ -8,6 +8,8 @@ import {
   Building2,
   Clock,
   FileText,
+  Bell,
+  Copy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -171,6 +173,7 @@ export default function Settings() {
     zapi: false,
     templates: false,
     hours: false,
+    intimacoes: false,
   });
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -499,6 +502,55 @@ export default function Settings() {
               value={val("hours_sunday")}
               onChange={(e) => set("hours_sunday", e.target.value)}
             />
+          </div>
+        </div>
+      </CollapsibleSection>
+
+      {/* Monitoramento de Intimações */}
+      <CollapsibleSection
+        open={openSections.intimacoes}
+        onOpenChange={() => toggle("intimacoes")}
+        icon={Bell}
+        iconBg="bg-amber-500/10 text-amber-600"
+        title="Monitoramento de E-mail Judicial"
+        description="Receba intimações automaticamente via webhook"
+      >
+        <div className="space-y-4">
+          <div className="bg-muted/50 rounded-md p-3 text-xs text-muted-foreground space-y-2">
+            <p className="font-medium text-foreground">Endpoint para receber e-mails judiciais:</p>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 bg-background border rounded px-2 py-1.5 text-[11px] font-mono break-all">
+                {`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/receive-intimacao`}
+              </code>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-7 w-7 shrink-0"
+                onClick={() => {
+                  navigator.clipboard.writeText(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/receive-intimacao`);
+                  toast.success("URL copiada!");
+                }}
+              >
+                <Copy className="w-3 h-3" />
+              </Button>
+            </div>
+          </div>
+          <div className="bg-muted/50 rounded-md p-3 text-xs text-muted-foreground space-y-1.5">
+            <p className="font-medium text-foreground">Como configurar:</p>
+            <ol className="list-decimal list-inside space-y-1">
+              <li>Configure uma regra de encaminhamento no Gmail para o webhook acima</li>
+              <li>Ou use o Zapier/Make para enviar e-mails de domínios <code className="bg-background px-1 rounded">*.jus.br</code></li>
+              <li>O sistema processará automaticamente com IA (Claude) e extrairá dados do processo</li>
+            </ol>
+            <p className="mt-2"><strong>Payload esperado (POST JSON):</strong></p>
+            <pre className="bg-background border rounded px-2 py-1.5 text-[10px] font-mono mt-1 overflow-x-auto">
+{`{
+  "subject": "Intimação — Proc. 123...",
+  "body": "Conteúdo do e-mail...",
+  "from": "noreply@tjsp.jus.br",
+  "date": "2024-01-15T10:00:00Z"
+}`}
+            </pre>
           </div>
         </div>
       </CollapsibleSection>
