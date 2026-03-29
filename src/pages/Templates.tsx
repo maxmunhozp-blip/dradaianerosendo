@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
-import { FileText, Loader2, Copy, RefreshCw, Sparkles } from "lucide-react";
+import { FileText, Loader2, Copy, RefreshCw, Sparkles, Download } from "lucide-react";
 
 const TEMPLATE_TYPES = [
   { value: "peticao_inicial", label: "Petição Inicial", prompt: "Gere uma petição inicial completa e detalhada para o caso, com qualificação das partes, dos fatos, do direito e dos pedidos. Use todos os dados disponíveis do caso e do cliente." },
