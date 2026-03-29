@@ -940,6 +940,7 @@ export default function EmailAccountsSection() {
         onSave={handleSaveSyncConfig}
         saving={syncConfigSaving}
         provider={syncConfigAccount?.provider}
+        accountEmail={syncConfigAccount?.email}
         initialConfig={syncConfigAccount ? {
           sync_limit: syncConfigAccount.sync_limit ?? 100,
           sync_subject_filters: syncConfigAccount.sync_subject_filters ?? [],
