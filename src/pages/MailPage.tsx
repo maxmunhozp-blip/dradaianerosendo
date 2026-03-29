@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   Mail, RefreshCw, Search, Filter, Inbox, Loader2, ExternalLink,
-  AlertTriangle, FileText, ChevronRight, Server, Edit,
+  AlertTriangle, FileText, ChevronRight, Server, Edit, Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
