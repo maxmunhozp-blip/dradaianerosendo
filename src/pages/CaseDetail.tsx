@@ -50,6 +50,7 @@ export default function CaseDetail() {
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const [showDocGen, setShowDocGen] = useState(false);
   const [showPeticao, setShowPeticao] = useState(false);
+  const [showChat, setShowChat] = useState(true);
 
   useEffect(() => {
     if (dbMessages.length > 0 && !historyLoaded) {
