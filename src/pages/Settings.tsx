@@ -88,8 +88,24 @@ function CollapsibleSection({
   );
 }
 
+const VALIDATORS: Record<string, { regex: RegExp; msg: string }> = {
+  office_phone: {
+    regex: /^\(?\d{2}\)?\s?\d{4,5}-?\d{4}$/,
+    msg: "Formato inválido. Ex: (11) 99999-9999",
+  },
+  office_email: {
+    regex: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+    msg: "E-mail inválido. Ex: contato@escritorio.com",
+  },
+  office_oab: {
+    regex: /^OAB\/[A-Z]{2}\s?\d{3,6}$/i,
+    msg: "Formato inválido. Ex: OAB/SP 123456",
+  },
+};
+
 export default function Settings() {
   const [values, setValues] = useState<Record<string, string>>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [openSections, setOpenSections] = useState({
     office: true,
     zapi: false,
@@ -101,7 +117,23 @@ export default function Settings() {
   const [saved, setSaved] = useState(false);
 
   const val = (key: string) => values[key] || "";
-  const set = (key: string, v: string) => setValues((prev) => ({ ...prev, [key]: v }));
+  const set = (key: string, v: string) => {
+    setValues((prev) => ({ ...prev, [key]: v }));
+    // Clear error on edit
+    if (errors[key]) setErrors((prev) => { const n = { ...prev }; delete n[key]; return n; });
+  };
+
+  const validate = (): boolean => {
+    const newErrors: Record<string, string> = {};
+    for (const [key, validator] of Object.entries(VALIDATORS)) {
+      const v = values[key]?.trim();
+      if (v && !validator.regex.test(v)) {
+        newErrors[key] = validator.msg;
+      }
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   useEffect(() => {
     loadSettings();
@@ -123,6 +155,10 @@ export default function Settings() {
   };
 
   const saveAll = async () => {
+    if (!validate()) {
+      toast.error("Corrija os campos destacados antes de salvar.");
+      return;
+    }
     setSaving(true);
     try {
       const entries = Object.entries(values).filter(([_, v]) => v.trim() !== "");
@@ -199,7 +235,11 @@ export default function Settings() {
               placeholder="OAB/SP 123456"
               value={val("office_oab")}
               onChange={(e) => set("office_oab", e.target.value)}
+              className={errors.office_oab ? "border-destructive" : ""}
             />
+            {errors.office_oab && (
+              <p className="text-[10px] text-destructive">{errors.office_oab}</p>
+            )}
           </div>
           <div className="space-y-2">
             <Label className="text-xs">Telefone</Label>
@@ -207,7 +247,11 @@ export default function Settings() {
               placeholder="(11) 99999-9999"
               value={val("office_phone")}
               onChange={(e) => set("office_phone", e.target.value)}
+              className={errors.office_phone ? "border-destructive" : ""}
             />
+            {errors.office_phone && (
+              <p className="text-[10px] text-destructive">{errors.office_phone}</p>
+            )}
           </div>
           <div className="space-y-2">
             <Label className="text-xs">E-mail</Label>
@@ -215,7 +259,11 @@ export default function Settings() {
               placeholder="contato@escritorio.com"
               value={val("office_email")}
               onChange={(e) => set("office_email", e.target.value)}
+              className={errors.office_email ? "border-destructive" : ""}
             />
+            {errors.office_email && (
+              <p className="text-[10px] text-destructive">{errors.office_email}</p>
+            )}
           </div>
           <div className="col-span-2 space-y-2">
             <Label className="text-xs">Endereço</Label>
