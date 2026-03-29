@@ -33,6 +33,7 @@ export function QuickCreateCase() {
     description: "",
     cnj_number: "",
     court: "",
+    status: "documentacao",
   });
 
   // Cmd+K handler
