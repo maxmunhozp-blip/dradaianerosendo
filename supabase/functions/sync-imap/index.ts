@@ -19,6 +19,7 @@ const FINANCIAL_KEYWORDS = [
 interface ImapAccount {
   id: string;
   email: string;
+  label: string;
   imap_host: string;
   imap_port: number;
   imap_user: string;
