@@ -69,7 +69,7 @@ Deno.serve(async (req: Request) => {
     const smtpHost = account.smtp_host || account.imap_host?.replace("imap.", "smtp.") || "smtp.hostinger.com";
     const smtpPort = account.smtp_port || 465;
     const username = account.imap_user || account.email;
-    const password = account.imap_password ? atob(account.imap_password) : null;
+    const password = account.imap_password || null;
 
     if (!password) {
       return new Response(
