@@ -6,6 +6,7 @@ import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, LevelFormat } from "docx";
 import { saveAs } from "file-saver";
+import jsPDF from "jspdf";
 import {
   Select,
   SelectContent,
@@ -17,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
-import { FileText, Loader2, Copy, RefreshCw, Sparkles, Download } from "lucide-react";
+import { FileText, Loader2, Copy, RefreshCw, Sparkles, Download, FileDown } from "lucide-react";
 
 const FORMAT_INSTRUCTIONS = `
 
@@ -215,6 +216,108 @@ export default function Templates() {
     }
   };
 
+  const handleExportPdf = () => {
+    if (!generatedContent) return;
+
+    try {
+      const templateLabel = TEMPLATE_TYPES.find((t) => t.value === selectedTemplate)?.label || "Documento";
+      const clientName = (selectedCaseData as any)?.clients?.name || "Cliente";
+
+      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const marginLeft = 30;
+      const marginRight = 20;
+      const marginTop = 30;
+      const marginBottom = 25;
+      const contentWidth = pageWidth - marginLeft - marginRight;
+      let y = marginTop;
+
+      const addPageIfNeeded = (lineHeight: number) => {
+        if (y + lineHeight > pageHeight - marginBottom) {
+          pdf.addPage();
+          y = marginTop;
+        }
+      };
+
+      const lines = generatedContent.split("\n");
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+
+        if (!trimmed) {
+          y += 4;
+          continue;
+        }
+
+        // Headings
+        if (trimmed.startsWith("# ")) {
+          const text = trimmed.replace(/^#\s*/, "").replace(/\*\*/g, "");
+          pdf.setFont("helvetica", "bold");
+          pdf.setFontSize(14);
+          const wrapped = pdf.splitTextToSize(text.toUpperCase(), contentWidth);
+          addPageIfNeeded(wrapped.length * 7);
+          pdf.text(wrapped, pageWidth / 2, y, { align: "center" });
+          y += wrapped.length * 7 + 6;
+        } else if (trimmed.startsWith("## ")) {
+          const text = trimmed.replace(/^##\s*/, "").replace(/\*\*/g, "");
+          pdf.setFont("helvetica", "bold");
+          pdf.setFontSize(12);
+          addPageIfNeeded(8);
+          y += 4;
+          pdf.text(text.toUpperCase(), marginLeft, y);
+          y += 8;
+        } else if (trimmed.startsWith("### ")) {
+          const text = trimmed.replace(/^###\s*/, "").replace(/\*\*/g, "");
+          pdf.setFont("helvetica", "bold");
+          pdf.setFontSize(11);
+          addPageIfNeeded(7);
+          y += 2;
+          pdf.text(text, marginLeft, y);
+          y += 7;
+        } else if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
+          const text = trimmed.replace(/^[-*]\s*/, "").replace(/\*\*/g, "");
+          pdf.setFont("helvetica", "normal");
+          pdf.setFontSize(11);
+          const wrapped = pdf.splitTextToSize(text, contentWidth - 8);
+          addPageIfNeeded(wrapped.length * 5.5);
+          pdf.text("•", marginLeft + 2, y);
+          pdf.text(wrapped, marginLeft + 8, y);
+          y += wrapped.length * 5.5 + 2;
+        } else if (/^\d+\.\s/.test(trimmed)) {
+          const numMatch = trimmed.match(/^(\d+\.)\s*(.*)/);
+          const num = numMatch?.[1] || "";
+          const text = (numMatch?.[2] || "").replace(/\*\*/g, "");
+          pdf.setFont("helvetica", "normal");
+          pdf.setFontSize(11);
+          const wrapped = pdf.splitTextToSize(text, contentWidth - 10);
+          addPageIfNeeded(wrapped.length * 5.5);
+          pdf.setFont("helvetica", "bold");
+          pdf.text(num, marginLeft, y);
+          pdf.setFont("helvetica", "normal");
+          pdf.text(wrapped, marginLeft + 10, y);
+          y += wrapped.length * 5.5 + 2;
+        } else {
+          // Regular paragraph - strip bold markers for clean text
+          const cleanText = trimmed.replace(/\*\*/g, "");
+          pdf.setFont("helvetica", "normal");
+          pdf.setFontSize(11);
+          const wrapped = pdf.splitTextToSize(cleanText, contentWidth);
+          addPageIfNeeded(wrapped.length * 5.5);
+          pdf.text(wrapped, marginLeft, y, { align: "justify", maxWidth: contentWidth });
+          y += wrapped.length * 5.5 + 2;
+        }
+      }
+
+      const fileName = `${templateLabel.replace(/\s+/g, "_")}_${clientName.replace(/\s+/g, "_")}.pdf`;
+      pdf.save(fileName);
+      toast.success("PDF exportado com sucesso");
+    } catch (e) {
+      console.error("Erro ao exportar PDF:", e);
+      toast.error("Erro ao exportar PDF");
+    }
+  };
+
   const selectedCaseData = cases?.find((c) => c.id === selectedCase);
 
   return (
@@ -337,6 +440,10 @@ export default function Templates() {
                 <Button variant="outline" size="sm" onClick={handleExportDocx}>
                   <Download className="w-3.5 h-3.5 mr-1.5" />
                   DOCX
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleExportPdf}>
+                  <FileDown className="w-3.5 h-3.5 mr-1.5" />
+                  PDF
                 </Button>
                 <Button
                   variant="outline"
