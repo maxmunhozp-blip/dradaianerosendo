@@ -33,6 +33,7 @@ export function QuickCreateCase() {
     description: "",
     cnj_number: "",
     court: "",
+    status: "documentacao",
   });
 
   // Cmd+K handler
@@ -67,10 +68,11 @@ export function QuickCreateCase() {
         description: form.description,
         cnj_number: form.cnj_number || null,
         court: form.court || null,
+        status: form.status,
       });
       toast.success("Caso criado com sucesso");
       setOpen(false);
-      setForm({ client_id: "", case_type: "Divórcio", description: "", cnj_number: "", court: "" });
+      setForm({ client_id: "", case_type: "Divórcio", description: "", cnj_number: "", court: "", status: "documentacao" });
       navigate(`/cases/${created.id}`);
     } catch {
       toast.error("Erro ao criar caso");
@@ -116,6 +118,20 @@ export function QuickCreateCase() {
                 <SelectItem value="Alimentos">Alimentos</SelectItem>
                 <SelectItem value="Inventário">Inventário</SelectItem>
                 <SelectItem value="Outro">Outro</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Etapa inicial</Label>
+            <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
+              <SelectTrigger className="mt-1.5">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="documentacao">Documentação</SelectItem>
+                <SelectItem value="montagem">Montagem</SelectItem>
+                <SelectItem value="protocolo">Protocolo</SelectItem>
+                <SelectItem value="andamento">Em andamento</SelectItem>
               </SelectContent>
             </Select>
           </div>
