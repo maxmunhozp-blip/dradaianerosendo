@@ -282,7 +282,6 @@ export default function CaseDetail() {
           caseCreatedAt={caseData.created_at}
         />
       </div>
-      </div>
 
       {/* Right column - LARA chat */}
       <div className="border-l border-border" style={{ flex: "0 0 40%" }}>
