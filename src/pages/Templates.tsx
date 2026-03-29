@@ -19,15 +19,34 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { FileText, Loader2, Copy, RefreshCw, Sparkles, Download } from "lucide-react";
 
+const FORMAT_INSTRUCTIONS = `
+
+INSTRUÇÕES DE FORMATAÇÃO OBRIGATÓRIAS:
+Você DEVE formatar o documento seguindo rigorosamente o padrão forense brasileiro:
+
+1. **Cabeçalho**: Use "# TÍTULO DO DOCUMENTO" centralizado em caixa alta (ex: # EXCELENTÍSSIMO SENHOR DOUTOR JUIZ DE DIREITO DA ___ VARA DE FAMÍLIA DA COMARCA DE ___)
+2. **Qualificação das partes**: Nome completo em negrito, seguido de nacionalidade, estado civil, profissão, CPF, RG, endereço. Use dados reais do caso.
+3. **Seções**: Use "## " para cada seção principal (DOS FATOS, DO DIREITO, DOS PEDIDOS, etc.) em caixa alta e negrito.
+4. **Subseções**: Use "### " para subdivisões.
+5. **Parágrafos**: Texto corrido, sem bullets desnecessários. Cada parágrafo em linha separada.
+6. **Numeração de itens/pedidos**: Use listas numeradas (1., 2., 3.) apenas para pedidos e requerimentos.
+7. **Citações legais**: Artigos de lei em negrito (ex: **Art. 1.694 do Código Civil**).
+8. **Valores**: Sempre por extenso entre parênteses (ex: R$ 2.000,00 (dois mil reais)).
+9. **Fechamento**: Local, data, nome e OAB da advogada (Dra. Daiane Rosendo, OAB/__).
+10. **Espaçamento**: Linhas em branco entre seções. Sem linhas horizontais (---).
+11. **Tom**: Formal, técnico, linguagem jurídica adequada. Nunca use emojis.
+12. **Completude**: O documento deve estar PRONTO PARA USO, sem campos "[preencher]" — use os dados reais disponíveis. Onde faltar dado, use "___" (sublinhado).
+`;
+
 const TEMPLATE_TYPES = [
-  { value: "peticao_inicial", label: "Petição Inicial", prompt: "Gere uma petição inicial completa e detalhada para o caso, com qualificação das partes, dos fatos, do direito e dos pedidos. Use todos os dados disponíveis do caso e do cliente." },
-  { value: "contestacao", label: "Contestação", prompt: "Gere uma contestação completa para o caso, com preliminares, mérito, provas e pedidos. Use os dados do caso." },
-  { value: "procuracao", label: "Procuração Ad Judicia", prompt: "Gere um modelo completo de procuração ad judicia para o caso, com todos os poderes necessários para a ação de família correspondente." },
-  { value: "contrato_honorarios", label: "Contrato de Honorários", prompt: "Gere um modelo de contrato de honorários advocatícios para o caso, incluindo cláusulas sobre valor, forma de pagamento, obrigações e rescisão." },
-  { value: "recurso", label: "Recurso / Apelação", prompt: "Gere um recurso de apelação adequado para o caso, com razões recursais, fundamentação legal e pedidos. Use os dados do caso." },
-  { value: "manifestacao", label: "Manifestação / Réplica", prompt: "Gere uma manifestação ou réplica processual para o caso em sua fase atual, utilizando os dados disponíveis." },
-  { value: "acordo", label: "Acordo Extrajudicial", prompt: "Gere um modelo de acordo extrajudicial para o caso, com todas as cláusulas necessárias, valores, prazos e condições." },
-  { value: "notificacao", label: "Notificação Extrajudicial", prompt: "Gere uma notificação extrajudicial formal para o caso, com identificação das partes, fatos, fundamentos e prazo para cumprimento." },
+  { value: "peticao_inicial", label: "Petição Inicial", prompt: `Gere uma PETIÇÃO INICIAL completa e detalhada para o caso selecionado. Estrutura obrigatória: Endereçamento ao juízo competente, Qualificação do autor, Qualificação do réu (se houver dados), DOS FATOS (narrativa detalhada), DO DIREITO (fundamentação legal com artigos), DA TUTELA DE URGÊNCIA (se aplicável), DOS PEDIDOS (numerados), DO VALOR DA CAUSA, fechamento com local/data/advogada.${FORMAT_INSTRUCTIONS}` },
+  { value: "contestacao", label: "Contestação", prompt: `Gere uma CONTESTAÇÃO completa para o caso. Estrutura: Endereçamento, Qualificação do réu, DAS PRELIMINARES (se houver), DO MÉRITO (impugnação ponto a ponto), DAS PROVAS, DOS PEDIDOS, fechamento.${FORMAT_INSTRUCTIONS}` },
+  { value: "procuracao", label: "Procuração Ad Judicia", prompt: `Gere uma PROCURAÇÃO AD JUDICIA completa. Deve conter: qualificação completa do outorgante (dados do cliente), qualificação da outorgada (Dra. Daiane Rosendo), poderes da cláusula ad judicia et extra com poderes especiais para ação de família, foro de eleição, local e data, espaço para assinatura.${FORMAT_INSTRUCTIONS}` },
+  { value: "contrato_honorarios", label: "Contrato de Honorários", prompt: `Gere um CONTRATO DE HONORÁRIOS ADVOCATÍCIOS completo. Cláusulas obrigatórias: DAS PARTES (contratante e contratada), DO OBJETO (tipo de ação), DOS HONORÁRIOS (valor, forma de pagamento, honorários de êxito), DAS OBRIGAÇÕES DA CONTRATADA, DAS OBRIGAÇÕES DO CONTRATANTE, DA VIGÊNCIA, DA RESCISÃO, DO FORO, assinaturas e testemunhas.${FORMAT_INSTRUCTIONS}` },
+  { value: "recurso", label: "Recurso / Apelação", prompt: `Gere um RECURSO DE APELAÇÃO completo para o caso. Estrutura: Endereçamento ao Tribunal, DA TEMPESTIVIDADE, DO CABIMENTO, DAS RAZÕES RECURSAIS (erro na sentença, fundamentação legal), DO PEDIDO DE REFORMA, fechamento.${FORMAT_INSTRUCTIONS}` },
+  { value: "manifestacao", label: "Manifestação / Réplica", prompt: `Gere uma MANIFESTAÇÃO ou RÉPLICA processual adequada à fase atual do caso. Estrutura: Endereçamento, referência aos autos, DA MANIFESTAÇÃO (resposta ponto a ponto), DOS REQUERIMENTOS, fechamento.${FORMAT_INSTRUCTIONS}` },
+  { value: "acordo", label: "Acordo Extrajudicial", prompt: `Gere um ACORDO EXTRAJUDICIAL completo. Cláusulas: DAS PARTES, DO OBJETO, DAS CONDIÇÕES (guarda, visitas, alimentos, partilha conforme o caso), DOS PRAZOS, DO DESCUMPRIMENTO, DAS DISPOSIÇÕES GERAIS, assinaturas com duas testemunhas.${FORMAT_INSTRUCTIONS}` },
+  { value: "notificacao", label: "Notificação Extrajudicial", prompt: `Gere uma NOTIFICAÇÃO EXTRAJUDICIAL formal. Estrutura: Identificação do notificante e notificado, DOS FATOS, DA FUNDAMENTAÇÃO LEGAL, DA NOTIFICAÇÃO (o que se exige), DO PRAZO para cumprimento, DAS CONSEQUÊNCIAS do descumprimento, fechamento com AR.${FORMAT_INSTRUCTIONS}` },
 ];
 
 export default function Templates() {
