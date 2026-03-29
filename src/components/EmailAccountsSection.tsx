@@ -487,6 +487,12 @@ export default function EmailAccountsSection() {
 
   return (
     <div className="space-y-4">
+      {oauthStep && (
+        <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-800">
+          <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+          <span>{oauthStep}</span>
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <p className="text-xs text-muted-foreground">
           {accounts.length} conta(s) configurada(s)
