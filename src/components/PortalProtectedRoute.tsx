@@ -20,16 +20,16 @@ export function PortalProtectedRoute() {
         .eq("user_id", user.id)
         .maybeSingle();
 
-      if (existing) return; // already linked
+      if (existing) return;
 
       const email = user.email;
       if (!email) return;
 
-      await supabase
-        .from("clients")
-        .update({ user_id: user.id })
-        .eq("email", email)
-        .is("user_id", null);
+      // Use security definer RPC to bypass RLS
+      await supabase.rpc("link_client_by_email", {
+        _user_id: user.id,
+        _email: email,
+      });
     })();
   }, [user]);
 
