@@ -6,8 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Search } from "lucide-react";
 import { Outlet } from "react-router-dom";
 import { useState } from "react";
+import { usePushNotifications } from "@/hooks/use-push-notifications";
 
 export default function AdminLayout() {
+  usePushNotifications();
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
