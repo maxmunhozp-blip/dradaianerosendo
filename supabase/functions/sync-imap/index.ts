@@ -157,6 +157,9 @@ function matchesFilters(
   bodyText: string,
   account: ImapAccount
 ): boolean {
+  // If import_all is enabled, skip all filters (corporate accounts)
+  if (account.sync_import_all) return true;
+
   const isJudicial = /\.jus\.br/i.test(fromEmail);
 
   // If judicial-only is on, non-judicial emails need to match extra senders
