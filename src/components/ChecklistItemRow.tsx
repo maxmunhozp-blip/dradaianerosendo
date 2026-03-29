@@ -1,17 +1,19 @@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { ChecklistItem as ChecklistItemType } from "@/lib/types";
 
-export function ChecklistItemRow({
-  item,
-  onToggle,
-  onDelete,
-}: {
-  item: ChecklistItemType;
+interface ChecklistItemProps {
+  item: {
+    id: string;
+    label: string;
+    done: boolean;
+    required_by: string | null;
+  };
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
-}) {
+}
+
+export function ChecklistItemRow({ item, onToggle, onDelete }: ChecklistItemProps) {
   return (
     <div className="flex items-center gap-3 py-2 border-b border-border last:border-0 group">
       <Checkbox

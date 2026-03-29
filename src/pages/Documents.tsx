@@ -1,8 +1,7 @@
+import { useAllDocuments } from "@/hooks/use-documents";
 import { useState } from "react";
-import { mockDocuments, mockCases, getClientById } from "@/lib/mock-data";
 import { StatusBadge } from "@/components/StatusBadge";
-import { Search, Download } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -15,19 +14,13 @@ import {
 export default function Documents() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const { data: allDocs = [], isLoading } = useAllDocuments();
 
-  const filtered = mockDocuments.filter((d) => {
+  const filtered = allDocs.filter((d: any) => {
     const matchStatus = statusFilter === "all" || d.status === statusFilter;
     const matchCategory = categoryFilter === "all" || d.category === categoryFilter;
     return matchStatus && matchCategory;
   });
-
-  const getCaseLabel = (caseId: string) => {
-    const c = mockCases.find((cs) => cs.id === caseId);
-    if (!c) return "—";
-    const client = getClientById(c.client_id);
-    return `${c.case_type} — ${client?.name || ""}`;
-  };
 
   const categoryLabels: Record<string, string> = {
     pessoal: "Pessoal",
@@ -41,7 +34,7 @@ export default function Documents() {
       <div className="mb-6">
         <h1 className="text-xl font-semibold text-foreground">Documentos</h1>
         <p className="text-sm text-muted-foreground mt-0.5">
-          {mockDocuments.length} documentos em todos os casos
+          {allDocs.length} documentos em todos os casos
         </p>
       </div>
 
@@ -73,38 +66,48 @@ export default function Documents() {
       </div>
 
       <div className="border border-border rounded-lg">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-border">
-              <th className="text-left text-xs font-medium text-muted-foreground px-4 py-3">Documento</th>
-              <th className="text-left text-xs font-medium text-muted-foreground px-4 py-3">Caso</th>
-              <th className="text-left text-xs font-medium text-muted-foreground px-4 py-3">Categoria</th>
-              <th className="text-left text-xs font-medium text-muted-foreground px-4 py-3">Status</th>
-              <th className="text-left text-xs font-medium text-muted-foreground px-4 py-3">Enviado por</th>
-              <th className="w-10"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((doc) => (
-              <tr key={doc.id} className="border-b border-border last:border-0">
-                <td className="px-4 py-3 text-sm font-medium text-foreground">{doc.name}</td>
-                <td className="px-4 py-3 text-sm text-muted-foreground">{getCaseLabel(doc.case_id)}</td>
-                <td className="px-4 py-3 text-sm text-muted-foreground">{categoryLabels[doc.category]}</td>
-                <td className="px-4 py-3"><StatusBadge status={doc.status} /></td>
-                <td className="px-4 py-3 text-sm text-muted-foreground">
-                  {doc.uploaded_by === "advogada" ? "Advogada" : "Cliente"}
-                </td>
-                <td className="px-4 py-3">
-                  {doc.file_url && doc.file_url !== "" && (
-                    <Button variant="ghost" size="icon" className="h-7 w-7">
-                      <Download className="w-3.5 h-3.5" />
-                    </Button>
-                  )}
-                </td>
+        {isLoading ? (
+          <p className="text-sm text-muted-foreground px-4 py-6 text-center">Carregando...</p>
+        ) : filtered.length === 0 ? (
+          <p className="text-sm text-muted-foreground px-4 py-6 text-center">Nenhum documento encontrado.</p>
+        ) : (
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="text-left text-xs font-medium text-muted-foreground px-4 py-3">Documento</th>
+                <th className="text-left text-xs font-medium text-muted-foreground px-4 py-3">Caso</th>
+                <th className="text-left text-xs font-medium text-muted-foreground px-4 py-3">Categoria</th>
+                <th className="text-left text-xs font-medium text-muted-foreground px-4 py-3">Status</th>
+                <th className="text-left text-xs font-medium text-muted-foreground px-4 py-3">Enviado por</th>
+                <th className="w-10"></th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {filtered.map((doc: any) => (
+                <tr key={doc.id} className="border-b border-border last:border-0">
+                  <td className="px-4 py-3 text-sm font-medium text-foreground">{doc.name}</td>
+                  <td className="px-4 py-3 text-sm text-muted-foreground">
+                    {doc.cases?.case_type} — {doc.cases?.clients?.name || ""}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-muted-foreground">{categoryLabels[doc.category] || doc.category}</td>
+                  <td className="px-4 py-3"><StatusBadge status={doc.status} /></td>
+                  <td className="px-4 py-3 text-sm text-muted-foreground">
+                    {doc.uploaded_by === "advogada" ? "Advogada" : "Cliente"}
+                  </td>
+                  <td className="px-4 py-3">
+                    {doc.file_url && doc.file_url !== "" && (
+                      <Button variant="ghost" size="icon" className="h-7 w-7" asChild>
+                        <a href={doc.file_url} target="_blank" rel="noopener noreferrer">
+                          <Download className="w-3.5 h-3.5" />
+                        </a>
+                      </Button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );

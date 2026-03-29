@@ -7,7 +7,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { mockCases, getClientById } from "@/lib/mock-data";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useSendMessage } from "@/hooks/use-messages";
 import type { Message } from "@/lib/types";
 
 const shortcuts = [
@@ -19,33 +21,50 @@ const shortcuts = [
 ];
 
 export default function LaraPage() {
-  const [messages, setMessages] = useState<Message[]>([]);
   const [caseContext, setCaseContext] = useState<string>("none");
+  const sendMessage = useSendMessage();
 
-  const handleSend = (content: string) => {
-    const userMsg: Message = {
-      id: `m-${Date.now()}`,
-      created_at: new Date().toISOString(),
-      case_id: caseContext !== "none" ? caseContext : "",
-      role: "user",
-      content,
-      attachments: null,
-    };
-    const assistantMsg: Message = {
-      id: `m-${Date.now() + 1}`,
-      created_at: new Date().toISOString(),
-      case_id: caseContext !== "none" ? caseContext : "",
-      role: "assistant",
-      content: "Estou analisando sua solicitação. Em um momento terei a resposta pronta para você.",
-      attachments: null,
-    };
-    setMessages((prev) => [...prev, userMsg, assistantMsg]);
+  const { data: allCases = [] } = useQuery({
+    queryKey: ["cases-all-lara"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("cases").select("*, clients(name)").order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: messages = [] } = useQuery({
+    queryKey: ["messages", caseContext],
+    queryFn: async () => {
+      if (caseContext === "none") return [];
+      const { data, error } = await supabase
+        .from("messages")
+        .select("*")
+        .eq("case_id", caseContext)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return data;
+    },
+    enabled: true,
+  });
+
+  const chatMessages: Message[] = messages.map((m: any) => ({
+    id: m.id,
+    created_at: m.created_at,
+    case_id: m.case_id,
+    role: m.role,
+    content: m.content,
+    attachments: m.attachments,
+  }));
+
+  const handleSend = async (content: string) => {
+    if (caseContext === "none") return;
+    await sendMessage.mutateAsync({ case_id: caseContext, role: "user", content });
   };
 
   return (
     <div className="flex h-[calc(100vh-3rem)]">
       <div className="flex-1 flex flex-col">
-        {/* Top bar */}
         <div className="flex items-center gap-4 px-6 py-3 border-b border-border">
           <span className="text-sm text-muted-foreground">Contexto:</span>
           <Select value={caseContext} onValueChange={setCaseContext}>
@@ -54,25 +73,26 @@ export default function LaraPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="none">Nenhum</SelectItem>
-              {mockCases.map((c) => {
-                const client = getClientById(c.client_id);
-                return (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.case_type} — {client?.name}
-                  </SelectItem>
-                );
-              })}
+              {allCases.map((c: any) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.case_type} — {c.clients?.name}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
 
         <div className="flex flex-1 overflow-hidden">
-          {/* Chat */}
           <div className="flex-1">
-            <LaraChat messages={messages} onSend={handleSend} />
+            {caseContext === "none" ? (
+              <div className="flex items-center justify-center h-full">
+                <p className="text-sm text-muted-foreground">Selecione um caso para iniciar a conversa.</p>
+              </div>
+            ) : (
+              <LaraChat messages={chatMessages} onSend={handleSend} />
+            )}
           </div>
 
-          {/* Shortcuts sidebar */}
           <div className="w-56 border-l border-border p-4 hidden lg:block">
             <p className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wider">
               Comandos
