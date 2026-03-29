@@ -148,6 +148,8 @@ export default function EmailAccountsSection() {
   const [newLabel, setNewLabel] = useState("");
   const [newPlatform, setNewPlatform] = useState("Todos");
   const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<"success" | "error" | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [editingAccount, setEditingAccount] = useState<EmailAccount | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
