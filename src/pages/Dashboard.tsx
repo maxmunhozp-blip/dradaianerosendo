@@ -1,4 +1,4 @@
-import { Users, FolderOpen, FileText, TrendingUp, Plus, Bot } from "lucide-react";
+import { Users, FolderOpen, FileText, TrendingUp, Plus, Bot, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/StatusBadge";
 import { AnimatedCounter } from "@/components/AnimatedCounter";
@@ -57,6 +57,12 @@ export default function Dashboard() {
           <p className="text-sm text-muted-foreground mt-0.5">Visão geral do escritório</p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" size="sm" asChild>
+            <Link to="/lara?cmd=/cobrar">
+              <MessageSquare className="w-3.5 h-3.5 mr-1.5" />
+              Cobrar documentos
+            </Link>
+          </Button>
           <Button variant="outline" size="sm" asChild>
             <Link to="/clients">
               <Plus className="w-3.5 h-3.5 mr-1.5" />
