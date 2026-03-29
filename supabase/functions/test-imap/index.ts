@@ -40,10 +40,12 @@ async function testImapConnection(
       return { success: false, error: "Servidor IMAP não retornou OK", debug: steps.join(" → ") };
     }
 
-    // LOGIN
-    steps.push("Sending LOGIN...");
+    // AUTHENTICATE PLAIN (required by Gmail, works with all IMAP servers)
+    steps.push("Sending AUTHENTICATE PLAIN...");
     console.log(steps[steps.length - 1]);
-    const loginCmd = `A001 LOGIN "${user.replace(/"/g, '\\"')}" "${password.replace(/"/g, '\\"')}"\r\n`;
+    const cleanPassword = password.replace(/\s/g, "");
+    const credentials = btoa(`\0${user}\0${cleanPassword}`);
+    const loginCmd = `A001 AUTHENTICATE PLAIN ${credentials}\r\n`;
     await conn.write(encoder.encode(loginCmd));
 
     let loginResponse = "";
