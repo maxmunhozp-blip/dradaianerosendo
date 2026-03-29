@@ -322,162 +322,179 @@ export default function CaseDetail() {
           <CaseStatusStepper currentStatus={caseData.status} />
         </div>
 
-        {/* Documents */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-medium text-foreground">Documentos ({documents.length})</h2>
+        {/* Main Tabs: Movimentações + Gestão do Caso */}
+        <Tabs defaultValue="movimentacoes" className="mb-8">
+          <TabsList className="w-full grid grid-cols-2 mb-4">
+            <TabsTrigger value="movimentacoes" className="text-sm font-semibold">
+              <Clock className="w-4 h-4 mr-1.5" />
+              Movimentações
+            </TabsTrigger>
+            <TabsTrigger value="gestao" className="text-sm font-semibold">
+              <FolderOpen className="w-4 h-4 mr-1.5" />
+              Gestão do Caso
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Tab: Movimentações (Timeline) */}
+          <TabsContent value="movimentacoes">
+            <ProcessTimeline caseId={id!} />
+          </TabsContent>
+
+          {/* Tab: Gestão do Caso */}
+          <TabsContent value="gestao" className="space-y-8">
+            {/* Documents */}
             <div>
-              <input ref={fileInputRef} type="file" onChange={handleFileUpload} className="hidden" />
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploadDoc.isPending}
-              >
-                <Upload className="w-3.5 h-3.5 mr-1.5" />
-                {uploadDoc.isPending ? "Enviando..." : "Upload"}
-              </Button>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-sm font-medium text-foreground">Documentos ({documents.length})</h2>
+                <div>
+                  <input ref={fileInputRef} type="file" onChange={handleFileUpload} className="hidden" />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadDoc.isPending}
+                  >
+                    <Upload className="w-3.5 h-3.5 mr-1.5" />
+                    {uploadDoc.isPending ? "Enviando..." : "Upload"}
+                  </Button>
+                </div>
+              </div>
+              <div className="border border-border rounded-lg px-4">
+                {documents.length === 0 ? (
+                  <EmptyState
+                    icon={FileText}
+                    title="Nenhum documento"
+                    description="Envie o primeiro documento para este caso."
+                    actionLabel="Enviar documento"
+                    onAction={() => fileInputRef.current?.click()}
+                  />
+                ) : (
+                  documents.map((doc) => <DocumentRow key={doc.id} doc={doc} />)
+                )}
+              </div>
             </div>
-          </div>
-          <div className="border border-border rounded-lg px-4">
-            {documents.length === 0 ? (
-              <EmptyState
-                icon={FileText}
-                title="Nenhum documento"
-                description="Envie o primeiro documento para este caso."
-                actionLabel="Enviar documento"
-                onAction={() => fileInputRef.current?.click()}
-              />
-            ) : (
-              documents.map((doc) => <DocumentRow key={doc.id} doc={doc} />)
-            )}
-          </div>
-        </div>
 
-        {/* Checklist */}
-        <div className="mb-8">
-          <h2 className="text-sm font-medium text-foreground mb-3">
-            Checklist ({checklist.filter((i) => i.done).length}/{checklist.length})
-          </h2>
-          <div className="border border-border rounded-lg px-4">
-            {checklist.length === 0 && (
-              <EmptyState
-                icon={ClipboardList}
-                title="Checklist vazio"
-                description="Adicione itens ao checklist deste caso."
-              />
-            )}
-            {checklist.map((item) => (
-              <ChecklistItemRow
-                key={item.id}
-                item={item}
-                onToggle={handleToggleChecklist}
-                onDelete={handleDeleteChecklist}
-              />
-            ))}
-            <div className="flex items-center gap-2 py-3">
-              <Input
-                value={newItem}
-                onChange={(e) => setNewItem(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleAddChecklistItem()}
-                placeholder="Adicionar item..."
-                className="text-sm h-8"
-              />
-              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={handleAddChecklistItem}>
-                <Plus className="w-3.5 h-3.5" />
-              </Button>
+            {/* Checklist */}
+            <div>
+              <h2 className="text-sm font-medium text-foreground mb-3">
+                Checklist ({checklist.filter((i) => i.done).length}/{checklist.length})
+              </h2>
+              <div className="border border-border rounded-lg px-4">
+                {checklist.length === 0 && (
+                  <EmptyState
+                    icon={ClipboardList}
+                    title="Checklist vazio"
+                    description="Adicione itens ao checklist deste caso."
+                  />
+                )}
+                {checklist.map((item) => (
+                  <ChecklistItemRow
+                    key={item.id}
+                    item={item}
+                    onToggle={handleToggleChecklist}
+                    onDelete={handleDeleteChecklist}
+                  />
+                ))}
+                <div className="flex items-center gap-2 py-3">
+                  <Input
+                    value={newItem}
+                    onChange={(e) => setNewItem(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleAddChecklistItem()}
+                    placeholder="Adicionar item..."
+                    className="text-sm h-8"
+                  />
+                  <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={handleAddChecklistItem}>
+                    <Plus className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
 
-        {/* Hearings / Dates */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-medium text-foreground">Datas ({hearings.length})</h2>
-            <Button variant="outline" size="sm" onClick={() => setShowHearingModal(true)}>
-              <Plus className="w-3.5 h-3.5 mr-1.5" />
-              Adicionar data
-            </Button>
-          </div>
-          <div className="border border-border rounded-lg px-4">
-            {hearings.length === 0 ? (
-              <EmptyState
-                icon={CalendarDays}
-                title="Nenhuma data"
-                description="Adicione audiências e prazos para este caso."
-                actionLabel="Adicionar data"
-                onAction={() => setShowHearingModal(true)}
-              />
-            ) : (
-              hearings.map((h) => {
-                const d = new Date(h.date);
-                const overdue = h.status === "agendado" && isBefore(d, new Date());
-                const hoursUntil = differenceInHours(d, new Date());
-                const isSoon = h.status === "agendado" && hoursUntil >= 0 && hoursUntil <= 48;
-                const statusColors: Record<string, string> = {
-                  agendado: "bg-amber-100 text-amber-800",
-                  realizado: "bg-green-100 text-green-800",
-                  cancelado: "bg-muted text-muted-foreground",
-                };
-                return (
-                  <div key={h.id} className={`flex items-center justify-between py-3 border-b border-border last:border-b-0 ${overdue ? "bg-destructive/5 -mx-4 px-4" : ""}`}>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium text-foreground">{h.title}</p>
-                        {isSoon && <Badge variant="destructive" className="text-[10px] px-1.5 py-0">{hoursUntil <= 24 ? "Hoje" : "Amanhã"}</Badge>}
-                        {overdue && <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Atrasado</Badge>}
+            {/* Hearings / Dates */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-sm font-medium text-foreground">Datas ({hearings.length})</h2>
+                <Button variant="outline" size="sm" onClick={() => setShowHearingModal(true)}>
+                  <Plus className="w-3.5 h-3.5 mr-1.5" />
+                  Adicionar data
+                </Button>
+              </div>
+              <div className="border border-border rounded-lg px-4">
+                {hearings.length === 0 ? (
+                  <EmptyState
+                    icon={CalendarDays}
+                    title="Nenhuma data"
+                    description="Adicione audiências e prazos para este caso."
+                    actionLabel="Adicionar data"
+                    onAction={() => setShowHearingModal(true)}
+                  />
+                ) : (
+                  hearings.map((h) => {
+                    const d = new Date(h.date);
+                    const overdue = h.status === "agendado" && isBefore(d, new Date());
+                    const hoursUntil = differenceInHours(d, new Date());
+                    const isSoon = h.status === "agendado" && hoursUntil >= 0 && hoursUntil <= 48;
+                    const statusColors: Record<string, string> = {
+                      agendado: "bg-amber-100 text-amber-800",
+                      realizado: "bg-green-100 text-green-800",
+                      cancelado: "bg-muted text-muted-foreground",
+                    };
+                    return (
+                      <div key={h.id} className={`flex items-center justify-between py-3 border-b border-border last:border-b-0 ${overdue ? "bg-destructive/5 -mx-4 px-4" : ""}`}>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-medium text-foreground">{h.title}</p>
+                            {isSoon && <Badge variant="destructive" className="text-[10px] px-1.5 py-0">{hoursUntil <= 24 ? "Hoje" : "Amanhã"}</Badge>}
+                            {overdue && <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Atrasado</Badge>}
+                          </div>
+                          <div className="flex items-center gap-3 mt-0.5">
+                            <span className="text-xs text-muted-foreground flex items-center gap-1">
+                              <Clock className="w-3 h-3" />{format(d, "dd/MM/yyyy HH:mm")}
+                            </span>
+                            {h.location && (
+                              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                <MapPin className="w-3 h-3" />{h.location}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge className={`${statusColors[h.status]} text-[10px]`}>
+                            {h.status === "agendado" ? "Agendado" : h.status === "realizado" ? "Realizado" : "Cancelado"}
+                          </Badge>
+                          {h.status === "agendado" && h.alert_whatsapp && (
+                            <Button variant="ghost" size="icon" className="h-7 w-7" title="Enviar lembrete" onClick={() => {
+                              const clientName = (caseData as any).clients?.name?.split(" ")[0] || "Cliente";
+                              const phone = ((caseData as any).clients?.phone || "").replace(/\D/g, "");
+                              const dateStr = format(d, "dd/MM/yyyy");
+                              const timeStr = format(d, "HH:mm");
+                              const loc = h.location || "local a confirmar";
+                              if (!phone) { toast.error("Cliente sem telefone cadastrado"); return; }
+                              supabase.functions.invoke("whatsapp", {
+                                body: { phone, message: `Olá ${clientName}! Lembrando que sua audiência está marcada para ${dateStr} às ${timeStr}h em ${loc}. Qualquer dúvida estou à disposição. Dra. Daiane Rosendo.` },
+                              }).then(({ error }) => { if (error) toast.error("Erro ao enviar"); else toast.success("Lembrete enviado"); });
+                            }}>
+                              <MessageSquare className="w-3.5 h-3.5" />
+                            </Button>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-3 mt-0.5">
-                        <span className="text-xs text-muted-foreground flex items-center gap-1">
-                          <Clock className="w-3 h-3" />{format(d, "dd/MM/yyyy HH:mm")}
-                        </span>
-                        {h.location && (
-                          <span className="text-xs text-muted-foreground flex items-center gap-1">
-                            <MapPin className="w-3 h-3" />{h.location}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge className={`${statusColors[h.status]} text-[10px]`}>
-                        {h.status === "agendado" ? "Agendado" : h.status === "realizado" ? "Realizado" : "Cancelado"}
-                      </Badge>
-                      {h.status === "agendado" && h.alert_whatsapp && (
-                        <Button variant="ghost" size="icon" className="h-7 w-7" title="Enviar lembrete" onClick={() => {
-                          const clientName = (caseData as any).clients?.name?.split(" ")[0] || "Cliente";
-                          const phone = ((caseData as any).clients?.phone || "").replace(/\D/g, "");
-                          const dateStr = format(d, "dd/MM/yyyy");
-                          const timeStr = format(d, "HH:mm");
-                          const loc = h.location || "local a confirmar";
-                          if (!phone) { toast.error("Cliente sem telefone cadastrado"); return; }
-                          supabase.functions.invoke("whatsapp", {
-                            body: { phone, message: `Olá ${clientName}! Lembrando que sua audiência está marcada para ${dateStr} às ${timeStr}h em ${loc}. Qualquer dúvida estou à disposição. Dra. Daiane Rosendo.` },
-                          }).then(({ error }) => { if (error) toast.error("Erro ao enviar"); else toast.success("Lembrete enviado"); });
-                        }}>
-                          <MessageSquare className="w-3.5 h-3.5" />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-          <HearingModal open={showHearingModal} onOpenChange={setShowHearingModal} defaultCaseId={id} />
-        </div>
+                    );
+                  })
+                )}
+              </div>
+              <HearingModal open={showHearingModal} onOpenChange={setShowHearingModal} defaultCaseId={id} />
+            </div>
 
-        {/* Process Timeline */}
-        <div className="mb-8">
-          <ProcessTimeline caseId={id!} />
-        </div>
-
-        {/* Activity Timeline */}
-        <CaseTimeline
-          documents={documents}
-          messages={dbMessages}
-          checklist={checklist}
-          caseCreatedAt={caseData.created_at}
-        />
+            {/* Activity Timeline */}
+            <CaseTimeline
+              documents={documents}
+              messages={dbMessages}
+              checklist={checklist}
+              caseCreatedAt={caseData.created_at}
+            />
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Toggle chat button */}
