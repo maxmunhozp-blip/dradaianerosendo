@@ -290,9 +290,14 @@ ${checklist.length > 0
 // Detect if user message needs LexML grounding
 function detectLegalQuery(content: string): string | null {
   const lower = content.toLowerCase();
-  // /lei command
+  // /lei command — always prefix with "lei" for better search results
   const leiMatch = lower.match(/^\/lei\s+(.+)/);
-  if (leiMatch) return leiMatch[1].trim();
+  if (leiMatch) {
+    const term = leiMatch[1].trim();
+    // If user typed just a number, prefix with "lei" for better LexML results
+    if (/^\d[\d.\/\-]*$/.test(term)) return `lei ${term}`;
+    return term;
+  }
   // Mentions specific law numbers
   const lawPatterns = [
     /lei\s+(?:n[ºo°]?\s*)?(\d[\d.\/]+)/i,
@@ -305,14 +310,13 @@ function detectLegalQuery(content: string): string | null {
   ];
   for (const p of lawPatterns) {
     if (p.test(content)) {
-      // Extract a meaningful search term
       const m = content.match(/lei\s+(?:n[ºo°]?\s*)?(\d[\d.\/]+)/i);
       if (m) return `lei ${m[1]}`;
       if (/código\s+civil/i.test(content)) return "código civil lei 10406";
       if (/código\s+penal/i.test(content)) return "código penal";
       if (/constituição/i.test(content)) return "constituição federal";
       if (/\bcpc\b/i.test(content)) return "código de processo civil lei 13105";
-      if (/\beca\b/i.test(content)) return "estatuto da criança e do adolescente";
+      if (/\beca\b/i.test(content)) return "estatuto da criança e do adolescente lei 8069";
       return content.slice(0, 80);
     }
   }
