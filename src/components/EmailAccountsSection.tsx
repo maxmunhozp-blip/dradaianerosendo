@@ -290,6 +290,63 @@ export default function EmailAccountsSection() {
     }
   };
 
+  const openEditDialog = (account: EmailAccount) => {
+    setEditingAccount(account);
+    setEditLabel(account.label);
+    setEditPlatform(account.platform);
+    setEditPassword("");
+    setEditHost(account.imap_host || "imap.hostinger.com");
+    setEditPort(String(account.imap_port || 993));
+    setShowEditPassword(false);
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingAccount) return;
+    setSaving(true);
+    try {
+      const updates: any = {
+        label: editLabel,
+        platform: editPlatform,
+      };
+
+      if (editingAccount.provider !== "gmail") {
+        updates.imap_host = editHost;
+        updates.imap_port = parseInt(editPort);
+
+        // If password changed, test and update
+        if (editPassword.trim()) {
+          const { data, error } = await supabase.functions.invoke("test-imap", {
+            body: {
+              host: editHost,
+              port: parseInt(editPort),
+              user: editingAccount.email,
+              password: editPassword,
+            },
+          });
+          if (error) throw error;
+          if (!data?.success) throw new Error(data?.error || "Falha na conexão IMAP");
+          updates.imap_password = btoa(editPassword);
+          updates.status = "conectado";
+        }
+      }
+
+      const { error: updateError } = await (supabase.from("email_accounts") as any)
+        .update(updates)
+        .eq("id", editingAccount.id);
+      if (updateError) throw updateError;
+
+      toast.success("Conta atualizada com sucesso!");
+      qc.invalidateQueries({ queryKey: ["email-accounts"] });
+      setEditDialogOpen(false);
+      setEditingAccount(null);
+    } catch (err: any) {
+      toast.error("Erro: " + err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
