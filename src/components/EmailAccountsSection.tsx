@@ -678,6 +678,12 @@ export default function EmailAccountsSection() {
                   </button>
                 </div>
               </div>
+              {providerTab !== "gmail" && hostEmail.toLowerCase().includes("@gmail.com") && (
+                <div className="bg-blue-50 border border-blue-200 rounded-md p-3 text-xs text-blue-800 flex items-center gap-2">
+                  <Mail className="w-4 h-4 shrink-0" />
+                  <span>Este parece ser um e-mail Gmail. <button type="button" className="underline font-semibold" onClick={() => { setProviderTab("gmail"); setImapHost("imap.gmail.com"); setImapPort("993"); setSmtpHost("smtp.gmail.com"); setSmtpPort("465"); }}>Clique aqui para usar a aba Gmail</button> (auto-configura IMAP/SMTP).</span>
+                </div>
+              )}
               {providerTab !== "gmail" && (
                 <>
                   <div className="grid grid-cols-2 gap-3">
