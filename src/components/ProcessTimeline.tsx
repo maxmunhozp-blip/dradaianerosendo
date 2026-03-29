@@ -82,6 +82,9 @@ export function ProcessTimeline({ caseId }: ProcessTimelineProps) {
   const [formTitle, setFormTitle] = useState("");
   const [formDescription, setFormDescription] = useState("");
   const [formPinned, setFormPinned] = useState(false);
+  const [formFiles, setFormFiles] = useState<{ name: string; url: string }[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const filtered = useMemo(() => {
     let result = entries;
