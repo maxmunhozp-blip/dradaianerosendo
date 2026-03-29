@@ -144,7 +144,7 @@ export function SyncConfigModal({ open, onOpenChange, onSave, saving, initialCon
                 <div>
                   <p className="text-sm font-medium">Importar todos os e-mails</p>
                   <p className="text-xs text-muted-foreground">
-                    E-mails corporativos não possuem os mesmos filtros do Gmail. 
+                    E-mails corporativos não possuem os mesmos filtros do Gmail.
                     Ative para importar tudo sem filtros de assunto ou remetente.
                   </p>
                 </div>
@@ -155,50 +155,54 @@ export function SyncConfigModal({ open, onOpenChange, onSave, saving, initialCon
 
           {/* Section 2 - Filtros de assunto */}
           {!importAll && (
-            <div className="flex items-center gap-2">
-              <Filter className="w-4 h-4 text-muted-foreground" />
-              <Label className="text-sm font-medium">Filtros de assunto</Label>
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Filter className="w-4 h-4 text-muted-foreground" />
+                <Label className="text-sm font-medium">Filtros de assunto</Label>
+              </div>
+              <p className="text-xs text-muted-foreground">Quais tipos de e-mails importar:</p>
+              <div className="grid grid-cols-3 gap-2">
+                {DEFAULT_SUBJECT_FILTERS.map((filter) => (
+                  <label
+                    key={filter}
+                    className="flex items-center gap-2 text-sm cursor-pointer"
+                  >
+                    <Checkbox
+                      checked={subjectFilters.includes(filter)}
+                      onCheckedChange={() => toggleFilter(filter)}
+                    />
+                    {filter}
+                  </label>
+                ))}
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground">Quais tipos de e-mails importar:</p>
-            <div className="grid grid-cols-3 gap-2">
-              {DEFAULT_SUBJECT_FILTERS.map((filter) => (
-                <label
-                  key={filter}
-                  className="flex items-center gap-2 text-sm cursor-pointer"
-                >
-                  <Checkbox
-                    checked={subjectFilters.includes(filter)}
-                    onCheckedChange={() => toggleFilter(filter)}
-                  />
-                  {filter}
-                </label>
-              ))}
-            </div>
-          </div>
+          )}
 
           {/* Section 3 - Filtros de remetente */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Mail className="w-4 h-4 text-muted-foreground" />
-              <Label className="text-sm font-medium">Filtros de remetente</Label>
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm">Apenas remetentes judiciais (@*.jus.br)</p>
-                <p className="text-xs text-muted-foreground">Filtra apenas e-mails de domínios judiciais</p>
+          {!importAll && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Mail className="w-4 h-4 text-muted-foreground" />
+                <Label className="text-sm font-medium">Filtros de remetente</Label>
               </div>
-              <Switch checked={judicialOnly} onCheckedChange={setJudicialOnly} />
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm">Apenas remetentes judiciais (@*.jus.br)</p>
+                  <p className="text-xs text-muted-foreground">Filtra apenas e-mails de domínios judiciais</p>
+                </div>
+                <Switch checked={judicialOnly} onCheckedChange={setJudicialOnly} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Remetentes adicionais (separados por vírgula)</Label>
+                <Input
+                  value={extraSenders}
+                  onChange={(e) => setExtraSenders(e.target.value)}
+                  placeholder="ex: noreply@pje.jus.br, intimacao@tjsp.jus.br"
+                  className="text-sm"
+                />
+              </div>
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Remetentes adicionais (separados por vírgula)</Label>
-              <Input
-                value={extraSenders}
-                onChange={(e) => setExtraSenders(e.target.value)}
-                placeholder="ex: noreply@pje.jus.br, intimacao@tjsp.jus.br"
-                className="text-sm"
-              />
-            </div>
-          </div>
+          )}
 
           {/* Section 4 - Attachments */}
           <div className="space-y-3">
