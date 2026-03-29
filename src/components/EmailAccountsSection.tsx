@@ -612,6 +612,23 @@ export default function EmailAccountsSection() {
                       />
                     </div>
                   </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label className="text-xs">SMTP Host</Label>
+                      <Input
+                        value={smtpHost}
+                        onChange={(e) => setSmtpHost(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">SMTP Porta</Label>
+                      <Input
+                        type="number"
+                        value={smtpPort}
+                        onChange={(e) => setSmtpPort(e.target.value)}
+                      />
+                    </div>
+                  </div>
                 </>
               )}
             </div>
