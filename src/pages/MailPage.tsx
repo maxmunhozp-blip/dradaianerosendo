@@ -341,7 +341,46 @@ export default function MailPage() {
         </div>
       </div>
 
-      {accounts.length === 0 ? (
+      {/* Compose area */}
+      {composeOpen && (
+        <div className="border-b p-4 bg-muted/30 space-y-3 shrink-0">
+          <h3 className="text-sm font-semibold">Novo e-mail</h3>
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              placeholder="Para (e-mail do destinatário)"
+              value={composeTo}
+              onChange={(e) => setComposeTo(e.target.value)}
+              className="text-sm"
+            />
+            <Input
+              placeholder="Assunto"
+              value={composeSubject}
+              onChange={(e) => setComposeSubject(e.target.value)}
+              className="text-sm"
+            />
+          </div>
+          <textarea
+            className="w-full border rounded-md p-2 text-sm min-h-[100px] resize-y bg-background"
+            placeholder="Escreva sua mensagem..."
+            value={composeBody}
+            onChange={(e) => setComposeBody(e.target.value)}
+          />
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-muted-foreground">
+              Enviando de: {selectedAccountId !== "all" ? accounts.find(a => a.id === selectedAccountId)?.email : accounts[0]?.email || "—"}
+            </p>
+            <div className="flex gap-2">
+              <Button variant="ghost" size="sm" onClick={() => setComposeOpen(false)}>
+                Cancelar
+              </Button>
+              <Button size="sm" disabled={sendingCompose} onClick={handleSendCompose}>
+                {sendingCompose ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Mail className="w-3.5 h-3.5 mr-1" />}
+                Enviar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center space-y-3">
             <Inbox className="w-12 h-12 mx-auto text-muted-foreground/40" />
