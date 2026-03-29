@@ -73,7 +73,8 @@ export default function PortalDocuments() {
 
   const uploadMutation = useMutation({
     mutationFn: async ({ file, caseId }: { file: File; caseId: string }) => {
-      const filePath = `${caseId}/${Date.now()}-${file.name}`;
+      const safeName = file.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9._-]/g, "_");
+      const filePath = `${caseId}/${Date.now()}-${safeName}`;
       const { error: uploadError } = await supabase.storage
         .from("case-documents")
         .upload(filePath, file);
