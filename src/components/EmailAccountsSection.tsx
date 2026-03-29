@@ -593,6 +593,74 @@ export default function EmailAccountsSection() {
           <li>Você receberá notificações push para prazos urgentes</li>
         </ol>
       </div>
+
+      {/* Edit Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={(v) => { setEditDialogOpen(v); if (!v) setEditingAccount(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar conta</DialogTitle>
+            <DialogDescription>
+              {editingAccount?.email}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Nome da conta</Label>
+              <Input value={editLabel} onChange={(e) => setEditLabel(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Plataforma</Label>
+              <Select value={editPlatform} onValueChange={setEditPlatform}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {PLATFORMS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            {editingAccount?.provider !== "gmail" && (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Host IMAP</Label>
+                    <Input value={editHost} onChange={(e) => setEditHost(e.target.value)} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Porta</Label>
+                    <Input type="number" value={editPort} onChange={(e) => setEditPort(e.target.value)} />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Nova senha (deixe vazio para manter)</Label>
+                  <div className="relative">
+                    <Input
+                      type={showEditPassword ? "text" : "password"}
+                      placeholder="••••••••"
+                      value={editPassword}
+                      onChange={(e) => setEditPassword(e.target.value)}
+                      className="pr-9"
+                    />
+                    <button
+                      type="button"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      onClick={() => setShowEditPassword(!showEditPassword)}
+                    >
+                      {showEditPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">Se preencher, a conexão será testada antes de salvar.</p>
+                </div>
+              </>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={handleSaveEdit} disabled={saving} className="bg-amber-600 hover:bg-amber-700">
+              {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Pencil className="w-4 h-4 mr-1" />}
+              Salvar alterações
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
