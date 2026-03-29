@@ -11,6 +11,11 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const MAX_BODY_SIZE = 100 * 1024; // 100KB
 
+const FINANCIAL_KEYWORDS = [
+  "boleto", "pagamento", "fatura", "honorários", "honorarios",
+  "cobrança", "cobranca", "recibo", "nota fiscal", "nf-e", "nfe",
+];
+
 interface ImapAccount {
   id: string;
   email: string;
@@ -29,6 +34,8 @@ interface ImapAccount {
   sync_period_days: number;
   sync_configured: boolean;
   sync_import_all: boolean;
+  sync_financial: boolean;
+  sync_extra_domains: string;
 }
 
 // Decode RFC 2047 encoded words (=?charset?encoding?text?=)
@@ -102,7 +109,6 @@ function decodeQuotedPrintableWithCharset(str: string, charset = "utf-8"): strin
       .replace(/=([0-9A-Fa-f]{2})/g, (_m, hex) =>
         String.fromCharCode(parseInt(hex, 16))
       );
-    // Re-decode bytes with proper charset
     const bytes = Uint8Array.from(decoded, (c) => c.charCodeAt(0));
     return new TextDecoder(normalizeCharset(charset)).decode(bytes);
   } catch {
@@ -184,13 +190,12 @@ function extractEmailBody(raw: string): { html: string | null; text: string } {
   }
 }
 
-// Build IMAP search criteria from sync preferences
-function buildSearchCriteria(account: ImapAccount): string {
-  const since = new Date();
-  since.setDate(since.getDate() - (account.sync_period_days || 30));
-  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-  const imapDate = `${since.getUTCDate()}-${months[since.getUTCMonth()]}-${since.getUTCFullYear()}`;
-  return `SEARCH SINCE ${imapDate}`;
+// Categorize email
+function categorizeEmail(fromEmail: string, subject: string, bodyText: string): string {
+  if (/\.jus\.br/i.test(fromEmail)) return "judicial";
+  const textToCheck = `${subject} ${bodyText}`.toLowerCase();
+  if (FINANCIAL_KEYWORDS.some(kw => textToCheck.includes(kw))) return "financial";
+  return "other";
 }
 
 // Check if email matches user's configured filters
@@ -200,10 +205,21 @@ function matchesFilters(
   bodyText: string,
   account: ImapAccount
 ): boolean {
-  // If import_all is enabled, skip all filters (corporate accounts)
+  // If import_all is enabled, skip all filters
   if (account.sync_import_all) return true;
 
   const isJudicial = /\.jus\.br/i.test(fromEmail);
+  const textToCheck = `${subject} ${bodyText}`.toLowerCase();
+  const isFinancial = FINANCIAL_KEYWORDS.some(kw => textToCheck.includes(kw));
+
+  // Financial emails pass if sync_financial is on
+  if (account.sync_financial && isFinancial) return true;
+
+  // Extra domains bypass judicial filter
+  if (account.sync_extra_domains) {
+    const domains = account.sync_extra_domains.split(",").map(d => d.trim().toLowerCase()).filter(Boolean);
+    if (domains.some(d => fromEmail.toLowerCase().includes(d))) return true;
+  }
 
   // If judicial-only is on, non-judicial emails need to match extra senders
   if (account.sync_judicial_only) {
@@ -218,9 +234,7 @@ function matchesFilters(
   // Check subject filters
   const filters = account.sync_subject_filters || [];
   if (filters.length > 0) {
-    const textToCheck = `${subject} ${bodyText}`.toLowerCase();
     const hasMatch = filters.some(kw => textToCheck.includes(kw.toLowerCase()));
-    // Also pass if judicial (always relevant)
     if (!hasMatch && !isJudicial) return false;
   }
 
@@ -280,7 +294,25 @@ async function syncAccount(admin: any, account: ImapAccount): Promise<number> {
   await imapCommand(conn, "A002", "SELECT INBOX");
   console.log(`[sync-imap] INBOX selected`);
 
-  const searchCmd = buildSearchCriteria(account);
+  // Build search command based on cursor
+  const lastCursor = account.gmail_message_id_cursor;
+  let searchCmd: string;
+
+  if (lastCursor && parseInt(lastCursor) > 0) {
+    // Fetch messages with UID greater than the last processed
+    const nextUid = parseInt(lastCursor) + 1;
+    searchCmd = `UID SEARCH UID ${nextUid}:*`;
+    console.log(`[sync-imap] Incremental sync from UID ${nextUid}`);
+  } else {
+    // First sync: use date-based search
+    const since = new Date();
+    since.setDate(since.getDate() - (account.sync_period_days || 30));
+    const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    const imapDate = `${since.getUTCDate()}-${months[since.getUTCMonth()]}-${since.getUTCFullYear()}`;
+    searchCmd = `UID SEARCH SINCE ${imapDate}`;
+    console.log(`[sync-imap] First sync, searching since ${imapDate}`);
+  }
+
   console.log(`[sync-imap] Search command: ${searchCmd}`);
   const searchResp = await imapCommand(conn, "A003", searchCmd);
 
@@ -299,8 +331,12 @@ async function syncAccount(admin: any, account: ImapAccount): Promise<number> {
   let newCount = 0;
   let skippedExisting = 0;
   let skippedFilter = 0;
+  let highestUid = parseInt(lastCursor || "0");
 
   for (const uid of uids) {
+    const uidNum = parseInt(uid);
+    if (uidNum > highestUid) highestUid = uidNum;
+
     // Check if already exists
     const { data: existing } = await admin
       .from("email_messages")
@@ -314,8 +350,8 @@ async function syncAccount(admin: any, account: ImapAccount): Promise<number> {
       continue;
     }
 
-    // FETCH entire message
-    const fetchResp = await imapCommand(conn, `F${uid}`, `FETCH ${uid} BODY[]`);
+    // FETCH entire message (read-only, does not mark as SEEN with BODY.PEEK)
+    const fetchResp = await imapCommand(conn, `F${uid}`, `UID FETCH ${uid} BODY.PEEK[]`);
 
     const fromMatch = fetchResp.match(/^From:\s*(.+)$/im);
     const subjectMatch = fetchResp.match(/^Subject:\s*(.+(?:\r?\n\s+.+)*)$/im);
@@ -341,16 +377,15 @@ async function syncAccount(admin: any, account: ImapAccount): Promise<number> {
       continue;
     }
 
-    const isJudicial = /\.jus\.br/i.test(fromEmail);
+    const category = categorizeEmail(fromEmail, subject, bodyText);
+    const isJudicial = category === "judicial";
 
     // Storage protection: truncate large bodies
     let finalBodyText = (bodyText || "").substring(0, 10000);
     let finalBodyHtml = bodyHtml;
-    let bodyTruncated = false;
 
     if (finalBodyHtml && finalBodyHtml.length > MAX_BODY_SIZE) {
       finalBodyHtml = finalBodyHtml.substring(0, MAX_BODY_SIZE);
-      bodyTruncated = true;
       console.log(`[sync-imap] Body truncated for email: "${subject}"`);
     }
 
@@ -366,6 +401,7 @@ async function syncAccount(admin: any, account: ImapAccount): Promise<number> {
       received_at: dateStr ? new Date(dateStr).toISOString() : new Date().toISOString(),
       is_read: false,
       is_judicial: isJudicial,
+      category,
     });
 
     // Try to link to case and create timeline entry
@@ -425,6 +461,15 @@ async function syncAccount(admin: any, account: ImapAccount): Promise<number> {
     newCount++;
   }
 
+  // Save highest UID as cursor for next sync
+  if (highestUid > 0) {
+    await admin
+      .from("email_accounts")
+      .update({ gmail_message_id_cursor: String(highestUid) })
+      .eq("id", account.id);
+    console.log(`[sync-imap] Saved cursor UID: ${highestUid}`);
+  }
+
   await imapCommand(conn, "A099", "LOGOUT");
   conn.close();
 
@@ -466,7 +511,7 @@ Deno.serve(async (req) => {
 
     console.log(`[sync-imap] Found ${accounts?.length || 0} accounts to sync`);
 
-    // Filter accounts that have IMAP configured
+    // Filter accounts that have IMAP configured and sync_configured
     const imapAccounts = (accounts || []).filter(
       (a: any) => a.imap_host && a.imap_user && a.imap_password && a.sync_configured !== false
     ) as ImapAccount[];

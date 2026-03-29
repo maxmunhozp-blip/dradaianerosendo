@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Loader2, Filter, Mail, Paperclip, Calendar, AlertTriangle, Settings2 } from "lucide-react";
+import { Loader2, Filter, Mail, Paperclip, Calendar, AlertTriangle, Settings2, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -52,6 +52,8 @@ export interface SyncConfig {
   sync_attachments_pdf_only: boolean;
   sync_period_days: number;
   sync_import_all?: boolean;
+  sync_financial?: boolean;
+  sync_extra_domains?: string;
 }
 
 interface SyncConfigModalProps {
@@ -75,6 +77,8 @@ export function SyncConfigModal({ open, onOpenChange, onSave, saving, initialCon
   const [attachments, setAttachments] = useState(initialConfig?.sync_attachments ?? false);
   const [pdfOnly, setPdfOnly] = useState(initialConfig?.sync_attachments_pdf_only ?? true);
   const [periodDays, setPeriodDays] = useState(String(initialConfig?.sync_period_days ?? 30));
+  const [syncFinancial, setSyncFinancial] = useState(initialConfig?.sync_financial ?? false);
+  const [extraDomains, setExtraDomains] = useState(initialConfig?.sync_extra_domains ?? "");
 
   const toggleFilter = (filter: string) => {
     setSubjectFilters((prev) =>
@@ -92,6 +96,8 @@ export function SyncConfigModal({ open, onOpenChange, onSave, saving, initialCon
       sync_attachments_pdf_only: pdfOnly,
       sync_period_days: parseInt(periodDays),
       sync_import_all: importAll,
+      sync_financial: syncFinancial,
+      sync_extra_domains: extraDomains,
     });
   };
 
@@ -200,6 +206,33 @@ export function SyncConfigModal({ open, onOpenChange, onSave, saving, initialCon
                   placeholder="ex: noreply@pje.jus.br, intimacao@tjsp.jus.br"
                   className="text-sm"
                 />
+              </div>
+            </div>
+          )}
+
+          {/* Section - Outros remetentes */}
+          {!importAll && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Globe className="w-4 h-4 text-muted-foreground" />
+                <Label className="text-sm font-medium">Outros remetentes</Label>
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm">Importar e-mails financeiros</p>
+                  <p className="text-xs text-muted-foreground">Boletos, faturas, honorários, notas fiscais</p>
+                </div>
+                <Switch checked={syncFinancial} onCheckedChange={setSyncFinancial} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Domínios adicionais permitidos</Label>
+                <Input
+                  value={extraDomains}
+                  onChange={(e) => setExtraDomains(e.target.value)}
+                  placeholder="ex: hostinger.com, contabilidade.com.br"
+                  className="text-sm"
+                />
+                <p className="text-[10px] text-muted-foreground">Separados por vírgula. E-mails desses domínios serão importados mesmo com filtro judicial ativo.</p>
               </div>
             </div>
           )}

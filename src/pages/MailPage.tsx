@@ -49,9 +49,10 @@ interface EmailMessage {
   is_read: boolean;
   is_judicial: boolean;
   intimacao_id: string | null;
+  category: string;
 }
 
-type EmailFilter = "all" | "unread" | "judicial" | "other";
+type EmailFilter = "all" | "unread" | "judicial" | "financial" | "other";
 
 function useEmailAccounts() {
   return useQuery({
@@ -80,8 +81,9 @@ function useEmailMessages(accountId: string | null, filter: EmailFilter, search:
         query = query.eq("email_account_id", accountId);
       }
       if (filter === "unread") query = query.eq("is_read", false);
-      if (filter === "judicial") query = query.eq("is_judicial", true);
-      if (filter === "other") query = query.eq("is_judicial", false);
+      if (filter === "judicial") query = query.eq("category", "judicial");
+      if (filter === "financial") query = query.eq("category", "financial");
+      if (filter === "other") query = query.eq("category", "other");
       if (search.trim()) query = query.ilike("subject", `%${search.trim()}%`);
 
       const { data, error } = await query;
@@ -297,6 +299,7 @@ export default function MailPage() {
     { value: "all", label: "Todos" },
     { value: "unread", label: "Não lidos" },
     { value: "judicial", label: "Judiciais" },
+    { value: "financial", label: "Financeiro" },
     { value: "other", label: "Outros" },
   ];
 
@@ -472,9 +475,14 @@ export default function MailPage() {
                                   {format(new Date(email.received_at), "dd/MM HH:mm")}
                                 </span>
                               )}
-                              {email.is_judicial && (
+                              {email.category === "judicial" && (
                                 <Badge className="bg-amber-500/10 text-amber-600 border-amber-200 text-[9px] px-1 py-0">
                                   Judicial
+                                </Badge>
+                              )}
+                              {email.category === "financial" && (
+                                <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-200 text-[9px] px-1 py-0">
+                                  Financeiro
                                 </Badge>
                               )}
                               {selectedAccountId === "all" && acct && (
