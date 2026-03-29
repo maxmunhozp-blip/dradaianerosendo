@@ -1,0 +1,1 @@
+UPDATE public.email_messages SET category = 'judicial', is_judicial = true WHERE subject ILIKE '%intimação%teste%sincronização%' AND direction = 'inbound';
