@@ -937,6 +937,7 @@ export default function EmailAccountsSection() {
         onOpenChange={setSyncConfigOpen}
         onSave={handleSaveSyncConfig}
         saving={syncConfigSaving}
+        provider={syncConfigAccount?.provider}
         initialConfig={syncConfigAccount ? {
           sync_limit: syncConfigAccount.sync_limit ?? 100,
           sync_subject_filters: syncConfigAccount.sync_subject_filters ?? [],
@@ -945,6 +946,7 @@ export default function EmailAccountsSection() {
           sync_attachments: syncConfigAccount.sync_attachments ?? false,
           sync_attachments_pdf_only: syncConfigAccount.sync_attachments_pdf_only ?? true,
           sync_period_days: syncConfigAccount.sync_period_days ?? 30,
+          sync_import_all: syncConfigAccount.sync_import_all ?? false,
         } : undefined}
       />
     </div>
