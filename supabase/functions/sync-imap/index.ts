@@ -349,6 +349,40 @@ async function syncAccount(admin: any, account: ImapAccount): Promise<number> {
       is_judicial: isJudicial,
     });
 
+    // Try to link to a case and create timeline entry
+    try {
+      // Extract potential CNJ number from subject or body
+      const cnjPattern = /(\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4})/;
+      const cnjMatch = (subject + " " + bodyText).match(cnjPattern);
+      
+      let linkedCaseId: string | null = null;
+      if (cnjMatch) {
+        const { data: matchedCase } = await admin
+          .from("cases")
+          .select("id")
+          .eq("cnj_number", cnjMatch[1])
+          .maybeSingle();
+        if (matchedCase) linkedCaseId = matchedCase.id;
+      }
+
+      if (linkedCaseId) {
+        // Create timeline entry automatically
+        const cleanBody = (bodyText || "").substring(0, 2000);
+        await admin.from("case_timeline").insert({
+          case_id: linkedCaseId,
+          type: "automatic",
+          status: "atualização_recebida",
+          title: subject,
+          description: cleanBody,
+          event_date: dateStr ? new Date(dateStr).toISOString() : new Date().toISOString(),
+          responsible: fromName || fromEmail,
+        });
+        console.log(`Timeline entry created for case ${linkedCaseId} from email: "${subject}"`);
+      }
+    } catch (e) {
+      console.error("Error creating timeline entry:", e);
+    }
+
     // If judicial, process as intimação
     if (isJudicial) {
       try {
