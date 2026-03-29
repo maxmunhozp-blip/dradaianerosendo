@@ -13,7 +13,7 @@ import { LaraChat } from "@/components/LaraChat";
 import { EmptyState } from "@/components/EmptyState";
 import { DetailSkeleton } from "@/components/Skeletons";
 import { CaseTimeline } from "@/components/CaseTimeline";
-import { ArrowLeft, Upload, Plus, FileText, ClipboardList, FolderOpen, FileDown, Scale, PanelRightClose, PanelRightOpen, CalendarDays, Clock, MapPin, MessageSquare } from "lucide-react";
+import { ArrowLeft, Upload, Plus, FileText, ClipboardList, FolderOpen, FileDown, Scale, PanelRightClose, PanelRightOpen, CalendarDays, Clock, MapPin, MessageSquare, Pencil } from "lucide-react";
 import { useHearingsByCase } from "@/hooks/use-hearings";
 import { HearingModal } from "@/components/HearingModal";
 import { Badge } from "@/components/ui/badge";
@@ -31,7 +31,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 const statusSteps = ["documentacao", "montagem", "protocolo", "andamento", "encerrado"];
 
 export default function CaseDetail() {
@@ -58,6 +65,11 @@ export default function CaseDetail() {
   const [showChat, setShowChat] = useState(true);
   const [showHearingModal, setShowHearingModal] = useState(false);
   const { data: hearings = [] } = useHearingsByCase(id!);
+  const [showEditCase, setShowEditCase] = useState(false);
+  const [editCaseType, setEditCaseType] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editCnj, setEditCnj] = useState("");
+  const [editCourt, setEditCourt] = useState("");
 
   useEffect(() => {
     if (dbMessages.length > 0 && !historyLoaded) {
@@ -81,6 +93,22 @@ export default function CaseDetail() {
   }
 
   const clientName = (caseData as any).clients?.name || "Cliente";
+
+  const handleSaveCase = async () => {
+    try {
+      await updateCase.mutateAsync({
+        id: id!,
+        case_type: editCaseType,
+        description: editDescription || null,
+        cnj_number: editCnj || null,
+        court: editCourt || null,
+      });
+      toast.success("Caso atualizado");
+      setShowEditCase(false);
+    } catch {
+      toast.error("Erro ao atualizar caso");
+    }
+  };
 
   const handleStatusChange = async (newStatus: string) => {
     try {
@@ -157,6 +185,21 @@ export default function CaseDetail() {
             <div className="flex items-center gap-3">
               <h1 className="text-xl font-semibold text-foreground">{caseData.case_type}</h1>
               <StatusBadge status={caseData.status} />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                title="Editar caso"
+                onClick={() => {
+                  setEditCaseType(caseData.case_type);
+                  setEditDescription(caseData.description || "");
+                  setEditCnj(caseData.cnj_number || "");
+                  setEditCourt(caseData.court || "");
+                  setShowEditCase(true);
+                }}
+              >
+                <Pencil className="w-3.5 h-3.5" />
+              </Button>
             </div>
             <p className="text-sm text-muted-foreground mt-1">{caseData.description}</p>
             {caseData.cnj_number && (
@@ -209,6 +252,58 @@ export default function CaseDetail() {
           documents={documents}
           checklist={checklist}
         />
+
+        {/* Edit Case Modal */}
+        <Dialog open={showEditCase} onOpenChange={setShowEditCase}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Editar Caso</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label>Tipo do caso</Label>
+                <Input
+                  value={editCaseType}
+                  onChange={(e) => setEditCaseType(e.target.value)}
+                  placeholder="Ex: Alimentos, Divórcio, Trabalhista..."
+                />
+              </div>
+              <div>
+                <Label>Descrição</Label>
+                <Textarea
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  placeholder="Descrição do caso"
+                  rows={3}
+                />
+              </div>
+              <div>
+                <Label>Número CNJ</Label>
+                <Input
+                  value={editCnj}
+                  onChange={(e) => setEditCnj(e.target.value)}
+                  placeholder="0000000-00.0000.0.00.0000"
+                />
+              </div>
+              <div>
+                <Label>Vara / Tribunal</Label>
+                <Input
+                  value={editCourt}
+                  onChange={(e) => setEditCourt(e.target.value)}
+                  placeholder="Ex: 1ª Vara de Família"
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" onClick={() => setShowEditCase(false)}>
+                  Cancelar
+                </Button>
+                <Button onClick={handleSaveCase} disabled={!editCaseType.trim() || updateCase.isPending}>
+                  Salvar
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         <div className="mb-8 border border-border rounded-lg p-4">
           <CaseStatusStepper currentStatus={caseData.status} />
