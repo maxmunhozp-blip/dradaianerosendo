@@ -120,70 +120,82 @@ function decodeQuotedPrintableWithCharset(str: string, charset = "utf-8"): strin
   }
 }
 
+function parseMimePart(raw: string): { html: string | null; text: string } {
+  let htmlContent: string | null = null;
+  let textContent = "";
+
+  const boundaryMatch = raw.match(/boundary="?([^"\s;]+)"?/i);
+
+  if (!boundaryMatch) {
+    const cteMatch = raw.match(/^Content-Transfer-Encoding:\s*(.+)$/im);
+    const cte = (cteMatch?.[1] || "").trim().toLowerCase();
+    const ctMatch = raw.match(/^Content-Type:\s*([^;\s]+)/im);
+    const ct = (ctMatch?.[1] || "").toLowerCase();
+    const headerEnd = raw.search(/\r?\n\r?\n/);
+    const headerBlock = headerEnd > 0 ? raw.substring(0, headerEnd) : raw;
+    const charset = extractCharset(headerBlock);
+
+    const bodyStart = raw.search(/\r?\n\r?\n/);
+    if (bodyStart === -1) return { html: null, text: "" };
+    let body = raw.substring(bodyStart).replace(/^\r?\n\r?\n/, "");
+
+    if (cte.includes("base64")) body = decodeBase64WithCharset(body, charset);
+    else if (cte.includes("quoted-printable")) body = decodeQuotedPrintableWithCharset(body, charset);
+
+    if (ct.includes("text/html")) {
+      return { html: body, text: body.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() };
+    }
+    return { html: null, text: body.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() };
+  }
+
+  const escapedBoundary = boundaryMatch[1].replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const parts = raw.split(new RegExp(`--${escapedBoundary}`));
+
+  for (const part of parts.slice(1, 10)) {
+    if (part.trim() === "--" || part.trim() === "") continue;
+
+    const ctMatch = part.match(/Content-Type:\s*([^;\s]+)/i);
+    const cteMatch = part.match(/Content-Transfer-Encoding:\s*(\S+)/i);
+    const ct = (ctMatch?.[1] || "").toLowerCase();
+    const cte = (cteMatch?.[1] || "").toLowerCase();
+    const partHeaderEnd = part.search(/\r?\n\r?\n/);
+    const partHeader = partHeaderEnd > 0 ? part.substring(0, partHeaderEnd) : part;
+    const charset = extractCharset(partHeader);
+
+    // Recurse into nested multipart parts
+    if (ct.includes("multipart/")) {
+      const nested = parseMimePart(part);
+      if (!htmlContent && nested.html) htmlContent = nested.html;
+      if (!textContent && nested.text) textContent = nested.text;
+      continue;
+    }
+
+    if (ct.includes("image/") || ct.includes("application/")) continue;
+
+    const bodyIdx = part.search(/\r?\n\r?\n/);
+    if (bodyIdx === -1) continue;
+    let body = part.substring(bodyIdx).replace(/^\r?\n\r?\n/, "");
+
+    if (cte.includes("base64")) body = decodeBase64WithCharset(body, charset);
+    else if (cte.includes("quoted-printable")) body = decodeQuotedPrintableWithCharset(body, charset);
+
+    if (ct.includes("text/html") && !htmlContent) {
+      htmlContent = body;
+    } else if (ct.includes("text/plain") && !textContent) {
+      textContent = body;
+    }
+  }
+
+  if (!textContent && htmlContent) {
+    textContent = htmlContent.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  }
+
+  return { html: htmlContent, text: textContent };
+}
+
 function extractEmailBody(raw: string): { html: string | null; text: string } {
   try {
-    let htmlContent: string | null = null;
-    let textContent = "";
-
-    const boundaryMatch = raw.match(/boundary="?([^"\s;]+)"?/i);
-
-    if (!boundaryMatch) {
-      const cteMatch = raw.match(/^Content-Transfer-Encoding:\s*(.+)$/im);
-      const cte = (cteMatch?.[1] || "").trim().toLowerCase();
-      const ctMatch = raw.match(/^Content-Type:\s*([^;\s]+)/im);
-      const ct = (ctMatch?.[1] || "").toLowerCase();
-      const headerEnd = raw.search(/\r?\n\r?\n/);
-      const headerBlock = headerEnd > 0 ? raw.substring(0, headerEnd) : raw;
-      const charset = extractCharset(headerBlock);
-
-      const bodyStart = raw.search(/\r?\n\r?\n/);
-      if (bodyStart === -1) return { html: null, text: "" };
-      let body = raw.substring(bodyStart).replace(/^\r?\n\r?\n/, "");
-
-      if (cte.includes("base64")) body = decodeBase64WithCharset(body, charset);
-      else if (cte.includes("quoted-printable")) body = decodeQuotedPrintableWithCharset(body, charset);
-
-      if (ct.includes("text/html")) {
-        return { html: body, text: body.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() };
-      }
-      return { html: null, text: body.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() };
-    }
-
-    const escapedBoundary = boundaryMatch[1].replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const parts = raw.split(new RegExp(`--${escapedBoundary}`));
-
-    for (const part of parts.slice(1, 10)) {
-      if (part.trim() === "--" || part.trim() === "") continue;
-
-      const ctMatch = part.match(/Content-Type:\s*([^;\s]+)/i);
-      const cteMatch = part.match(/Content-Transfer-Encoding:\s*(\S+)/i);
-      const ct = (ctMatch?.[1] || "").toLowerCase();
-      const cte = (cteMatch?.[1] || "").toLowerCase();
-      const partHeaderEnd = part.search(/\r?\n\r?\n/);
-      const partHeader = partHeaderEnd > 0 ? part.substring(0, partHeaderEnd) : part;
-      const charset = extractCharset(partHeader);
-
-      if (ct.includes("multipart/") || ct.includes("image/") || ct.includes("application/")) continue;
-
-      const bodyIdx = part.search(/\r?\n\r?\n/);
-      if (bodyIdx === -1) continue;
-      let body = part.substring(bodyIdx).replace(/^\r?\n\r?\n/, "");
-
-      if (cte.includes("base64")) body = decodeBase64WithCharset(body, charset);
-      else if (cte.includes("quoted-printable")) body = decodeQuotedPrintableWithCharset(body, charset);
-
-      if (ct.includes("text/html") && !htmlContent) {
-        htmlContent = body;
-      } else if (ct.includes("text/plain") && !textContent) {
-        textContent = body;
-      }
-    }
-
-    if (!textContent && htmlContent) {
-      textContent = htmlContent.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-    }
-
-    return { html: htmlContent, text: textContent };
+    return parseMimePart(raw);
   } catch (e) {
     console.error("Error parsing email body:", e);
     return { html: null, text: "" };
