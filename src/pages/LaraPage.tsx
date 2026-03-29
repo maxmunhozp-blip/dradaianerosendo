@@ -19,6 +19,7 @@ const shortcuts = [
   { cmd: "/checklist", desc: "Gerar checklist do caso" },
   { cmd: "/analise", desc: "Analisar documento" },
   { cmd: "/cobrar", desc: "Cobrar documentos pendentes" },
+  { cmd: "/lei", desc: "Consultar legislação" },
 ];
 
 export default function LaraPage() {
