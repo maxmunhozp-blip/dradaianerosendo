@@ -7,6 +7,7 @@ import { AuthProvider } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { PortalProtectedRoute } from "@/components/PortalProtectedRoute";
 import AdminLayout from "@/components/AdminLayout";
+import PortalLayout from "@/components/PortalLayout";
 import Dashboard from "@/pages/Dashboard";
 import Clients from "@/pages/Clients";
 import ClientDetail from "@/pages/ClientDetail";
@@ -14,6 +15,7 @@ import CaseDetail from "@/pages/CaseDetail";
 import LaraPage from "@/pages/LaraPage";
 import Documents from "@/pages/Documents";
 import PortalDashboard from "@/pages/PortalDashboard";
+import PortalDocuments from "@/pages/PortalDocuments";
 import PortalLogin from "@/pages/PortalLogin";
 import Login from "@/pages/Login";
 import NotFound from "./pages/NotFound.tsx";
@@ -44,9 +46,13 @@ const App = () => (
               </Route>
             </Route>
 
-            {/* Client portal (protected) */}
+            {/* Client portal */}
             <Route element={<PortalProtectedRoute />}>
-              <Route path="/portal" element={<PortalDashboard />} />
+              <Route element={<PortalLayout />}>
+                <Route path="/portal" element={<PortalDashboard />} />
+                <Route path="/portal/dashboard" element={<PortalDashboard />} />
+                <Route path="/portal/documents" element={<PortalDocuments />} />
+              </Route>
             </Route>
 
             <Route path="*" element={<NotFound />} />
