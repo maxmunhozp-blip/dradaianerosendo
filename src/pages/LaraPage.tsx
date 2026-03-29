@@ -102,15 +102,15 @@ export default function LaraPage() {
             <p className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wider">
               Comandos
             </p>
-            <div className="space-y-1">
+            <div className="flex flex-wrap gap-1.5">
               {shortcuts.map((s) => (
                 <button
                   key={s.cmd}
                   onClick={() => handleCommandClick(s.cmd)}
-                  className="block w-full text-left rounded-md px-2 py-1.5 hover:bg-muted transition-colors"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/50 px-3 py-1.5 text-xs hover:bg-accent hover:text-accent-foreground transition-colors"
+                  title={s.desc}
                 >
-                  <code className="text-xs font-mono text-foreground">{s.cmd}</code>
-                  <p className="text-xs text-muted-foreground">{s.desc}</p>
+                  <code className="font-mono font-medium">{s.cmd}</code>
                 </button>
               ))}
             </div>
