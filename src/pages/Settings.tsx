@@ -11,7 +11,13 @@ import {
   Bell,
   Copy,
   Mail,
+  History,
+  RefreshCw,
+  AlertTriangle,
+  CheckCircle,
+  XCircle,
 } from "lucide-react";
+import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -167,6 +173,108 @@ function TemplateField({
   );
 }
 
+function SyncLogSection({ open, onOpenChange }: { open: boolean; onOpenChange: () => void }) {
+  const [accounts, setAccounts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (open) loadAccounts();
+  }, [open]);
+
+  const loadAccounts = async () => {
+    setLoading(true);
+    const { data } = await (supabase.from("email_accounts") as any)
+      .select("id, label, email, provider, status, last_sync")
+      .order("last_sync", { ascending: false, nullsFirst: false });
+    setAccounts(data || []);
+    setLoading(false);
+  };
+
+  const statusIcon = (status: string) => {
+    if (status === "conectado") return <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />;
+    if (status === "erro") return <XCircle className="w-3.5 h-3.5 text-destructive" />;
+    return <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />;
+  };
+
+  return (
+    <CollapsibleSection
+      open={open}
+      onOpenChange={onOpenChange}
+      icon={History}
+      iconBg="bg-primary/10 text-primary"
+      title="Histórico de Sincronização"
+      description="Log das últimas sincronizações automáticas de e-mail"
+    >
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-muted-foreground">
+            Cron jobs rodam a cada 15 minutos (Gmail + IMAP)
+          </p>
+          <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={loadAccounts} disabled={loading}>
+            <RefreshCw className={`w-3 h-3 ${loading ? "animate-spin" : ""}`} />
+            Atualizar
+          </Button>
+        </div>
+
+        {loading && accounts.length === 0 ? (
+          <div className="flex justify-center py-6">
+            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : accounts.length === 0 ? (
+          <p className="text-xs text-muted-foreground text-center py-6">
+            Nenhuma conta de e-mail cadastrada.
+          </p>
+        ) : (
+          <div className="border rounded-lg divide-y">
+            {accounts.map((acc) => (
+              <div key={acc.id} className="flex items-center gap-3 px-3 py-2.5">
+                {statusIcon(acc.status)}
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium truncate">{acc.label}</p>
+                  <p className="text-[11px] text-muted-foreground truncate">{acc.email}</p>
+                </div>
+                <Badge variant="outline" className="text-[10px] shrink-0">
+                  {acc.provider === "gmail" ? "Gmail" : "IMAP"}
+                </Badge>
+                <div className="text-right shrink-0">
+                  {acc.last_sync ? (
+                    <div>
+                      <p className="text-[11px] font-medium text-foreground">
+                        {format(new Date(acc.last_sync), "dd/MM/yyyy")}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {format(new Date(acc.last_sync), "HH:mm:ss")}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-[11px] text-muted-foreground">Nunca sincronizado</p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="bg-muted/50 rounded-md p-3 text-[11px] text-muted-foreground space-y-1">
+          <p className="font-medium text-foreground text-xs">Cron jobs ativos:</p>
+          <div className="flex items-center gap-2">
+            <CheckCircle className="w-3 h-3 text-emerald-500 shrink-0" />
+            <span><code className="bg-background px-1 rounded">sync-gmail-every-15min</code> — Sincroniza contas Gmail via OAuth</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <CheckCircle className="w-3 h-3 text-emerald-500 shrink-0" />
+            <span><code className="bg-background px-1 rounded">sync-imap-every-15min</code> — Sincroniza contas Hostinger/IMAP</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <CheckCircle className="w-3 h-3 text-emerald-500 shrink-0" />
+            <span><code className="bg-background px-1 rounded">check-urgent-deadlines-every-15min</code> — Alerta WhatsApp para prazos &lt;48h</span>
+          </div>
+        </div>
+      </div>
+    </CollapsibleSection>
+  );
+}
+
 export default function Settings() {
   const [values, setValues] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -174,6 +282,7 @@ export default function Settings() {
     office: true,
     zapi: false,
     emailAccounts: false,
+    syncLog: false,
     templates: false,
     hours: false,
     intimacoes: false,
@@ -419,6 +528,12 @@ export default function Settings() {
       >
         <EmailAccountsSection />
       </CollapsibleSection>
+
+      {/* Histórico de Sincronização */}
+      <SyncLogSection
+        open={openSections.syncLog}
+        onOpenChange={() => toggle("syncLog")}
+      />
 
       {/* Templates de Mensagem */}
       <CollapsibleSection
