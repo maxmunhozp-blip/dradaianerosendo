@@ -140,7 +140,7 @@ type ProviderTab = "gmail" | "hostinger";
 export default function EmailAccountsSection() {
   const { data: accounts = [], isLoading } = useEmailAccounts();
   const deleteMutation = useDeleteEmailAccount();
-  const syncMutation = useSyncGmail();
+  const syncMutation = useSyncAccount();
   const qc = useQueryClient();
 
   const [dialogOpen, setDialogOpen] = useState(false);
