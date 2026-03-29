@@ -187,14 +187,15 @@ export default function EmailAccountsSection() {
       JSON.stringify({ label: newLabel, platform: newPlatform })
     );
 
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        scopes: "https://www.googleapis.com/auth/gmail.readonly",
-        redirectTo: window.location.origin + "/settings",
-        queryParams: { access_type: "offline", prompt: "consent" },
+    const result = await lovable.auth.signInWithOAuth("google", {
+      redirect_uri: window.location.origin + "/settings",
+      extraParams: {
+        access_type: "offline",
+        prompt: "consent",
       },
     });
+
+    const error = result?.error;
 
     if (error) {
       toast.error("Erro ao iniciar OAuth: " + error.message);
