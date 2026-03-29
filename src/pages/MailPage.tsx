@@ -478,6 +478,11 @@ export default function MailPage() {
                                   Financeiro
                                 </Badge>
                               )}
+                              {(email as any).direction === "outbound" && (
+                                <Badge className="bg-blue-500/10 text-blue-600 border-blue-200 text-[9px] px-1 py-0">
+                                  Enviado
+                                </Badge>
+                              )}
                               {selectedAccountId === "all" && acct && (
                                 <Badge variant="outline" className="text-[9px] px-1 py-0">
                                   {acct.label}
