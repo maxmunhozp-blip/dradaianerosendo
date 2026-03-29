@@ -173,6 +173,50 @@ export type Database = {
           },
         ]
       }
+      hearings: {
+        Row: {
+          alert_whatsapp: boolean
+          case_id: string
+          created_at: string
+          date: string
+          id: string
+          location: string | null
+          notes: string | null
+          status: string
+          title: string
+        }
+        Insert: {
+          alert_whatsapp?: boolean
+          case_id: string
+          created_at?: string
+          date: string
+          id?: string
+          location?: string | null
+          notes?: string | null
+          status?: string
+          title: string
+        }
+        Update: {
+          alert_whatsapp?: boolean
+          case_id?: string
+          created_at?: string
+          date?: string
+          id?: string
+          location?: string | null
+          notes?: string | null
+          status?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hearings_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           attachments: Json | null
