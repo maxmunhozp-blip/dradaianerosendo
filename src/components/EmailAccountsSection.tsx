@@ -166,6 +166,7 @@ export default function EmailAccountsSection() {
   const [newLabel, setNewLabel] = useState("");
   const [newPlatform, setNewPlatform] = useState("Todos");
   const [saving, setSaving] = useState(false);
+  const [oauthStep, setOauthStep] = useState<string | null>(null);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<"success" | "error" | null>(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -236,9 +237,13 @@ export default function EmailAccountsSection() {
 
       const { label, platform } = JSON.parse(pendingRaw);
       const providerToken = session?.provider_token as string | undefined;
-      if (!providerToken) return;
+      if (!providerToken) {
+        setOauthStep(null);
+        return;
+      }
 
       try {
+        setOauthStep("Obtendo dados da conta Google...");
         const res = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
           headers: { Authorization: `Bearer ${providerToken}` },
         });
@@ -252,6 +257,7 @@ export default function EmailAccountsSection() {
           throw new Error("Não foi possível obter o e-mail da conta Google");
         }
 
+        setOauthStep(`Verificando conta ${userInfo.email}...`);
         const { data: existing } = await (supabase.from("email_accounts") as any)
           .select("id")
           .eq("email", userInfo.email)
@@ -261,9 +267,11 @@ export default function EmailAccountsSection() {
           toast.info(`Conta ${userInfo.email} já está conectada`);
           qc.invalidateQueries({ queryKey: ["email-accounts"] });
           window.history.replaceState(null, "", window.location.pathname);
+          setOauthStep(null);
           return;
         }
 
+        setOauthStep(`Salvando conta ${userInfo.email}...`);
         const { error } = await (supabase.from("email_accounts") as any).insert({
           label,
           email: userInfo.email,
@@ -281,6 +289,8 @@ export default function EmailAccountsSection() {
         window.history.replaceState(null, "", window.location.pathname);
       } catch (err: any) {
         toast.error("Erro ao salvar conta: " + err.message);
+      } finally {
+        setOauthStep(null);
       }
     };
 
@@ -288,18 +298,23 @@ export default function EmailAccountsSection() {
       const pending = localStorage.getItem("pending_email_account");
       if (!pending) return;
 
+      setOauthStep("Autenticando com Google...");
+
       const hasOAuthParams =
         window.location.search.includes("code=") ||
         window.location.hash.includes("access_token");
 
       if (hasOAuthParams && window.location.search.includes("code=")) {
+        setOauthStep("Trocando código de autenticação...");
         const { error } = await supabase.auth.exchangeCodeForSession(window.location.href);
         if (error) {
           toast.error("Erro ao finalizar autenticação Google: " + error.message);
+          setOauthStep(null);
           return;
         }
       }
 
+      setOauthStep("Aguardando token do Google...");
       let session = (await supabase.auth.getSession()).data.session;
 
       for (let i = 0; i < 8 && !session?.provider_token; i++) {
@@ -312,6 +327,7 @@ export default function EmailAccountsSection() {
           toast.error("Autenticação concluída, mas o token do Gmail não foi liberado. Tente novamente.");
           window.history.replaceState(null, "", window.location.pathname);
         }
+        setOauthStep(null);
         return;
       }
 
@@ -471,6 +487,12 @@ export default function EmailAccountsSection() {
 
   return (
     <div className="space-y-4">
+      {oauthStep && (
+        <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-800">
+          <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+          <span>{oauthStep}</span>
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <p className="text-xs text-muted-foreground">
           {accounts.length} conta(s) configurada(s)
