@@ -142,26 +142,63 @@ function extractEmailBody(raw: string): { html: string | null; text: string } {
 }
 
 const legalKeywords = [
+  // Atos processuais
   "processo", "intimação", "intimacao", "citação", "citacao",
   "audiência", "audiencia", "sentença", "sentenca", "despacho",
   "mandado", "alvará", "alvara", "petição", "peticao",
   "recurso", "agravo", "apelação", "apelacao", "embargo",
-  "jus.br", "pje", "esaj", "projudi", "tjsp", "tjrj", "tjmg",
-  "tribunal", "vara", "juiz", "juízo", "juizo", "comarca",
+  "contestação", "contestacao", "réplica", "replica",
+  "impugnação", "impugnacao", "exceção", "excecao",
+  "reconvenção", "reconvencao", "contradita",
+  // Tribunais e sistemas
+  "jus.br", "pje", "esaj", "projudi", "eproc", "e-proc", "sei",
+  "tjsp", "tjrj", "tjmg", "tjba", "tjrs", "tjpr", "tjsc", "tjpe", "tjce", "tjgo", "tjdf",
+  "tjal", "tjam", "tjap", "tjma", "tjms", "tjmt", "tjpa", "tjpb", "tjpi", "tjrn", "tjro", "tjrr", "tjse", "tjto", "tjes",
+  "trf1", "trf2", "trf3", "trf4", "trf5", "trf6",
+  "stf", "stj", "tst", "trt", "tre", "tse",
+  "tribunal", "vara", "juiz", "juízo", "juizo", "comarca", "fórum", "forum",
+  "turma recursal", "juizado especial", "juizado",
+  // Partes e profissionais
   "réu", "reu", "autor", "advogad", "oab", "procuração", "procuracao",
-  "diligência", "diligencia", "prazo", "contestação", "contestacao",
-  "cnj", "distribuição", "distribuicao", "protocolo",
+  "requerente", "requerido", "exequente", "executado", "impetrante",
+  "reclamante", "reclamado", "apelante", "apelado", "agravante", "agravado",
+  "litisconsorte", "assistente", "interveniente", "curador", "tutor",
+  "defensor", "promotor", "ministério público", "ministerio publico",
+  // Documentos e procedimentos
+  "diligência", "diligencia", "prazo", "prazo fatal", "prazo processual",
+  "cnj", "distribuição", "distribuicao", "protocolo", "certidão", "certidao",
   "oficial de justiça", "oficial de justica",
-  "carta precatória", "carta precatoria",
-  "execução", "execucao", "penhora", "leilão", "leilao",
-  "inventário", "inventario", "divórcio", "divorcio",
-  "pensão", "pensao", "alimentos", "guarda", "tutela",
-  "habeas corpus", "mandamus", "liminar", "tutela antecipada",
+  "carta precatória", "carta precatoria", "carta rogatória", "carta rogatoria",
+  "edital", "publicação", "publicacao", "dje", "diário oficial", "diario oficial",
+  "execução", "execucao", "penhora", "leilão", "leilao", "hasta pública", "hasta publica",
+  "arresto", "sequestro", "bloqueio", "bacenjud", "renajud", "infojud", "sisbajud",
+  // Áreas do direito de família
+  "inventário", "inventario", "divórcio", "divorcio", "separação", "separacao",
+  "pensão", "pensao", "alimentos", "guarda", "tutela", "curatela",
+  "adoção", "adocao", "união estável", "uniao estavel",
+  "partilha", "meação", "meacao", "regime de bens",
+  "alienação parental", "alienacao parental",
+  "regulamentação de visitas", "regulamentacao de visitas",
+  // Decisões e recursos
+  "habeas corpus", "mandamus", "liminar", "tutela antecipada", "tutela provisória", "tutela provisoria",
+  "antecipação de tutela", "antecipacao de tutela", "efeito suspensivo",
   "indenização", "indenizacao", "dano moral", "dano material",
-  "trabalhista", "reclamação", "reclamacao", "trt", "tst",
+  "trabalhista", "reclamação", "reclamacao",
   "previdenciário", "previdenciario", "inss", "benefício", "beneficio",
-  "honorários", "honorarios", "custas", "emolumentos",
-  "acórdão", "acordao", "jurisprudência", "jurisprudencia",
+  "honorários", "honorarios", "custas", "emolumentos", "sucumbência", "sucumbencia",
+  "acórdão", "acordao", "jurisprudência", "jurisprudencia", "súmula", "sumula",
+  "trânsito em julgado", "transito em julgado", "coisa julgada",
+  // Contratos e obrigações
+  "contrato", "cláusula", "clausula", "rescisão", "rescisao",
+  "notificação extrajudicial", "notificacao extrajudicial",
+  "escritura", "procuração", "procuracao", "substabelecimento",
+  // Termos comuns em e-mails de sistemas judiciais
+  "movimentação", "movimentacao", "andamento processual", "andamento",
+  "consulta processual", "acompanhamento", "push",
+  "numeração única", "numeracao unica", "número do processo", "numero do processo",
+  "comprovante de protocolo", "recibo",
+  "pauta de julgamento", "pauta de audiência", "pauta de audiencia",
+  "escavador", "jusbrasil",
 ];
 
 async function imapCommand(
