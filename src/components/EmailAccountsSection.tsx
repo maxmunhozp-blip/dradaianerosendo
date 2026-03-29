@@ -516,7 +516,13 @@ export default function EmailAccountsSection() {
             <div className="grid grid-cols-2 gap-3 py-2">
               <button
                 type="button"
-                onClick={() => setProviderTab("gmail")}
+                onClick={() => {
+                  setProviderTab("gmail");
+                  setImapHost("imap.gmail.com");
+                  setImapPort("993");
+                  setSmtpHost("smtp.gmail.com");
+                  setSmtpPort("465");
+                }}
                 className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-colors ${
                   providerTab === "gmail"
                     ? "border-amber-500 bg-amber-50"
@@ -525,11 +531,17 @@ export default function EmailAccountsSection() {
               >
                 <Mail className="w-6 h-6 text-red-500" />
                 <span className="text-sm font-medium">Gmail</span>
-                <span className="text-[10px] text-muted-foreground text-center">Conectar via OAuth Google</span>
+                <span className="text-[10px] text-muted-foreground text-center">IMAP com Senha de App</span>
               </button>
               <button
                 type="button"
-                onClick={() => setProviderTab("hostinger")}
+                onClick={() => {
+                  setProviderTab("hostinger");
+                  setImapHost("imap.hostinger.com");
+                  setImapPort("993");
+                  setSmtpHost("smtp.hostinger.com");
+                  setSmtpPort("465");
+                }}
                 className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-colors ${
                   providerTab === "hostinger"
                     ? "border-amber-500 bg-amber-50"
@@ -537,8 +549,8 @@ export default function EmailAccountsSection() {
                 }`}
               >
                 <Server className="w-6 h-6 text-purple-500" />
-                <span className="text-sm font-medium">Hostinger</span>
-                <span className="text-[10px] text-muted-foreground text-center">Configurar com e-mail Hostinger</span>
+                <span className="text-sm font-medium">Hostinger / Outro</span>
+                <span className="text-[10px] text-muted-foreground text-center">Configurar IMAP/SMTP manualmente</span>
               </button>
             </div>
 
