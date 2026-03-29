@@ -380,6 +380,9 @@ Deno.serve(async (req: Request) => {
     // Detect if last user message needs LexML grounding
     const lastMsg = messages[messages.length - 1];
     const legalQuery = lastMsg?.role === "user" ? detectLegalQuery(lastMsg.content) : null;
+    
+    // Check if this is a direct /lei command
+    const isLeiCommand = lastMsg?.role === "user" && /^\/lei\s+/i.test(lastMsg.content.trim());
 
     // Fetch all context in parallel (including LexML if needed)
     const [officeContext, caseContext, settings, lexmlContext] = await Promise.all([
@@ -388,6 +391,33 @@ Deno.serve(async (req: Request) => {
       fetchSettings(supabase),
       legalQuery ? fetchLexMLContext(legalQuery, supabaseUrl) : Promise.resolve(""),
     ]);
+    
+    // If /lei command but LexML returned nothing, return error immediately
+    if (isLeiCommand && !lexmlContext) {
+      const lawNum = lastMsg.content.trim().replace(/^\/lei\s+/i, "");
+      const errorMsg = `Não encontrei a lei ${lawNum} no LexML. Verifique o número e tente novamente com /lei [número completo]`;
+      // Return as a streaming response for consistency
+      const encoder = new TextEncoder();
+      const stream = new ReadableStream({
+        start(controller) {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ choices: [{ delta: { content: errorMsg } }] })}\n\n`));
+          controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+          controller.close();
+        },
+      });
+      return new Response(stream, {
+        headers: { ...corsHeaders, "Content-Type": "text/event-stream", "Cache-Control": "no-cache" },
+      });
+    }
+    
+    // For /lei commands, rewrite the user message to instruct AI to use LexML data
+    if (isLeiCommand && lexmlContext) {
+      const lawNum = lastMsg.content.trim().replace(/^\/lei\s+/i, "");
+      messages[messages.length - 1] = {
+        ...lastMsg,
+        content: `Consulta de legislação: Busque e formate a resposta usando EXCLUSIVAMENTE os dados reais do LexML fornecidos abaixo para a lei ${lawNum}. Retorne título, resumo, URN oficial e link para o texto completo. NÃO use conhecimento prévio — use apenas os dados do LexML.`,
+      };
+    }
 
     // Build settings context string
     let settingsContext = "\n\n## CONFIGURAÇÕES DO ESCRITÓRIO\n";
