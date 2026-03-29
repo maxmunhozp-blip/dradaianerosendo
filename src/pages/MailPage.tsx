@@ -35,8 +35,7 @@ const stripHtml = (html?: string | null): string => {
   return (doc.body.textContent || "").replace(/\s+/g, " ").trim();
 };
 
-
-  id: string;
+interface EmailMessage {
   created_at: string;
   email_account_id: string;
   message_uid: string;
