@@ -239,7 +239,7 @@ export default function CaseDetail() {
         </div>
 
         {/* Checklist */}
-        <div>
+        <div className="mb-8">
           <h2 className="text-sm font-medium text-foreground mb-3">
             Checklist ({checklist.filter((i) => i.done).length}/{checklist.length})
           </h2>
@@ -273,6 +273,15 @@ export default function CaseDetail() {
             </div>
           </div>
         </div>
+
+        {/* Timeline */}
+        <CaseTimeline
+          documents={documents}
+          messages={dbMessages}
+          checklist={checklist}
+          caseCreatedAt={caseData.created_at}
+        />
+      </div>
       </div>
 
       {/* Right column - LARA chat */}
