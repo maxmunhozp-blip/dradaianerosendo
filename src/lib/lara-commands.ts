@@ -11,6 +11,8 @@ const COMMAND_EXPANSIONS: Record<string, string> = {
     "/analise — Por favor, analise as informações e documentos disponíveis sobre este caso e forneça um parecer técnico com pontos fortes, riscos e recomendações estratégicas.",
   "/cobrar":
     "/cobrar — Por favor, identifique todos os clientes com documentos pendentes e gere mensagens personalizadas de WhatsApp para cobrança. Inclua o bloco whatsapp-action com os dados para envio.",
+  "/agenda":
+    "/agenda — Por favor, liste todas as audiências e prazos futuros, agrupados por semana, indicando caso, cliente, data, hora e local. Destaque os que estão próximos (48h) ou atrasados.",
 };
 
 export function expandCommand(input: string): string {

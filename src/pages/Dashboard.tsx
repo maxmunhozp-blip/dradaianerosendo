@@ -1,4 +1,4 @@
-import { Users, FolderOpen, FileText, TrendingUp, Plus, Bot, MessageSquare } from "lucide-react";
+import { Users, FolderOpen, FileText, TrendingUp, Plus, Bot, MessageSquare, CalendarDays, Clock, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/StatusBadge";
 import { AnimatedCounter } from "@/components/AnimatedCounter";
@@ -9,6 +9,9 @@ import { useClients } from "@/hooks/use-clients";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
+import { useUpcomingHearings } from "@/hooks/use-hearings";
+import { format, differenceInHours } from "date-fns";
 
 export default function Dashboard() {
   const { data: clients = [], isLoading: clientsLoading } = useClients();
@@ -134,6 +137,79 @@ export default function Dashboard() {
             ))
           )}
         </div>
+      </div>
+
+      {/* Upcoming hearings */}
+      <UpcomingHearings />
+    </div>
+  );
+}
+
+function UpcomingHearings() {
+  const { data: hearings = [], isLoading } = useUpcomingHearings(5);
+
+  return (
+    <div className="mt-8">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-sm font-medium text-foreground">Próximas audiências</h2>
+        <Button variant="ghost" size="sm" asChild>
+          <Link to="/agenda">
+            <CalendarDays className="w-3.5 h-3.5 mr-1.5" />
+            Ver agenda
+          </Link>
+        </Button>
+      </div>
+      <div className="border border-border rounded-lg divide-y divide-border">
+        {isLoading ? (
+          Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="px-4 py-3">
+              <Skeleton className="h-4 w-48" />
+              <Skeleton className="h-3 w-24 mt-1.5" />
+            </div>
+          ))
+        ) : hearings.length === 0 ? (
+          <div className="px-4 py-6 text-center">
+            <CalendarDays className="w-5 h-5 text-muted-foreground mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">Nenhuma audiência agendada</p>
+          </div>
+        ) : (
+          hearings.map((h: any) => {
+            const d = new Date(h.date);
+            const hoursUntil = differenceInHours(d, new Date());
+            const isSoon = hoursUntil >= 0 && hoursUntil <= 48;
+            return (
+              <Link key={h.id} to={`/cases/${h.case_id}`} className="flex items-center justify-between px-4 py-3 hover:bg-muted/50 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="text-center shrink-0 w-10">
+                    <p className="text-lg font-semibold text-foreground tabular-nums">{format(d, "dd")}</p>
+                    <p className="text-[10px] uppercase text-muted-foreground">{format(d, "MMM")}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{h.title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {h.cases?.case_type} — {h.cases?.clients?.name}
+                    </p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Clock className="w-3 h-3" />{format(d, "HH:mm")}
+                      </span>
+                      {h.location && (
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          <MapPin className="w-3 h-3" />{h.location}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                {isSoon && (
+                  <Badge variant="destructive" className="text-[10px]">
+                    {hoursUntil <= 24 ? "Hoje" : "Amanhã"}
+                  </Badge>
+                )}
+              </Link>
+            );
+          })
+        )}
       </div>
     </div>
   );
