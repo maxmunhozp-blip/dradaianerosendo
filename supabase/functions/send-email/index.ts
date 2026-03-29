@@ -1,12 +1,37 @@
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-import { SmtpClient } from "https://deno.land/x/smtp@v0.7.0/mod.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.100.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+
+const encoder = new TextEncoder();
+const decoder = new TextDecoder();
+
+async function smtpRead(conn: Deno.TlsConn): Promise<string> {
+  const buf = new Uint8Array(4096);
+  let result = "";
+  for (let i = 0; i < 10; i++) {
+    const n = await conn.read(buf);
+    if (!n) break;
+    result += decoder.decode(buf.subarray(0, n));
+    // Check if we got a complete response (line ending with \r\n and starting with 3-digit code + space)
+    const lines = result.split("\r\n").filter(Boolean);
+    const lastLine = lines[lines.length - 1];
+    if (lastLine && /^\d{3} /.test(lastLine)) break;
+  }
+  return result;
+}
+
+async function smtpWrite(conn: Deno.TlsConn, cmd: string): Promise<string> {
+  await conn.write(encoder.encode(cmd + "\r\n"));
+  return await smtpRead(conn);
+}
+
+function encodeBase64(str: string): string {
+  return btoa(unescape(encodeURIComponent(str)));
+}
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -44,7 +69,7 @@ Deno.serve(async (req: Request) => {
     const smtpHost = account.smtp_host || account.imap_host?.replace("imap.", "smtp.") || "smtp.hostinger.com";
     const smtpPort = account.smtp_port || 465;
     const username = account.imap_user || account.email;
-    const password = account.imap_password;
+    const password = account.imap_password ? atob(account.imap_password) : null;
 
     if (!password) {
       return new Response(
@@ -53,31 +78,91 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Connect and send via SMTP
-    const client = new SmtpClient();
-
-    await client.connectTLS({
+    // Connect via TLS (port 465 = implicit TLS)
+    const conn = await Deno.connectTls({
       hostname: smtpHost,
       port: smtpPort,
-      username,
-      password,
     });
 
-    const headers: Record<string, string> = {};
-    if (in_reply_to) {
-      headers["In-Reply-To"] = in_reply_to;
-      headers["References"] = in_reply_to;
+    // Read greeting
+    await smtpRead(conn);
+
+    // EHLO
+    const ehloResp = await smtpWrite(conn, `EHLO lexai.local`);
+    if (!ehloResp.includes("250")) {
+      conn.close();
+      throw new Error("EHLO failed: " + ehloResp);
     }
 
-    await client.send({
-      from: account.email,
-      to,
-      subject,
-      content: body,
-      headers,
-    });
+    // AUTH LOGIN
+    let resp = await smtpWrite(conn, "AUTH LOGIN");
+    if (!resp.includes("334")) {
+      conn.close();
+      throw new Error("AUTH LOGIN failed: " + resp);
+    }
 
-    await client.close();
+    resp = await smtpWrite(conn, encodeBase64(username));
+    if (!resp.includes("334")) {
+      conn.close();
+      throw new Error("Username rejected: " + resp);
+    }
+
+    resp = await smtpWrite(conn, encodeBase64(password));
+    if (!resp.includes("235")) {
+      conn.close();
+      throw new Error("Authentication failed: " + resp);
+    }
+
+    // MAIL FROM
+    resp = await smtpWrite(conn, `MAIL FROM:<${account.email}>`);
+    if (!resp.includes("250")) {
+      conn.close();
+      throw new Error("MAIL FROM failed: " + resp);
+    }
+
+    // RCPT TO
+    resp = await smtpWrite(conn, `RCPT TO:<${to}>`);
+    if (!resp.includes("250")) {
+      conn.close();
+      throw new Error("RCPT TO failed: " + resp);
+    }
+
+    // DATA
+    resp = await smtpWrite(conn, "DATA");
+    if (!resp.includes("354")) {
+      conn.close();
+      throw new Error("DATA failed: " + resp);
+    }
+
+    // Build email content
+    const boundary = `boundary_${crypto.randomUUID().replace(/-/g, "")}`;
+    let emailData = `From: ${account.email}\r\n`;
+    emailData += `To: ${to}\r\n`;
+    emailData += `Subject: =?UTF-8?B?${encodeBase64(subject)}?=\r\n`;
+    emailData += `MIME-Version: 1.0\r\n`;
+    emailData += `Content-Type: text/plain; charset=UTF-8\r\n`;
+    emailData += `Content-Transfer-Encoding: base64\r\n`;
+
+    if (in_reply_to) {
+      emailData += `In-Reply-To: ${in_reply_to}\r\n`;
+      emailData += `References: ${in_reply_to}\r\n`;
+    }
+
+    emailData += `Date: ${new Date().toUTCString()}\r\n`;
+    emailData += `\r\n`;
+    emailData += encodeBase64(body) + "\r\n";
+    emailData += ".\r\n";
+
+    await conn.write(encoder.encode(emailData));
+    resp = await smtpRead(conn);
+    if (!resp.includes("250")) {
+      conn.close();
+      throw new Error("Send failed: " + resp);
+    }
+
+    // QUIT
+    await smtpWrite(conn, "QUIT");
+    conn.close();
 
     console.log(`Email sent from ${account.email} to ${to}`);
 
