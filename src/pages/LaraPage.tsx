@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { LaraChat } from "@/components/LaraChat";
 import { useLaraChat } from "@/hooks/use-lara-chat";
 import {
@@ -17,14 +18,32 @@ const shortcuts = [
   { cmd: "/peticao", desc: "Redigir petição" },
   { cmd: "/checklist", desc: "Gerar checklist do caso" },
   { cmd: "/analise", desc: "Analisar documento" },
+  { cmd: "/cobrar", desc: "Cobrar documentos pendentes" },
 ];
 
 export default function LaraPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [caseContext, setCaseContext] = useState<string>("none");
   const activeCaseId = caseContext !== "none" ? caseContext : undefined;
   const { messages, isLoading, sendMessage, loadHistory } = useLaraChat(activeCaseId);
   const [historyLoaded, setHistoryLoaded] = useState<string | null>(null);
   const [pendingCommand, setPendingCommand] = useState<string | null>(null);
+  const autoTriggered = useRef(false);
+
+  // Auto-trigger command from URL param (e.g. /lara?cmd=/cobrar)
+  useEffect(() => {
+    const cmd = searchParams.get("cmd");
+    if (cmd && !autoTriggered.current) {
+      autoTriggered.current = true;
+      setPendingCommand(cmd);
+      // Clean URL
+      setSearchParams({}, { replace: true });
+      // Auto-send after a short delay to let the command populate
+      setTimeout(() => {
+        sendMessage(cmd, []);
+      }, 100);
+    }
+  }, [searchParams, setSearchParams, sendMessage]);
 
   const { data: allCases = [] } = useQuery({
     queryKey: ["cases-all-lara"],
