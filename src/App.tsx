@@ -23,6 +23,7 @@ import SettingsPage from "@/pages/Settings";
 import UsersManagement from "@/pages/UsersManagement";
 import Templates from "@/pages/Templates";
 import Intimacoes from "@/pages/Intimacoes";
+import MailPage from "@/pages/MailPage";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -53,6 +54,7 @@ const App = () => (
                 <Route path="/users" element={<UsersManagement />} />
                 <Route path="/templates" element={<Templates />} />
                 <Route path="/intimacoes" element={<Intimacoes />} />
+                <Route path="/mail" element={<MailPage />} />
               </Route>
             </Route>
 

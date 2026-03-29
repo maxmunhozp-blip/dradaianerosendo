@@ -21,6 +21,8 @@ const COMMAND_EXPANSIONS: Record<string, string> = {
     "/prazos — Por favor, calcule e liste todos os prazos processuais aplicáveis a este tipo de ação, considerando o status atual do caso. Indique prazos já vencidos, em andamento e futuros, com datas estimadas e fundamentação legal.",
   "/modelo":
     "/modelo — Por favor, gere um modelo de documento jurídico adequado para a fase atual deste caso (contestação, recurso, manifestação, etc.), preenchido com os dados disponíveis do caso e do cliente.",
+  "/mail":
+    "/mail — Por favor, mostre um resumo dos e-mails não lidos por conta de e-mail conectada, indicando quantos são não lidos e quantos são judiciais (de domínios *.jus.br). Formato:\n\nE-mails não lidos por conta:\n- [nome da conta]: X não lidos (Y judiciais)\n- [nome da conta]: X não lidos (Y judiciais)",
 };
 
 /**

@@ -10,6 +10,7 @@ import {
   ShieldCheck,
   FileStack,
   Bell,
+  Mail,
 } from "lucide-react";
 import { useIntimacaoCount } from "@/hooks/use-intimacoes";
 import { NavLink } from "@/components/NavLink";
@@ -34,6 +35,7 @@ const navItems = [
   { title: "Documentos", url: "/documents", icon: FolderOpen },
   { title: "Agenda", url: "/agenda", icon: CalendarDays },
   { title: "Intimações", url: "/intimacoes", icon: Bell },
+  { title: "E-mails", url: "/mail", icon: Mail },
   { title: "LARA", url: "/lara", icon: Bot },
   { title: "Templates", url: "/templates", icon: FileStack },
   { title: "Usuários", url: "/users", icon: ShieldCheck },
