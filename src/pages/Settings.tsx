@@ -1,4 +1,4 @@
-import { useState, useEffect, type ReactNode } from "react";
+import { useState, useEffect, useRef, type ReactNode } from "react";
 import {
   Save,
   MessageSquare,
@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import {
   Collapsible,
   CollapsibleContent,
@@ -102,6 +103,65 @@ const VALIDATORS: Record<string, { regex: RegExp; msg: string }> = {
     msg: "Formato inválido. Ex: OAB/SP 123456",
   },
 };
+
+function TemplateField({
+  label,
+  placeholder,
+  value,
+  onChange,
+  variables,
+}: {
+  label: string;
+  placeholder: string;
+  value: string;
+  onChange: (v: string) => void;
+  variables: { tag: string; desc: string }[];
+}) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const insertVariable = (tag: string) => {
+    const ta = textareaRef.current;
+    if (!ta) {
+      onChange(value + tag);
+      return;
+    }
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const newVal = value.substring(0, start) + tag + value.substring(end);
+    onChange(newVal);
+    requestAnimationFrame(() => {
+      ta.focus();
+      ta.selectionStart = ta.selectionEnd = start + tag.length;
+    });
+  };
+
+  return (
+    <div className="space-y-2">
+      <Label className="text-xs">{label}</Label>
+      <Textarea
+        ref={textareaRef}
+        rows={5}
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="text-[10px] text-muted-foreground mr-1">Variáveis:</span>
+        {variables.map((v) => (
+          <Badge
+            key={v.tag}
+            variant="outline"
+            className="text-[10px] px-1.5 py-0 cursor-pointer hover:bg-primary/10 hover:text-primary hover:border-primary/30 transition-colors font-mono"
+            title={`${v.desc} — clique para inserir`}
+            onClick={() => insertVariable(v.tag)}
+          >
+            {v.tag}
+          </Badge>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function Settings() {
   const [values, setValues] = useState<Record<string, string>>({});
@@ -325,42 +385,37 @@ export default function Settings() {
         description="Modelos de texto para WhatsApp e comunicações"
       >
         <div className="space-y-4">
-          <div className="space-y-2">
-            <Label className="text-xs">Cobrança de documentos</Label>
-            <Textarea
-              rows={5}
-              placeholder={"Olá {nome}! Tudo bem?\n\nSou a Dra. Daiane Rosendo. Passando para lembrar que ainda precisamos dos seguintes documentos:\n\n{documentos}\n\nQualquer dúvida estou à disposição!"}
-              value={val("template_doc_reminder")}
-              onChange={(e) => set("template_doc_reminder", e.target.value)}
-            />
-            <p className="text-[10px] text-muted-foreground">
-              Variáveis: {"{nome}"}, {"{documentos}"}, {"{tipo_caso}"}
-            </p>
-          </div>
-          <div className="space-y-2">
-            <Label className="text-xs">Boas-vindas ao portal</Label>
-            <Textarea
-              rows={4}
-              placeholder={"Olá {nome}! Bem-vindo(a) ao nosso portal.\n\nAcesse pelo link abaixo para acompanhar seu processo:\n{link_portal}"}
-              value={val("template_welcome")}
-              onChange={(e) => set("template_welcome", e.target.value)}
-            />
-            <p className="text-[10px] text-muted-foreground">
-              Variáveis: {"{nome}"}, {"{link_portal}"}
-            </p>
-          </div>
-          <div className="space-y-2">
-            <Label className="text-xs">Solicitação de assinatura</Label>
-            <Textarea
-              rows={4}
-              placeholder={"Olá {nome}! Segue o link para assinatura dos documentos:\n{link_assinatura}\n\nQualquer dúvida, estou à disposição."}
-              value={val("template_signing")}
-              onChange={(e) => set("template_signing", e.target.value)}
-            />
-            <p className="text-[10px] text-muted-foreground">
-              Variáveis: {"{nome}"}, {"{link_assinatura}"}
-            </p>
-          </div>
+          <TemplateField
+            label="Cobrança de documentos"
+            placeholder={"Olá {nome}! Tudo bem?\n\nSou a Dra. Daiane Rosendo. Passando para lembrar que ainda precisamos dos seguintes documentos:\n\n{documentos}\n\nQualquer dúvida estou à disposição!"}
+            value={val("template_doc_reminder")}
+            onChange={(v) => set("template_doc_reminder", v)}
+            variables={[
+              { tag: "{nome}", desc: "Nome do cliente" },
+              { tag: "{documentos}", desc: "Lista de docs pendentes" },
+              { tag: "{tipo_caso}", desc: "Tipo do caso" },
+            ]}
+          />
+          <TemplateField
+            label="Boas-vindas ao portal"
+            placeholder={"Olá {nome}! Bem-vindo(a) ao nosso portal.\n\nAcesse pelo link abaixo para acompanhar seu processo:\n{link_portal}"}
+            value={val("template_welcome")}
+            onChange={(v) => set("template_welcome", v)}
+            variables={[
+              { tag: "{nome}", desc: "Nome do cliente" },
+              { tag: "{link_portal}", desc: "Link do portal" },
+            ]}
+          />
+          <TemplateField
+            label="Solicitação de assinatura"
+            placeholder={"Olá {nome}! Segue o link para assinatura dos documentos:\n{link_assinatura}\n\nQualquer dúvida, estou à disposição."}
+            value={val("template_signing")}
+            onChange={(v) => set("template_signing", v)}
+            variables={[
+              { tag: "{nome}", desc: "Nome do cliente" },
+              { tag: "{link_assinatura}", desc: "Link de assinatura" },
+            ]}
+          />
         </div>
       </CollapsibleSection>
 
