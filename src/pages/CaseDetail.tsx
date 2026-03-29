@@ -13,7 +13,7 @@ import { LaraChat } from "@/components/LaraChat";
 import { EmptyState } from "@/components/EmptyState";
 import { DetailSkeleton } from "@/components/Skeletons";
 import { CaseTimeline } from "@/components/CaseTimeline";
-import { ArrowLeft, Upload, Plus, FileText, ClipboardList, FolderOpen, FileDown, Scale } from "lucide-react";
+import { ArrowLeft, Upload, Plus, FileText, ClipboardList, FolderOpen, FileDown, Scale, PanelRightClose, PanelRightOpen } from "lucide-react";
 import { GenerateDocumentsModal } from "@/components/GenerateDocumentsModal";
 import { PeticaoModal } from "@/components/PeticaoModal";
 import { Button } from "@/components/ui/button";
@@ -50,6 +50,7 @@ export default function CaseDetail() {
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const [showDocGen, setShowDocGen] = useState(false);
   const [showPeticao, setShowPeticao] = useState(false);
+  const [showChat, setShowChat] = useState(true);
 
   useEffect(() => {
     if (dbMessages.length > 0 && !historyLoaded) {
@@ -134,9 +135,9 @@ export default function CaseDetail() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-3rem)]">
+    <div className="relative flex h-[calc(100vh-3rem)]">
       {/* Left column */}
-      <div className="flex-1 overflow-y-auto p-6 min-w-0" style={{ flex: "0 0 60%" }}>
+      <div className="flex-1 overflow-y-auto p-6 min-w-0" style={{ flex: showChat ? "0 0 60%" : "1 1 100%" }}>
         <Button variant="ghost" size="sm" asChild className="mb-4">
           <Link to={`/clients/${caseData.client_id}`}>
             <ArrowLeft className="w-3.5 h-3.5 mr-1.5" />
@@ -283,14 +284,27 @@ export default function CaseDetail() {
         />
       </div>
 
+      {/* Toggle chat button */}
+      <Button
+        variant="ghost"
+        size="icon"
+        className="absolute top-3 right-3 z-10 h-8 w-8"
+        onClick={() => setShowChat(!showChat)}
+        title={showChat ? "Fechar LARA" : "Abrir LARA"}
+      >
+        {showChat ? <PanelRightClose className="w-4 h-4" /> : <PanelRightOpen className="w-4 h-4" />}
+      </Button>
+
       {/* Right column - LARA chat */}
-      <div className="border-l border-border" style={{ flex: "0 0 40%" }}>
-        <LaraChat
-          messages={chatMessages}
-          onSend={sendMessage}
-          isLoading={chatLoading}
-        />
-      </div>
+      {showChat && (
+        <div className="border-l border-border" style={{ flex: "0 0 40%" }}>
+          <LaraChat
+            messages={chatMessages}
+            onSend={sendMessage}
+            isLoading={chatLoading}
+          />
+        </div>
+      )}
     </div>
   );
 }
