@@ -930,6 +930,23 @@ export default function EmailAccountsSection() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Sync Config Modal */}
+      <SyncConfigModal
+        open={syncConfigOpen}
+        onOpenChange={setSyncConfigOpen}
+        onSave={handleSaveSyncConfig}
+        saving={syncConfigSaving}
+        initialConfig={syncConfigAccount ? {
+          sync_limit: syncConfigAccount.sync_limit ?? 100,
+          sync_subject_filters: syncConfigAccount.sync_subject_filters ?? [],
+          sync_judicial_only: syncConfigAccount.sync_judicial_only ?? true,
+          sync_extra_senders: syncConfigAccount.sync_extra_senders ?? "",
+          sync_attachments: syncConfigAccount.sync_attachments ?? false,
+          sync_attachments_pdf_only: syncConfigAccount.sync_attachments_pdf_only ?? true,
+          sync_period_days: syncConfigAccount.sync_period_days ?? 30,
+        } : undefined}
+      />
     </div>
   );
 }
