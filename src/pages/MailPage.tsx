@@ -75,7 +75,7 @@ function useEmailMessages(accountId: string | null, filter: EmailFilter, search:
       let query = (supabase.from("email_messages") as any)
         .select("*")
         .order("received_at", { ascending: false })
-        .limit(100);
+        .limit(500);
 
       if (accountId && accountId !== "all") {
         query = query.eq("email_account_id", accountId);
