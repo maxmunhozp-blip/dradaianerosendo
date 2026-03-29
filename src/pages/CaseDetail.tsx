@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useCase, useUpdateCase } from "@/hooks/use-cases";
+import { useCase, useUpdateCase, useDeleteCase } from "@/hooks/use-cases";
 import { useDocumentsByCase, useCreateDocument, useUploadDocument } from "@/hooks/use-documents";
 import { useChecklistByCase, useCreateChecklistItem, useToggleChecklistItem, useDeleteChecklistItem } from "@/hooks/use-checklist";
 import { useMessagesByCase } from "@/hooks/use-messages";
@@ -15,7 +15,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { ProcessTimeline } from "@/components/ProcessTimeline";
 import { DetailSkeleton } from "@/components/Skeletons";
 import { CaseTimeline } from "@/components/CaseTimeline";
-import { ArrowLeft, Upload, Plus, FileText, ClipboardList, FolderOpen, FileDown, Scale, PanelRightClose, PanelRightOpen, CalendarDays, Clock, MapPin, MessageSquare, Pencil } from "lucide-react";
+import { ArrowLeft, Upload, Plus, FileText, ClipboardList, FolderOpen, FileDown, Scale, PanelRightClose, PanelRightOpen, CalendarDays, Clock, MapPin, MessageSquare, Pencil, Trash2 } from "lucide-react";
 import { useHearingsByCase } from "@/hooks/use-hearings";
 import { HearingModal } from "@/components/HearingModal";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +39,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 const statusSteps = ["documentacao", "montagem", "protocolo", "andamento", "encerrado"];
@@ -52,7 +63,9 @@ export default function CaseDetail() {
 
   const { messages: chatMessages, isLoading: chatLoading, sendMessage, loadHistory } = useLaraChat(id);
 
+  const navigate = useNavigate();
   const updateCase = useUpdateCase();
+  const deleteCase = useDeleteCase();
   const createDoc = useCreateDocument();
   const uploadDoc = useUploadDocument();
   const createChecklistItem = useCreateChecklistItem();
@@ -171,6 +184,16 @@ export default function CaseDetail() {
     }
   };
 
+  const handleDeleteCase = async () => {
+    try {
+      await deleteCase.mutateAsync(id!);
+      toast.success("Caso excluído");
+      navigate(`/clients/${caseData.client_id}`);
+    } catch {
+      toast.error("Erro ao excluir caso");
+    }
+  };
+
   return (
     <div className="relative flex h-[calc(100vh-3rem)]">
       {/* Left column */}
@@ -213,6 +236,27 @@ export default function CaseDetail() {
               >
                 <Pencil className="w-3.5 h-3.5" />
               </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" title="Excluir caso">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Excluir caso</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Tem certeza que deseja excluir este caso? Essa ação não pode ser desfeita. Todos os documentos, checklist e mensagens vinculados serão removidos.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDeleteCase} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                      Excluir
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
             <p className="text-sm text-muted-foreground mt-1">{caseData.description}</p>
             {caseData.cnj_number && (
