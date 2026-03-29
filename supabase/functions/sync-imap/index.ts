@@ -208,6 +208,10 @@ function matchesFilters(
   // If import_all is enabled, skip all filters
   if (account.sync_import_all) return true;
 
+  // Gmail IMAP accounts: import everything (user already filters in Gmail)
+  const isGmailImap = account.provider === "gmail" && account.imap_password;
+  if (isGmailImap) return true;
+
   // Account's own domain always passes
   const accountDomain = account.imap_user?.split("@")[1]?.toLowerCase();
   if (accountDomain && fromEmail.toLowerCase().includes(accountDomain)) return true;
