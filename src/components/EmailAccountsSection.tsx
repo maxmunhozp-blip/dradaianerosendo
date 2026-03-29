@@ -577,75 +577,79 @@ export default function EmailAccountsSection() {
                 </Select>
               </div>
 
-              {providerTab === "hostinger" && (
-                <>
-                  <div className="space-y-2">
-                    <Label className="text-xs">E-mail</Label>
-                    <Input
-                      type="email"
-                      placeholder="daiane@escritorio.com.br"
-                      value={hostEmail}
-                      onChange={(e) => setHostEmail(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs">Senha</Label>
-                    <div className="relative">
-                      <Input
-                        type={showPassword ? "text" : "password"}
-                        placeholder="Senha do e-mail"
-                        value={hostPassword}
-                        onChange={(e) => setHostPassword(e.target.value)}
-                        className="pr-9"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                      >
-                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-2">
-                      <Label className="text-xs">IMAP Host</Label>
-                      <Input
-                        value={imapHost}
-                        onChange={(e) => setImapHost(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs">IMAP Porta</Label>
-                      <Input
-                        type="number"
-                        value={imapPort}
-                        onChange={(e) => setImapPort(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-2">
-                      <Label className="text-xs">SMTP Host</Label>
-                      <Input
-                        value={smtpHost}
-                        onChange={(e) => setSmtpHost(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs">SMTP Porta</Label>
-                      <Input
-                        type="number"
-                        value={smtpPort}
-                        onChange={(e) => setSmtpPort(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                </>
+              {providerTab === "gmail" && (
+                <div className="bg-amber-50 border border-amber-200 rounded-md p-3 text-xs text-amber-800">
+                  <p className="font-semibold mb-1">⚠ Gmail requer "Senha de App"</p>
+                  <p>1. Ative a <strong>verificação em 2 etapas</strong> na sua conta Google</p>
+                  <p>2. Acesse <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer" className="underline font-medium">myaccount.google.com/apppasswords</a></p>
+                  <p>3. Crie uma senha de app e use ela no campo "Senha" abaixo</p>
+                </div>
               )}
+              <div className="space-y-2">
+                <Label className="text-xs">E-mail</Label>
+                <Input
+                  type="email"
+                  placeholder={providerTab === "gmail" ? "seuemail@gmail.com" : "daiane@escritorio.com.br"}
+                  value={hostEmail}
+                  onChange={(e) => setHostEmail(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs">{providerTab === "gmail" ? "Senha de App (16 caracteres)" : "Senha"}</Label>
+                <div className="relative">
+                  <Input
+                    type={showPassword ? "text" : "password"}
+                    placeholder={providerTab === "gmail" ? "Senha de App do Google" : "Senha do e-mail"}
+                    value={hostPassword}
+                    onChange={(e) => setHostPassword(e.target.value)}
+                    className="pr-9"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label className="text-xs">IMAP Host</Label>
+                  <Input
+                    value={imapHost}
+                    onChange={(e) => setImapHost(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs">IMAP Porta</Label>
+                  <Input
+                    type="number"
+                    value={imapPort}
+                    onChange={(e) => setImapPort(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label className="text-xs">SMTP Host</Label>
+                  <Input
+                    value={smtpHost}
+                    onChange={(e) => setSmtpHost(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs">SMTP Porta</Label>
+                  <Input
+                    type="number"
+                    value={smtpPort}
+                    onChange={(e) => setSmtpPort(e.target.value)}
+                  />
+                </div>
+              </div>
             </div>
 
-            {providerTab === "hostinger" && testResult && (
+            {testResult && (
               <div className={`flex items-center gap-2 text-xs px-3 py-2 rounded-md ${testResult === "success" ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-700 border border-red-200"}`}>
                 {testResult === "success" ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
                 {testResult === "success" ? "Conexão IMAP válida! Pode salvar a conta." : "Falha na conexão. Verifique as credenciais."}
