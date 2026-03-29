@@ -76,6 +76,38 @@ function useDeleteEmailAccount() {
   });
 }
 
+function useSyncAccount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ accountId, provider }: { accountId: string; provider: string }) => {
+      // Reset status to "conectado" before syncing so the function picks it up
+      await (supabase.from("email_accounts") as any)
+        .update({ status: "conectado" })
+        .eq("id", accountId);
+
+      const funcName = provider === "gmail" ? "sync-gmail" : "sync-imap";
+      const { data, error } = await supabase.functions.invoke(funcName, {
+        body: { account_id: accountId },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ["email-accounts"] });
+      qc.invalidateQueries({ queryKey: ["intimacoes"] });
+      qc.invalidateQueries({ queryKey: ["intimacoes-count-novo"] });
+      const count = data?.new_emails ?? data?.new_intimacoes ?? 0;
+      toast.success(
+        count > 0
+          ? `${count} novo(s) e-mail(s) encontrado(s)!`
+          : "Sincronização concluída. Nenhum novo e-mail."
+      );
+    },
+    onError: (err: any) => toast.error("Erro na sincronização: " + err.message),
+  });
+}
+
+// Keep backward compatible export
 function useSyncGmail() {
   const qc = useQueryClient();
   return useMutation({
