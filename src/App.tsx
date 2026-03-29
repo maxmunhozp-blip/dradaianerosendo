@@ -18,6 +18,7 @@ import PortalDashboard from "@/pages/PortalDashboard";
 import PortalDocuments from "@/pages/PortalDocuments";
 import PortalLogin from "@/pages/PortalLogin";
 import Login from "@/pages/Login";
+import SettingsPage from "@/pages/Settings";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -43,6 +44,7 @@ const App = () => (
                 <Route path="/cases/:id" element={<CaseDetail />} />
                 <Route path="/lara" element={<LaraPage />} />
                 <Route path="/documents" element={<Documents />} />
+                <Route path="/settings" element={<SettingsPage />} />
               </Route>
             </Route>
 
