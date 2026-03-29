@@ -175,9 +175,16 @@ async function fetchMessageContent(
   };
 }
 
+const JUDICIAL_KEYWORDS = [
+  "intimação", "intimacao", "citação", "citacao", "despacho",
+  "sentença", "sentenca", "decisão", "decisao", "mandado",
+  "audiência", "audiencia", "prazo", "acórdão", "acordao",
+];
+
 function categorizeEmail(fromEmail: string, subject: string, bodyText: string): string {
   if (/\.jus\.br/i.test(fromEmail)) return "judicial";
   const textToCheck = `${subject} ${bodyText}`.toLowerCase();
+  if (JUDICIAL_KEYWORDS.some(kw => textToCheck.includes(kw))) return "judicial";
   if (FINANCIAL_KEYWORDS.some(kw => textToCheck.includes(kw))) return "financial";
   return "other";
 }
