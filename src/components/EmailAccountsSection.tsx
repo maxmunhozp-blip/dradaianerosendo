@@ -215,7 +215,7 @@ export default function EmailAccountsSection() {
           host: imapHost,
           port: parseInt(imapPort),
           user: hostEmail,
-          password: hostPassword,
+          password: hostPassword.replace(/\s/g, ""),
         },
       });
       if (error) throw error;
@@ -390,7 +390,7 @@ export default function EmailAccountsSection() {
           host: imapHost,
           port: parseInt(imapPort),
           user: hostEmail,
-          password: hostPassword,
+          password: hostPassword.replace(/\s/g, ""),
         },
       });
 
@@ -407,7 +407,7 @@ export default function EmailAccountsSection() {
         imap_host: imapHost,
         imap_port: parseInt(imapPort),
         imap_user: hostEmail,
-        imap_password: btoa(hostPassword),
+        imap_password: btoa(hostPassword.replace(/\s/g, "")),
         smtp_host: smtpHost,
         smtp_port: parseInt(smtpPort),
       });
@@ -464,7 +464,7 @@ export default function EmailAccountsSection() {
           });
           if (error) throw error;
           if (!data?.success) throw new Error(data?.error || "Falha na conexão IMAP");
-          updates.imap_password = btoa(editPassword);
+          updates.imap_password = btoa(editPassword.replace(/\s/g, ""));
           updates.status = "conectado";
         }
       }
@@ -582,7 +582,7 @@ export default function EmailAccountsSection() {
                   <p className="font-semibold mb-1">⚠ Gmail requer "Senha de App"</p>
                   <p>1. Ative a <strong>verificação em 2 etapas</strong> na sua conta Google</p>
                   <p>2. Acesse <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer" className="underline font-medium">myaccount.google.com/apppasswords</a></p>
-                  <p>3. Crie uma senha de app e use ela no campo "Senha" abaixo</p>
+                  <p>3. Crie uma senha de app e cole no campo abaixo (com ou sem espaços — o sistema remove automaticamente)</p>
                 </div>
               )}
               <div className="space-y-2">
