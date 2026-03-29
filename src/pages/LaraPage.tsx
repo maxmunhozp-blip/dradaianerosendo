@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { LaraChat } from "@/components/LaraChat";
+import { useLaraChat } from "@/hooks/use-lara-chat";
 import {
   Select,
   SelectContent,
@@ -9,8 +10,6 @@ import {
 } from "@/components/ui/select";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useSendMessage } from "@/hooks/use-messages";
-import type { Message } from "@/lib/types";
 
 const shortcuts = [
   { cmd: "/procuracao", desc: "Gerar procuração" },
@@ -22,18 +21,24 @@ const shortcuts = [
 
 export default function LaraPage() {
   const [caseContext, setCaseContext] = useState<string>("none");
-  const sendMessage = useSendMessage();
+  const activeCaseId = caseContext !== "none" ? caseContext : undefined;
+  const { messages, isLoading, sendMessage, loadHistory } = useLaraChat(activeCaseId);
+  const [historyLoaded, setHistoryLoaded] = useState<string | null>(null);
 
   const { data: allCases = [] } = useQuery({
     queryKey: ["cases-all-lara"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("cases").select("*, clients(name)").order("created_at", { ascending: false });
+      const { data, error } = await supabase
+        .from("cases")
+        .select("*, clients(name)")
+        .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
     },
   });
 
-  const { data: messages = [] } = useQuery({
+  // Load history when case context changes
+  const { data: dbMessages = [] } = useQuery({
     queryKey: ["messages", caseContext],
     queryFn: async () => {
       if (caseContext === "none") return [];
@@ -45,27 +50,24 @@ export default function LaraPage() {
       if (error) throw error;
       return data;
     },
-    enabled: true,
   });
 
-  const chatMessages: Message[] = messages.map((m: any) => ({
-    id: m.id,
-    created_at: m.created_at,
-    case_id: m.case_id,
-    role: m.role,
-    content: m.content,
-    attachments: m.attachments,
-  }));
-
-  const handleSend = async (content: string) => {
-    if (caseContext === "none") return;
-    await sendMessage.mutateAsync({ case_id: caseContext, role: "user", content });
-  };
+  useEffect(() => {
+    if (caseContext !== "none" && dbMessages.length > 0 && historyLoaded !== caseContext) {
+      loadHistory(dbMessages);
+      setHistoryLoaded(caseContext);
+    }
+    if (caseContext !== historyLoaded) {
+      // Reset when switching contexts
+      loadHistory([]);
+      setHistoryLoaded(null);
+    }
+  }, [caseContext, dbMessages, historyLoaded, loadHistory]);
 
   return (
     <div className="flex h-[calc(100vh-3rem)]">
       <div className="flex-1 flex flex-col">
-        <div className="flex items-center gap-4 px-6 py-3 border-b border-border">
+        <div className="flex items-center gap-4 px-6 py-3 border-b border-border shrink-0">
           <span className="text-sm text-muted-foreground">Contexto:</span>
           <Select value={caseContext} onValueChange={setCaseContext}>
             <SelectTrigger className="w-64 h-8 text-sm">
@@ -86,10 +88,16 @@ export default function LaraPage() {
           <div className="flex-1">
             {caseContext === "none" ? (
               <div className="flex items-center justify-center h-full">
-                <p className="text-sm text-muted-foreground">Selecione um caso para iniciar a conversa.</p>
+                <p className="text-sm text-muted-foreground">
+                  Selecione um caso para iniciar a conversa com LARA.
+                </p>
               </div>
             ) : (
-              <LaraChat messages={chatMessages} onSend={handleSend} />
+              <LaraChat
+                messages={messages}
+                onSend={sendMessage}
+                isLoading={isLoading}
+              />
             )}
           </div>
 
