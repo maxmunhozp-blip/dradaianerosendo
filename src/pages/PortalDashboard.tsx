@@ -18,6 +18,17 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+const statusLabels: Record<string, string> = {
+  documentacao: "Documentação",
+  montagem: "Montagem",
+  protocolo: "Protocolo",
+  andamento: "Em andamento",
+  encerrado: "Encerrado",
+};
+function formatStatus(s: string) {
+  return statusLabels[s] || s;
+}
+
 export default function PortalDashboard() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
