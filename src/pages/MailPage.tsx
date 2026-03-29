@@ -81,8 +81,9 @@ function useEmailMessages(accountId: string | null, filter: EmailFilter, search:
         query = query.eq("email_account_id", accountId);
       }
       if (filter === "unread") query = query.eq("is_read", false);
-      if (filter === "judicial") query = query.eq("is_judicial", true);
-      if (filter === "other") query = query.eq("is_judicial", false);
+      if (filter === "judicial") query = query.eq("category", "judicial");
+      if (filter === "financial") query = query.eq("category", "financial");
+      if (filter === "other") query = query.eq("category", "other");
       if (search.trim()) query = query.ilike("subject", `%${search.trim()}%`);
 
       const { data, error } = await query;
@@ -298,6 +299,7 @@ export default function MailPage() {
     { value: "all", label: "Todos" },
     { value: "unread", label: "Não lidos" },
     { value: "judicial", label: "Judiciais" },
+    { value: "financial", label: "Financeiro" },
     { value: "other", label: "Outros" },
   ];
 
