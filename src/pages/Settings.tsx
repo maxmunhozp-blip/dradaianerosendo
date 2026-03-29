@@ -16,6 +16,10 @@ import {
   AlertTriangle,
   CheckCircle,
   XCircle,
+  Scale,
+  Pencil,
+  Trash2,
+  Plus,
 } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -280,6 +284,7 @@ export default function Settings() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [openSections, setOpenSections] = useState({
     office: true,
+    caseTypes: false,
     zapi: false,
     emailAccounts: false,
     syncLog: false,
@@ -287,6 +292,71 @@ export default function Settings() {
     hours: false,
     intimacoes: false,
   });
+
+  // Case types management
+  const DEFAULT_CASE_TYPES = ["Divórcio", "Guarda", "Alimentos", "Inventário", "Outro"];
+  const [caseTypes, setCaseTypes] = useState<string[]>(DEFAULT_CASE_TYPES);
+  const [newCaseType, setNewCaseType] = useState("");
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editingValue, setEditingValue] = useState("");
+
+  useEffect(() => {
+    loadCaseTypes();
+  }, []);
+
+  const loadCaseTypes = async () => {
+    const { data } = await (supabase.from("settings" as any).select("value").eq("key", "case_types").single()) as any;
+    if (data?.value) {
+      try {
+        const parsed = JSON.parse(data.value);
+        if (Array.isArray(parsed) && parsed.length > 0) setCaseTypes(parsed);
+      } catch {}
+    }
+  };
+
+  const saveCaseTypes = async (types: string[]) => {
+    setCaseTypes(types);
+    await (supabase.from("settings" as any) as any).upsert(
+      { key: "case_types", value: JSON.stringify(types), updated_at: new Date().toISOString() },
+      { onConflict: "key" }
+    );
+    toast.success("Tipos de ação atualizados!");
+  };
+
+  const addCaseType = () => {
+    const trimmed = newCaseType.trim();
+    if (!trimmed) return;
+    if (caseTypes.includes(trimmed)) {
+      toast.error("Tipo já existe.");
+      return;
+    }
+    saveCaseTypes([...caseTypes, trimmed]);
+    setNewCaseType("");
+  };
+
+  const deleteCaseType = (index: number) => {
+    saveCaseTypes(caseTypes.filter((_, i) => i !== index));
+  };
+
+  const startEdit = (index: number) => {
+    setEditingIndex(index);
+    setEditingValue(caseTypes[index]);
+  };
+
+  const confirmEdit = () => {
+    if (editingIndex === null) return;
+    const trimmed = editingValue.trim();
+    if (!trimmed) return;
+    if (caseTypes.some((t, i) => i !== editingIndex && t === trimmed)) {
+      toast.error("Tipo já existe.");
+      return;
+    }
+    const updated = [...caseTypes];
+    updated[editingIndex] = trimmed;
+    saveCaseTypes(updated);
+    setEditingIndex(null);
+    setEditingValue("");
+  };
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(false);
