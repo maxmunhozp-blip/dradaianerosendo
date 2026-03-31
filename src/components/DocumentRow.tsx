@@ -1,4 +1,5 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { StatusBadge } from "./StatusBadge";
 import {
   Download, Scale, ChevronDown, ChevronRight,
