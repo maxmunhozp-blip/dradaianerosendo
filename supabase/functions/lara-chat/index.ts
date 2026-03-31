@@ -279,7 +279,7 @@ async function fetchCaseContext(supabase: any, caseId: string): Promise<string> 
 
   const client = (caseData as any).clients;
 
-  const [docsResult, checklistResult] = await Promise.all([
+  const [docsResult, checklistResult, hearingsResult] = await Promise.all([
     supabase
       .from("documents")
       .select("name, category, status, uploaded_by, created_at")
@@ -288,21 +288,29 @@ async function fetchCaseContext(supabase: any, caseId: string): Promise<string> 
       .from("checklist_items")
       .select("label, done, required_by")
       .eq("case_id", caseId),
+    supabase
+      .from("hearings")
+      .select("title, date, location, status, notes")
+      .eq("case_id", caseId)
+      .order("date", { ascending: true }),
   ]);
 
   const docs = docsResult.data || [];
   const checklist = checklistResult.data || [];
+  const hearings = hearingsResult.data || [];
 
   return `
-## Contexto do caso selecionado (dados completos)
-- **Cliente**: ${client?.name || "N/A"} (CPF: ${client?.cpf || "N/A"})
-- **Contato**: ${client?.email || "N/A"} | ${client?.phone || "N/A"}
+## Contexto do caso selecionado (DADOS REAIS DO BANCO — USE PARA PREENCHER DOCUMENTOS AUTOMATICAMENTE)
+- **Nome completo do cliente**: ${client?.name || "[PREENCHER: nome completo]"}
+- **CPF**: ${client?.cpf || "[PREENCHER: CPF]"}
+- **E-mail**: ${client?.email || "[PREENCHER: e-mail]"}
+- **Telefone**: ${client?.phone || "[PREENCHER: telefone]"}
 - **Status do cliente**: ${client?.status || "N/A"}
 - **Tipo de ação**: ${caseData.case_type}
 - **Status do caso**: ${caseData.status}
-- **CNJ**: ${caseData.cnj_number || "Não atribuído"}
-- **Vara**: ${caseData.court || "Não definida"}
-- **Descrição**: ${caseData.description || "Sem descrição"}
+- **Número do processo (CNJ)**: ${caseData.cnj_number || "[PREENCHER: número CNJ]"}
+- **Vara/Comarca**: ${caseData.court || "[PREENCHER: vara e comarca]"}
+- **Descrição do caso**: ${caseData.description || "Sem descrição"}
 
 ### Todos os documentos do caso (${docs.length})
 ${docs.length > 0
@@ -312,7 +320,12 @@ ${docs.length > 0
 ### Checklist completo (${checklist.length} itens)
 ${checklist.length > 0
     ? checklist.map((c: any) => `- [${c.done ? "x" : " "}] ${c.label}${c.required_by ? ` (responsável: ${c.required_by})` : ""}`).join("\n")
-    : "Nenhum item no checklist."}`;
+    : "Nenhum item no checklist."}
+
+### Audiências (${hearings.length})
+${hearings.length > 0
+    ? hearings.map((h: any) => `- ${h.title} — ${h.date} | Local: ${h.location || "N/I"} | Status: ${h.status}${h.notes ? ` | Obs: ${h.notes}` : ""}`).join("\n")
+    : "Nenhuma audiência agendada."}`;
 }
 
 // Detect if user message needs LexML grounding
