@@ -55,6 +55,7 @@ export function DocumentRow({ doc }: DocumentRowProps) {
   const [notes, setNotes] = useState(doc.notes || "");
   const [saving, setSaving] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const updateDoc = useUpdateDocument();
