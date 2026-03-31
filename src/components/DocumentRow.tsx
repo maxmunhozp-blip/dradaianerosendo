@@ -2,10 +2,16 @@ import { useState, useRef } from "react";
 import { StatusBadge } from "./StatusBadge";
 import {
   Download, MoreHorizontal, Scale, ChevronDown, ChevronRight,
-  Bold, Italic, List, Paperclip, Save, Loader2,
+  Bold, Italic, List, Paperclip, Save, Loader2, Eye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useUpdateDocument, useUploadDocument } from "@/hooks/use-documents";
 import { toast } from "sonner";
 
@@ -26,6 +32,7 @@ export function DocumentRow({ doc }: DocumentRowProps) {
   const [expanded, setExpanded] = useState(false);
   const [notes, setNotes] = useState(doc.notes || "");
   const [saving, setSaving] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const updateDoc = useUpdateDocument();
@@ -36,6 +43,29 @@ export function DocumentRow({ doc }: DocumentRowProps) {
     assinado: "Assinado",
     processo: "Processo",
     outro: "Outro",
+  };
+
+  const isPdf = doc.file_url?.toLowerCase().endsWith(".pdf");
+  const isImage = /\.(jpg|jpeg|png|webp|gif)$/i.test(doc.file_url || "");
+
+  const handleDownload = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!doc.file_url) return;
+    try {
+      const response = await fetch(doc.file_url);
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = doc.name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 100);
+    } catch {
+      toast.error("Erro ao baixar arquivo");
+    }
   };
 
   const handleSaveNotes = async () => {
@@ -115,14 +145,29 @@ export function DocumentRow({ doc }: DocumentRowProps) {
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-3 shrink-0" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
           <StatusBadge status={doc.status} />
           {doc.file_url && doc.file_url !== "" && (
-            <Button variant="ghost" size="icon" className="h-7 w-7" asChild>
-              <a href={doc.file_url} target="_blank" rel="noopener noreferrer">
+            <>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                title="Visualizar"
+                onClick={(e) => { e.stopPropagation(); setPreviewOpen(true); }}
+              >
+                <Eye className="w-3.5 h-3.5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                title="Baixar"
+                onClick={handleDownload}
+              >
                 <Download className="w-3.5 h-3.5" />
-              </a>
-            </Button>
+              </Button>
+            </>
           )}
         </div>
       </button>
@@ -193,6 +238,42 @@ export function DocumentRow({ doc }: DocumentRowProps) {
           />
         </div>
       )}
+
+      {/* Preview Modal */}
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-w-4xl h-[85vh] flex flex-col p-0">
+          <DialogHeader className="px-6 pt-6 pb-3 border-b border-border">
+            <div className="flex items-center justify-between">
+              <DialogTitle className="text-sm font-medium truncate pr-4">{doc.name}</DialogTitle>
+              <Button variant="outline" size="sm" className="shrink-0 gap-1.5" onClick={handleDownload}>
+                <Download className="w-3.5 h-3.5" />
+                Baixar
+              </Button>
+            </div>
+          </DialogHeader>
+          <div className="flex-1 overflow-hidden">
+            {isPdf && doc.file_url ? (
+              <iframe
+                src={doc.file_url}
+                className="w-full h-full border-0"
+                title={doc.name}
+              />
+            ) : isImage && doc.file_url ? (
+              <div className="w-full h-full flex items-center justify-center p-6 overflow-auto">
+                <img
+                  src={doc.file_url}
+                  alt={doc.name}
+                  className="max-w-full max-h-full object-contain rounded"
+                />
+              </div>
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
+                <p>Pré-visualização não disponível para este tipo de arquivo.</p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
