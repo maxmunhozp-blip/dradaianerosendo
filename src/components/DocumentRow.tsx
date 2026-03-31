@@ -324,11 +324,11 @@ export function DocumentRow({ doc }: DocumentRowProps) {
             </div>
           </DialogHeader>
           <div className="flex-1 overflow-hidden">
-            {isPdf && doc.file_url ? (
-              <iframe src={doc.file_url} className="w-full h-full border-0" title={doc.name} />
-            ) : isImage && doc.file_url ? (
+            {isPdf && previewUrl ? (
+              <iframe src={previewUrl} className="w-full h-full border-0" title={doc.name} />
+            ) : isImage && previewUrl ? (
               <div className="w-full h-full flex items-center justify-center p-6 overflow-auto">
-                <img src={doc.file_url} alt={doc.name} className="max-w-full max-h-full object-contain rounded" />
+                <img src={previewUrl} alt={doc.name} className="max-w-full max-h-full object-contain rounded" />
               </div>
             ) : (
               <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
