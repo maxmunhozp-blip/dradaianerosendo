@@ -47,19 +47,19 @@ Você pode ajudar com:
 ## Regras
 - Sempre cite artigos de lei quando fundamentar uma resposta.
 - Quando redigir peças, use o formato processual correto com qualificação das partes, dos fatos, do direito e dos pedidos.
-- Se o contexto do caso estiver disponível, use os dados reais do caso (nome do cliente, tipo de ação, documentos já recebidos).
+- **REGRA CRÍTICA DE PREENCHIMENTO AUTOMÁTICO**: Quando o contexto do caso estiver disponível, PREENCHA AUTOMATICAMENTE todos os campos do documento com os dados reais do banco de dados. NUNCA peça ao usuário informações que já estão disponíveis no contexto. Use: nome completo do cliente, CPF, e-mail, telefone, endereço, tipo de ação, número do processo (CNJ), vara, comarca, dados do caso. Se algum dado estiver faltando no banco, marque com "[PREENCHER: campo]" para que a advogada complete apenas o que falta.
 - Se não souber algo com certeza, diga "não tenho certeza" em vez de inventar.
 - Nunca forneça conselho que substitua a decisão da advogada — você é uma ferramenta de apoio.
-- IMPORTANTE: Você TEM acesso aos dados em tempo real do escritório. Quando perguntarem sobre clientes, casos, documentos pendentes, etc., use os dados fornecidos na seção "CONTEXTO ATUAL DO ESCRITÓRIO" abaixo. Nunca diga que não tem acesso aos dados — os dados estão disponíveis para você.
+- IMPORTANTE: Você TEM acesso aos dados em tempo real do escritório. Quando perguntarem sobre clientes, casos, documentos pendentes, etc., use os dados fornecidos no contexto. Nunca diga que não tem acesso aos dados — os dados estão disponíveis para você. NUNCA peça dados que já estão no contexto.
 - Quando fundamentação legal real do LexML for fornecida na seção "FUNDAMENTAÇÃO LEXML", CITE obrigatoriamente a URN do LexML na sua resposta para que a advogada possa verificar a fonte. Mencione: "Fonte: LexML [URN]".
 - Se houver dados do LexML no contexto, adicione ao final da resposta a tag: [lexml-verified]
 
 ## Comandos especiais
-Quando a mensagem começar com um comando:
-- /procuracao → Gere um modelo de procuração ad judicia para o caso em questão
-- /contrato → Gere um modelo de contrato de honorários advocatícios
-- /peticao → Inicie a redação de uma petição inicial com base no tipo do caso
-- /checklist → Gere uma lista completa de documentos necessários para o tipo de caso
+Quando a mensagem começar com um comando, SEMPRE use os dados do contexto para preencher automaticamente:
+- /procuracao → Gere uma procuração ad judicia COMPLETA E PREENCHIDA com os dados do cliente e caso do contexto (nome, CPF, endereço, qualificação, poderes, dados da advogada). NÃO peça dados que já existem no contexto.
+- /contrato → Gere um contrato de honorários COMPLETO E PREENCHIDO com dados do cliente e tipo de ação do contexto. Inclua cláusulas de valor, pagamento, obrigações e rescisão.
+- /peticao → Redija a petição inicial COMPLETA com qualificação das partes preenchida com dados do contexto, fatos, direito e pedidos adequados ao tipo de ação.
+- /checklist → Gere lista completa de documentos necessários para o tipo de caso
 - /analise → Analise o documento ou informação fornecida e dê um parecer técnico
 - /lei [número ou nome] → Busque a lei no LexML e retorne título, resumo e link oficial
 - /intimacoes → Mostre um resumo formatado de todas as intimações pendentes com prazos
@@ -279,7 +279,7 @@ async function fetchCaseContext(supabase: any, caseId: string): Promise<string> 
 
   const client = (caseData as any).clients;
 
-  const [docsResult, checklistResult] = await Promise.all([
+  const [docsResult, checklistResult, hearingsResult] = await Promise.all([
     supabase
       .from("documents")
       .select("name, category, status, uploaded_by, created_at")
@@ -288,21 +288,29 @@ async function fetchCaseContext(supabase: any, caseId: string): Promise<string> 
       .from("checklist_items")
       .select("label, done, required_by")
       .eq("case_id", caseId),
+    supabase
+      .from("hearings")
+      .select("title, date, location, status, notes")
+      .eq("case_id", caseId)
+      .order("date", { ascending: true }),
   ]);
 
   const docs = docsResult.data || [];
   const checklist = checklistResult.data || [];
+  const hearings = hearingsResult.data || [];
 
   return `
-## Contexto do caso selecionado (dados completos)
-- **Cliente**: ${client?.name || "N/A"} (CPF: ${client?.cpf || "N/A"})
-- **Contato**: ${client?.email || "N/A"} | ${client?.phone || "N/A"}
+## Contexto do caso selecionado (DADOS REAIS DO BANCO — USE PARA PREENCHER DOCUMENTOS AUTOMATICAMENTE)
+- **Nome completo do cliente**: ${client?.name || "[PREENCHER: nome completo]"}
+- **CPF**: ${client?.cpf || "[PREENCHER: CPF]"}
+- **E-mail**: ${client?.email || "[PREENCHER: e-mail]"}
+- **Telefone**: ${client?.phone || "[PREENCHER: telefone]"}
 - **Status do cliente**: ${client?.status || "N/A"}
 - **Tipo de ação**: ${caseData.case_type}
 - **Status do caso**: ${caseData.status}
-- **CNJ**: ${caseData.cnj_number || "Não atribuído"}
-- **Vara**: ${caseData.court || "Não definida"}
-- **Descrição**: ${caseData.description || "Sem descrição"}
+- **Número do processo (CNJ)**: ${caseData.cnj_number || "[PREENCHER: número CNJ]"}
+- **Vara/Comarca**: ${caseData.court || "[PREENCHER: vara e comarca]"}
+- **Descrição do caso**: ${caseData.description || "Sem descrição"}
 
 ### Todos os documentos do caso (${docs.length})
 ${docs.length > 0
@@ -312,7 +320,12 @@ ${docs.length > 0
 ### Checklist completo (${checklist.length} itens)
 ${checklist.length > 0
     ? checklist.map((c: any) => `- [${c.done ? "x" : " "}] ${c.label}${c.required_by ? ` (responsável: ${c.required_by})` : ""}`).join("\n")
-    : "Nenhum item no checklist."}`;
+    : "Nenhum item no checklist."}
+
+### Audiências (${hearings.length})
+${hearings.length > 0
+    ? hearings.map((h: any) => `- ${h.title} — ${h.date} | Local: ${h.location || "N/I"} | Status: ${h.status}${h.notes ? ` | Obs: ${h.notes}` : ""}`).join("\n")
+    : "Nenhuma audiência agendada."}`;
 }
 
 // Detect if user message needs LexML grounding
