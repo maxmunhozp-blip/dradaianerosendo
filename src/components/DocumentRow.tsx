@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { StatusBadge } from "./StatusBadge";
 import {
-  Download, MoreHorizontal, Scale, ChevronDown, ChevronRight,
+  Download, Scale, ChevronDown, ChevronRight,
   Bold, Italic, List, Paperclip, Save, Loader2, Eye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useUpdateDocument, useUploadDocument } from "@/hooks/use-documents";
 import { toast } from "sonner";
 
@@ -27,6 +34,20 @@ interface DocumentRowProps {
     case_id: string;
   };
 }
+
+const statusOptions = [
+  { value: "solicitado", label: "Solicitado" },
+  { value: "recebido", label: "Recebido" },
+  { value: "assinado", label: "Assinado" },
+  { value: "enviado", label: "Enviado" },
+];
+
+const categoryOptions = [
+  { value: "pessoal", label: "Pessoal" },
+  { value: "assinado", label: "Assinado" },
+  { value: "processo", label: "Processo" },
+  { value: "outro", label: "Outro" },
+];
 
 export function DocumentRow({ doc }: DocumentRowProps) {
   const [expanded, setExpanded] = useState(false);
@@ -65,6 +86,24 @@ export function DocumentRow({ doc }: DocumentRowProps) {
       setTimeout(() => URL.revokeObjectURL(url), 100);
     } catch {
       toast.error("Erro ao baixar arquivo");
+    }
+  };
+
+  const handleStatusChange = async (newStatus: string) => {
+    try {
+      await updateDoc.mutateAsync({ id: doc.id, status: newStatus });
+      toast.success("Status atualizado");
+    } catch {
+      toast.error("Erro ao atualizar status");
+    }
+  };
+
+  const handleCategoryChange = async (newCategory: string) => {
+    try {
+      await updateDoc.mutateAsync({ id: doc.id, category: newCategory });
+      toast.success("Categoria atualizada");
+    } catch {
+      toast.error("Erro ao atualizar categoria");
     }
   };
 
@@ -146,7 +185,18 @@ export function DocumentRow({ doc }: DocumentRowProps) {
           </div>
         </div>
         <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-          <StatusBadge status={doc.status} />
+          <Select value={doc.status} onValueChange={handleStatusChange}>
+            <SelectTrigger className="h-6 w-auto min-w-[90px] text-[11px] border-0 bg-transparent px-1.5 gap-1 focus:ring-0 [&>svg]:w-3 [&>svg]:h-3">
+              <StatusBadge status={doc.status} />
+            </SelectTrigger>
+            <SelectContent>
+              {statusOptions.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           {doc.file_url && doc.file_url !== "" && (
             <>
               <Button
@@ -174,55 +224,59 @@ export function DocumentRow({ doc }: DocumentRowProps) {
 
       {/* Expanded content */}
       {expanded && (
-        <div className="pb-4 pl-6 pr-0 space-y-2">
+        <div className="pb-4 pl-6 pr-0 space-y-3">
+          {/* Inline status & category selectors */}
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Categoria:</span>
+              <Select value={doc.category} onValueChange={handleCategoryChange}>
+                <SelectTrigger className="h-7 w-[120px] text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {categoryOptions.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Status:</span>
+              <Select value={doc.status} onValueChange={handleStatusChange}>
+                <SelectTrigger className="h-7 w-[120px] text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {statusOptions.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
           {/* Formatting toolbar */}
           <div className="flex items-center gap-1 border border-border rounded-t-md bg-muted/40 px-2 py-1.5">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6"
-              title="Negrito"
-              onClick={() => insertFormatting("**", "**")}
-            >
+            <Button variant="ghost" size="icon" className="h-6 w-6" title="Negrito" onClick={() => insertFormatting("**", "**")}>
               <Bold className="w-3 h-3" />
             </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6"
-              title="Itálico"
-              onClick={() => insertFormatting("_", "_")}
-            >
+            <Button variant="ghost" size="icon" className="h-6 w-6" title="Itálico" onClick={() => insertFormatting("_", "_")}>
               <Italic className="w-3 h-3" />
             </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6"
-              title="Lista"
-              onClick={() => insertFormatting("\n- ", "")}
-            >
+            <Button variant="ghost" size="icon" className="h-6 w-6" title="Lista" onClick={() => insertFormatting("\n- ", "")}>
               <List className="w-3 h-3" />
             </Button>
             <div className="h-4 w-px bg-border mx-1" />
             <input ref={fileRef} type="file" className="hidden" onChange={handleAttachment} />
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6"
-              title="Anexar arquivo"
-              onClick={() => fileRef.current?.click()}
-            >
+            <Button variant="ghost" size="icon" className="h-6 w-6" title="Anexar arquivo" onClick={() => fileRef.current?.click()}>
               <Paperclip className="w-3 h-3" />
             </Button>
             <div className="flex-1" />
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 text-xs px-2 gap-1"
-              disabled={saving || notes === (doc.notes || "")}
-              onClick={handleSaveNotes}
-            >
+            <Button variant="ghost" size="sm" className="h-6 text-xs px-2 gap-1" disabled={saving || notes === (doc.notes || "")} onClick={handleSaveNotes}>
               {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
               Salvar
             </Button>
@@ -253,18 +307,10 @@ export function DocumentRow({ doc }: DocumentRowProps) {
           </DialogHeader>
           <div className="flex-1 overflow-hidden">
             {isPdf && doc.file_url ? (
-              <iframe
-                src={doc.file_url}
-                className="w-full h-full border-0"
-                title={doc.name}
-              />
+              <iframe src={doc.file_url} className="w-full h-full border-0" title={doc.name} />
             ) : isImage && doc.file_url ? (
               <div className="w-full h-full flex items-center justify-center p-6 overflow-auto">
-                <img
-                  src={doc.file_url}
-                  alt={doc.name}
-                  className="max-w-full max-h-full object-contain rounded"
-                />
+                <img src={doc.file_url} alt={doc.name} className="max-w-full max-h-full object-contain rounded" />
               </div>
             ) : (
               <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
