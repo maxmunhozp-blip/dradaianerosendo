@@ -549,7 +549,7 @@ export default function CaseDetail() {
         variant="ghost"
         size="icon"
         className="absolute top-3 right-3 z-10 h-8 w-8"
-        onClick={() => setShowChat(!showChat)}
+        onClick={() => setShowChat((prev) => { const next = !prev; localStorage.setItem("lexai-lara-chat-visible", String(next)); return next; })}
         title={showChat ? "Fechar LARA" : "Abrir LARA"}
       >
         {showChat ? <PanelRightClose className="w-4 h-4" /> : <PanelRightOpen className="w-4 h-4" />}
