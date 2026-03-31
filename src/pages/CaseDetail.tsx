@@ -77,7 +77,10 @@ export default function CaseDetail() {
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const [showDocGen, setShowDocGen] = useState(false);
   const [showPeticao, setShowPeticao] = useState(false);
-  const [showChat, setShowChat] = useState(true);
+  const [showChat, setShowChat] = useState(() => {
+    const saved = localStorage.getItem("lexai-lara-chat-visible");
+    return saved !== null ? saved === "true" : true;
+  });
   const [showHearingModal, setShowHearingModal] = useState(false);
   const { data: hearings = [] } = useHearingsByCase(id!);
   const [showEditCase, setShowEditCase] = useState(false);
