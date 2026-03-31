@@ -70,21 +70,37 @@ export function DocumentRow({ doc }: DocumentRowProps) {
   const isPdf = doc.file_url?.toLowerCase().endsWith(".pdf");
   const isImage = /\.(jpg|jpeg|png|webp|gif)$/i.test(doc.file_url || "");
 
+  // Extract storage path from full public URL
+  const getStoragePath = useCallback((url: string) => {
+    const marker = "/object/public/case-documents/";
+    const idx = url.indexOf(marker);
+    if (idx !== -1) return url.substring(idx + marker.length);
+    return null;
+  }, []);
+
+  const getSignedUrl = useCallback(async (url: string): Promise<string | null> => {
+    const path = getStoragePath(url);
+    if (!path) return url; // fallback to original
+    const { data, error } = await supabase.storage
+      .from("case-documents")
+      .createSignedUrl(path, 300);
+    if (error || !data?.signedUrl) return null;
+    return data.signedUrl;
+  }, [getStoragePath]);
+
   const handleDownload = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (!doc.file_url) return;
     try {
-      const response = await fetch(doc.file_url);
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
+      const url = await getSignedUrl(doc.file_url);
+      if (!url) throw new Error("URL inválida");
       const a = document.createElement("a");
       a.href = url;
       a.download = doc.name;
       document.body.appendChild(a);
       a.click();
       a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 100);
     } catch {
       toast.error("Erro ao baixar arquivo");
     }
