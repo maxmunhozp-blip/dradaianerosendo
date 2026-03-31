@@ -1,4 +1,5 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { StatusBadge } from "./StatusBadge";
 import {
   Download, Scale, ChevronDown, ChevronRight,
@@ -54,6 +55,7 @@ export function DocumentRow({ doc }: DocumentRowProps) {
   const [notes, setNotes] = useState(doc.notes || "");
   const [saving, setSaving] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const updateDoc = useUpdateDocument();
@@ -69,21 +71,37 @@ export function DocumentRow({ doc }: DocumentRowProps) {
   const isPdf = doc.file_url?.toLowerCase().endsWith(".pdf");
   const isImage = /\.(jpg|jpeg|png|webp|gif)$/i.test(doc.file_url || "");
 
+  // Extract storage path from full public URL
+  const getStoragePath = useCallback((url: string) => {
+    const marker = "/object/public/case-documents/";
+    const idx = url.indexOf(marker);
+    if (idx !== -1) return url.substring(idx + marker.length);
+    return null;
+  }, []);
+
+  const getSignedUrl = useCallback(async (url: string): Promise<string | null> => {
+    const path = getStoragePath(url);
+    if (!path) return url; // fallback to original
+    const { data, error } = await supabase.storage
+      .from("case-documents")
+      .createSignedUrl(path, 300);
+    if (error || !data?.signedUrl) return null;
+    return data.signedUrl;
+  }, [getStoragePath]);
+
   const handleDownload = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (!doc.file_url) return;
     try {
-      const response = await fetch(doc.file_url);
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
+      const url = await getSignedUrl(doc.file_url);
+      if (!url) throw new Error("URL inválida");
       const a = document.createElement("a");
       a.href = url;
       a.download = doc.name;
       document.body.appendChild(a);
       a.click();
       a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 100);
     } catch {
       toast.error("Erro ao baixar arquivo");
     }
@@ -204,7 +222,7 @@ export function DocumentRow({ doc }: DocumentRowProps) {
                 size="icon"
                 className="h-7 w-7"
                 title="Visualizar"
-                onClick={(e) => { e.stopPropagation(); setPreviewOpen(true); }}
+                onClick={async (e) => { e.stopPropagation(); if (doc.file_url) { const url = await getSignedUrl(doc.file_url); setPreviewUrl(url); setPreviewOpen(true); } }}
               >
                 <Eye className="w-3.5 h-3.5" />
               </Button>
@@ -306,11 +324,11 @@ export function DocumentRow({ doc }: DocumentRowProps) {
             </div>
           </DialogHeader>
           <div className="flex-1 overflow-hidden">
-            {isPdf && doc.file_url ? (
-              <iframe src={doc.file_url} className="w-full h-full border-0" title={doc.name} />
-            ) : isImage && doc.file_url ? (
+            {isPdf && previewUrl ? (
+              <iframe src={previewUrl} className="w-full h-full border-0" title={doc.name} />
+            ) : isImage && previewUrl ? (
               <div className="w-full h-full flex items-center justify-center p-6 overflow-auto">
-                <img src={doc.file_url} alt={doc.name} className="max-w-full max-h-full object-contain rounded" />
+                <img src={previewUrl} alt={doc.name} className="max-w-full max-h-full object-contain rounded" />
               </div>
             ) : (
               <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
