@@ -1,10 +1,10 @@
 const COMMAND_EXPANSIONS: Record<string, string> = {
   "/procuracao":
-    "/procuracao — Por favor, gere um modelo completo de procuração ad judicia para o caso em questão, com todos os poderes necessários para a ação de família correspondente.",
+    "/procuracao — Gere uma procuração ad judicia COMPLETA E PREENCHIDA com todos os dados do cliente e caso que estão disponíveis no contexto (nome completo, CPF, endereço, qualificação). Use os dados reais do banco de dados. NÃO me peça informações que já existem no sistema. Campos que não existirem no banco, marque com [PREENCHER: campo].",
   "/contrato":
-    "/contrato — Por favor, gere um modelo de contrato de honorários advocatícios para o caso em questão, incluindo cláusulas sobre valor, forma de pagamento, obrigações e rescisão.",
+    "/contrato — Gere um contrato de honorários advocatícios COMPLETO E PREENCHIDO com os dados do cliente e caso do contexto. Use os dados reais do banco de dados. NÃO me peça informações que já existem no sistema. Inclua cláusulas sobre valor, forma de pagamento, obrigações e rescisão.",
   "/peticao":
-    "/peticao — Por favor, inicie a redação de uma petição inicial adequada ao tipo de caso, com qualificação das partes, dos fatos, do direito e dos pedidos. Use os dados do caso.",
+    "/peticao — Redija uma petição inicial COMPLETA com a qualificação das partes PREENCHIDA com os dados reais do cliente do contexto (nome, CPF, endereço, etc). Use os dados do banco de dados. NÃO me peça informações que já existem no sistema. Inclua fatos, direito e pedidos adequados ao tipo de ação.",
   "/checklist":
     "/checklist — Por favor, gere uma lista completa de todos os documentos necessários para este tipo de ação, indicando quais são obrigatórios e quais são recomendados.",
   "/analise":
