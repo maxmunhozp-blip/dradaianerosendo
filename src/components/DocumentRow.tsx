@@ -222,7 +222,7 @@ export function DocumentRow({ doc }: DocumentRowProps) {
                 size="icon"
                 className="h-7 w-7"
                 title="Visualizar"
-                onClick={(e) => { e.stopPropagation(); setPreviewOpen(true); }}
+                onClick={async (e) => { e.stopPropagation(); if (doc.file_url) { const url = await getSignedUrl(doc.file_url); setPreviewUrl(url); setPreviewOpen(true); } }}
               >
                 <Eye className="w-3.5 h-3.5" />
               </Button>
