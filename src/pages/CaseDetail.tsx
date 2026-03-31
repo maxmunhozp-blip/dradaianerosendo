@@ -77,7 +77,10 @@ export default function CaseDetail() {
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const [showDocGen, setShowDocGen] = useState(false);
   const [showPeticao, setShowPeticao] = useState(false);
-  const [showChat, setShowChat] = useState(true);
+  const [showChat, setShowChat] = useState(() => {
+    const saved = localStorage.getItem("lexai-lara-chat-visible");
+    return saved !== null ? saved === "true" : true;
+  });
   const [showHearingModal, setShowHearingModal] = useState(false);
   const { data: hearings = [] } = useHearingsByCase(id!);
   const [showEditCase, setShowEditCase] = useState(false);
@@ -546,7 +549,7 @@ export default function CaseDetail() {
         variant="ghost"
         size="icon"
         className="absolute top-3 right-3 z-10 h-8 w-8"
-        onClick={() => setShowChat(!showChat)}
+        onClick={() => setShowChat((prev) => { const next = !prev; localStorage.setItem("lexai-lara-chat-visible", String(next)); return next; })}
         title={showChat ? "Fechar LARA" : "Abrir LARA"}
       >
         {showChat ? <PanelRightClose className="w-4 h-4" /> : <PanelRightOpen className="w-4 h-4" />}
