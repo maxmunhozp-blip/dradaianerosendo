@@ -39,7 +39,7 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { title: "Painel", url: "/", icon: LayoutDashboard },
+  { title: "Painel", url: "/dashboard", icon: LayoutDashboard },
   { title: "Clientes", url: "/clients", icon: Users, permission: "can_view_clients" },
   { title: "Documentos", url: "/documents", icon: FolderOpen, permission: "can_view_documents" },
   { title: "Agenda", url: "/agenda", icon: CalendarDays, permission: "can_view_cases" },
