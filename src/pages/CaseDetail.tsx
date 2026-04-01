@@ -78,6 +78,7 @@ export default function CaseDetail() {
   const createChecklistItem = useCreateChecklistItem();
   const toggleChecklistItem = useToggleChecklistItem();
   const deleteChecklistItem = useDeleteChecklistItem();
+  const [downloading, setDownloading] = useState(false);
 
   const [newItem, setNewItem] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
