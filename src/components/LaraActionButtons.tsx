@@ -197,6 +197,34 @@ export function LaraActionButtons({ actions, onScanComplete }: { actions: LaraAc
           navigate(`/templates`);
           break;
 
+        case "send_for_signature": {
+          const { document_id, signers, client_phone } = confirmAction.data;
+          if (!document_id || !signers?.length) {
+            toast.error("Dados insuficientes para enviar para assinatura");
+            break;
+          }
+          const { data: sigResult, error: sigError } = await supabase.functions.invoke("send-for-signature", {
+            body: { document_id, signers },
+          });
+          if (sigError) throw new Error(sigError.message);
+          if (sigResult?.error) throw new Error(sigResult.error);
+          
+          // Show success and offer WhatsApp links
+          const signerResults = sigResult?.signers || [];
+          if (signerResults.length > 0 && client_phone) {
+            const firstSigner = signerResults[0];
+            const docName = confirmAction.data.document_name || "documento";
+            const whatsMsg = `Olá ${firstSigner.name}! Segue o link para assinar o documento "${docName}":\n\n${firstSigner.sign_url}\n\nÉ só clicar no link, rolar até o final e assinar.`;
+            const encodedMsg = encodeURIComponent(whatsMsg);
+            const phone = client_phone.replace(/\D/g, "");
+            window.open(`https://wa.me/${phone}?text=${encodedMsg}`, "_blank");
+            toast.success("Link de assinatura gerado e WhatsApp aberto!");
+          } else {
+            toast.success("Documento enviado para assinatura com sucesso!");
+          }
+          break;
+        }
+
         case "schedule_reminder":
           if (confirmAction.data.case_id) {
             await (supabase.from("hearings") as any).insert({
