@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -33,7 +34,46 @@ import LaraSkills from "./pages/LaraSkills";
 
 const queryClient = new QueryClient();
 
-const App = () => (
+const App = () => {
+  // Interceptor global: sanitiza links <a> de WhatsApp ao clicar
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const link = target.closest("a");
+      if (!link) return;
+      const href = link.getAttribute("href") || "";
+      if (href.includes("whatsapp") && !href.startsWith("https://wa.me/")) {
+        e.preventDefault();
+        const phoneMatch = href.match(/phone=(\d+)/);
+        const textMatch = href.match(/text=([^&]+)/);
+        if (phoneMatch) {
+          const clean = "https://wa.me/" + phoneMatch[1] + (textMatch ? "?text=" + textMatch[1] : "");
+          window.open(clean, "_blank");
+        }
+      }
+    };
+    document.addEventListener("click", handleClick);
+    return () => document.removeEventListener("click", handleClick);
+  }, []);
+
+  // Interceptor global: sobrescreve window.open para corrigir URLs de WhatsApp
+  useEffect(() => {
+    const originalOpen = window.open.bind(window);
+    window.open = (url?: string | URL, ...args: any[]) => {
+      if (typeof url === "string" && url.includes("api.whatsapp.com")) {
+        const phoneMatch = url.match(/phone=(\d+)/);
+        const textMatch = url.match(/text=([^&]+)/);
+        if (phoneMatch) {
+          const clean = "https://wa.me/" + phoneMatch[1] + (textMatch ? "?text=" + textMatch[1] : "");
+          return originalOpen(clean, ...args);
+        }
+      }
+      return originalOpen(url, ...args);
+    };
+    return () => { window.open = originalOpen; };
+  }, []);
+
+  return (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
@@ -79,6 +119,7 @@ const App = () => (
       </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
-);
+  );
+};
 
 export default App;
