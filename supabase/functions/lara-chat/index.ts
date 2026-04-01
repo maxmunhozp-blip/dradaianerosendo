@@ -280,6 +280,32 @@ REGRAS IMPORTANTES para WhatsApp:
 - Se a advogada pedir para cobrar um cliente específico, gere apenas a mensagem daquele cliente.
 - SEMPRE use o template configurado nas CONFIGURAÇÕES DO ESCRITÓRIO. Se o template estiver vazio ou não existir, use o template padrão acima.`;
 
+async function fetchSkills(supabase: any, userId?: string): Promise<string> {
+  const query = supabase
+    .from("lara_skills")
+    .select("name, trigger_keywords, system_instructions, actions_available")
+    .eq("is_active", true);
+
+  // Get builtin + user's custom skills
+  if (userId) {
+    query.or(`is_builtin.eq.true,user_id.eq.${userId}`);
+  } else {
+    query.eq("is_builtin", true);
+  }
+
+  const { data } = await query;
+  if (!data || data.length === 0) return "";
+
+  let ctx = "\n\n## SUAS HABILIDADES ATIVAS\n";
+  for (const skill of data) {
+    ctx += `\n### ${skill.name}\n`;
+    ctx += `Gatilhos: ${(skill.trigger_keywords || []).join(", ")}\n`;
+    ctx += `Instruções: ${skill.system_instructions}\n`;
+    ctx += `Ações disponíveis: ${(skill.actions_available || []).join(", ")}\n`;
+  }
+  return ctx;
+}
+
 async function fetchSettings(supabase: any): Promise<Record<string, string>> {
   const { data } = await supabase
     .from("settings")
