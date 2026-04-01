@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Copy, Check, MessageCircle, Send, ExternalLink, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
+import { Copy, Check, MessageCircle, Send, ExternalLink, ChevronDown, ChevronUp, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
