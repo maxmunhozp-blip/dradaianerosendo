@@ -1,5 +1,18 @@
 import { useState, useEffect } from "react";
-import { Mail, Plus, RefreshCw, Trash2, Loader2, CheckCircle2, XCircle, Server, Eye, EyeOff, Pencil, Settings2 } from "lucide-react";
+import {
+  Mail,
+  Plus,
+  RefreshCw,
+  Trash2,
+  Loader2,
+  CheckCircle2,
+  XCircle,
+  Server,
+  Eye,
+  EyeOff,
+  Pencil,
+  Settings2,
+} from "lucide-react";
 import { SyncConfigModal, type SyncConfig } from "@/components/SyncConfigModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,7 +38,397 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-...
+
+interface EmailAccount {
+  id: string;
+  created_at: string;
+  label: string;
+  email: string;
+  platform: string;
+  status: string;
+  last_sync: string | null;
+  access_token: string | null;
+  refresh_token: string | null;
+  gmail_message_id_cursor: string | null;
+  provider: string;
+  imap_host: string | null;
+  imap_port: number | null;
+  imap_user: string | null;
+  imap_password: string | null;
+  sync_configured: boolean;
+  sync_limit: number;
+  sync_subject_filters: string[];
+  sync_judicial_only: boolean;
+  sync_extra_senders: string;
+  sync_attachments: boolean;
+  sync_attachments_pdf_only: boolean;
+  sync_period_days: number;
+  sync_import_all: boolean;
+}
+
+const PLATFORMS = ["PJe", "eSAJ", "PROJUDI", "e-PROC", "Todos"];
+
+function useEmailAccounts() {
+  return useQuery({
+    queryKey: ["email-accounts"],
+    queryFn: async () => {
+      const { data, error } = await (supabase.from("email_accounts") as any)
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data as EmailAccount[];
+    },
+  });
+}
+
+function useDeleteEmailAccount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase.from("email_accounts") as any)
+        .delete()
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["email-accounts"] });
+      toast.success("Conta removida com sucesso");
+    },
+    onError: (err: any) => toast.error("Erro ao remover: " + err.message),
+  });
+}
+
+function useSyncAccount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ accountId }: { accountId: string; provider: string }) => {
+      await (supabase.from("email_accounts") as any)
+        .update({ status: "sincronizando" })
+        .eq("id", accountId);
+
+      const funcName = "sync-imap";
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 25000);
+
+      try {
+        const { data, error } = await supabase.functions.invoke(funcName, {
+          body: { account_id: accountId },
+        });
+        clearTimeout(timeout);
+        if (error) throw error;
+        return data;
+      } catch (err: any) {
+        clearTimeout(timeout);
+        await (supabase.from("email_accounts") as any)
+          .update({ status: "conectado" })
+          .eq("id", accountId);
+        if (err.name === "AbortError") {
+          throw new Error("Tempo limite excedido. Tente novamente.");
+        }
+        throw err;
+      }
+    },
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ["email-accounts"] });
+      qc.invalidateQueries({ queryKey: ["intimacoes"] });
+      qc.invalidateQueries({ queryKey: ["intimacoes-count-novo"] });
+      const count = data?.new_emails ?? data?.new_intimacoes ?? 0;
+      toast.success(
+        count > 0
+          ? `${count} novo(s) e-mail(s) encontrado(s)!`
+          : "Sincronização concluída. Nenhum novo e-mail."
+      );
+    },
+    onError: (err: any) => toast.error("Erro na sincronização: " + err.message),
+  });
+}
+
+function useSyncGmail() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (accountId?: string) => {
+      const { data, error } = await supabase.functions.invoke("sync-gmail", {
+        body: accountId ? { account_id: accountId } : {},
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ["email-accounts"] });
+      qc.invalidateQueries({ queryKey: ["intimacoes"] });
+      qc.invalidateQueries({ queryKey: ["intimacoes-count-novo"] });
+      const count = data?.new_intimacoes ?? 0;
+      toast.success(
+        count > 0
+          ? `${count} nova(s) intimação(ões) encontrada(s)!`
+          : "Sincronização concluída. Nenhuma nova intimação."
+      );
+    },
+    onError: (err: any) => toast.error("Erro na sincronização: " + err.message),
+  });
+}
+
+export { useSyncGmail };
+
+type ProviderTab = "gmail" | "hostinger";
+
+export default function EmailAccountsSection() {
+  const { data: accounts = [], isLoading } = useEmailAccounts();
+  const deleteMutation = useDeleteEmailAccount();
+  const syncMutation = useSyncAccount();
+  const qc = useQueryClient();
+
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [providerTab, setProviderTab] = useState<ProviderTab>("gmail");
+  const [newLabel, setNewLabel] = useState("");
+  const [newPlatform, setNewPlatform] = useState("Todos");
+  const [saving, setSaving] = useState(false);
+  const [oauthStep, setOauthStep] = useState<string | null>(null);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<"success" | "error" | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [editingAccount, setEditingAccount] = useState<EmailAccount | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editPassword, setEditPassword] = useState("");
+  const [editHost, setEditHost] = useState("");
+  const [editPort, setEditPort] = useState("");
+  const [editLabel, setEditLabel] = useState("");
+  const [editPlatform, setEditPlatform] = useState("Todos");
+  const [showEditPassword, setShowEditPassword] = useState(false);
+
+  const [hostEmail, setHostEmail] = useState("");
+  const [hostPassword, setHostPassword] = useState("");
+  const [imapHost, setImapHost] = useState("imap.hostinger.com");
+  const [imapPort, setImapPort] = useState("993");
+  const [smtpHost, setSmtpHost] = useState("smtp.hostinger.com");
+  const [smtpPort, setSmtpPort] = useState("465");
+
+  const [editSmtpHost, setEditSmtpHost] = useState("");
+  const [editSmtpPort, setEditSmtpPort] = useState("");
+
+  const [syncConfigOpen, setSyncConfigOpen] = useState(false);
+  const [syncConfigAccount, setSyncConfigAccount] = useState<EmailAccount | null>(null);
+  const [syncConfigSaving, setSyncConfigSaving] = useState(false);
+
+  const handleSyncClick = (account: EmailAccount) => {
+    if (!account.sync_configured) {
+      setSyncConfigAccount(account);
+      setSyncConfigOpen(true);
+    } else {
+      syncMutation.mutate({ accountId: account.id, provider: account.provider });
+    }
+  };
+
+  const handleOpenSyncConfig = (account: EmailAccount) => {
+    setSyncConfigAccount(account);
+    setSyncConfigOpen(true);
+  };
+
+  const handleSaveSyncConfig = async (config: SyncConfig) => {
+    if (!syncConfigAccount) return;
+    setSyncConfigSaving(true);
+    try {
+      const { error } = await (supabase.from("email_accounts") as any)
+        .update({
+          ...config,
+          sync_configured: true,
+        })
+        .eq("id", syncConfigAccount.id);
+      if (error) throw error;
+
+      toast.success("Configuração salva! Iniciando sincronização...");
+      setSyncConfigOpen(false);
+      setSyncConfigAccount(null);
+      qc.invalidateQueries({ queryKey: ["email-accounts"] });
+      syncMutation.mutate({ accountId: syncConfigAccount.id, provider: syncConfigAccount.provider });
+    } catch (err: any) {
+      toast.error("Erro ao salvar configuração: " + err.message);
+    } finally {
+      setSyncConfigSaving(false);
+    }
+  };
+
+  const resetForm = () => {
+    setNewLabel("");
+    setNewPlatform("Todos");
+    setHostEmail("");
+    setHostPassword("");
+    setImapHost("imap.hostinger.com");
+    setImapPort("993");
+    setSmtpHost("smtp.hostinger.com");
+    setSmtpPort("465");
+    setProviderTab("gmail");
+    setTestResult(null);
+  };
+
+  const handleTestConnection = async () => {
+    if (!hostEmail.trim()) {
+      toast.error("Informe o e-mail");
+      return;
+    }
+    if (!hostPassword.trim()) {
+      toast.error("Informe a senha");
+      return;
+    }
+    setTesting(true);
+    setTestResult(null);
+    const isGmail = providerTab === "gmail";
+    const resolvedImapHost = isGmail ? "imap.gmail.com" : imapHost;
+    const resolvedImapPort = isGmail ? 993 : parseInt(imapPort);
+    try {
+      const { data, error } = await supabase.functions.invoke("test-imap", {
+        body: {
+          host: resolvedImapHost,
+          port: resolvedImapPort,
+          user: hostEmail,
+          password: hostPassword.replace(/\s/g, ""),
+        },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || "Falha na conexão IMAP");
+      setTestResult("success");
+      toast.success("Conexão IMAP testada com sucesso!");
+    } catch (err: any) {
+      setTestResult("error");
+      toast.error("Falha no teste: " + err.message);
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  useEffect(() => {
+    const parsePending = (pendingRaw: string) => {
+      try {
+        const parsed = JSON.parse(pendingRaw);
+        return parsed && typeof parsed === "object" ? parsed : null;
+      } catch {
+        localStorage.removeItem("pending_email_account");
+        return null;
+      }
+    };
+
+    const saveGmailAccount = async (session: any, pendingRaw: string) => {
+      localStorage.removeItem("pending_email_account");
+
+      const pending = parsePending(pendingRaw);
+      if (!pending) {
+        setOauthStep(null);
+        return;
+      }
+
+      const { label, platform } = pending as { label?: string; platform?: string };
+      const providerToken = session?.provider_token as string | undefined;
+      if (!providerToken || !label || !platform) {
+        setOauthStep(null);
+        return;
+      }
+
+      try {
+        setOauthStep("Obtendo dados da conta Google...");
+        const res = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
+          headers: { Authorization: `Bearer ${providerToken}` },
+        });
+
+        if (!res.ok) {
+          throw new Error("Falha ao obter dados da conta Google");
+        }
+
+        const userInfo = await res.json();
+        if (!userInfo.email) {
+          throw new Error("Não foi possível obter o e-mail da conta Google");
+        }
+
+        setOauthStep(`Verificando conta ${userInfo.email}...`);
+        const { data: existing } = await (supabase.from("email_accounts") as any)
+          .select("id")
+          .eq("email", userInfo.email)
+          .maybeSingle();
+
+        if (existing) {
+          toast.info(`Conta ${userInfo.email} já está conectada`);
+          qc.invalidateQueries({ queryKey: ["email-accounts"] });
+          window.history.replaceState(null, "", window.location.pathname);
+          setOauthStep(null);
+          return;
+        }
+
+        setOauthStep(`Salvando conta ${userInfo.email}...`);
+        const { error } = await (supabase.from("email_accounts") as any).insert({
+          label,
+          email: userInfo.email,
+          platform,
+          provider: "gmail",
+          status: "conectado",
+          access_token: providerToken,
+          refresh_token: session.provider_refresh_token || null,
+        });
+
+        if (error) throw error;
+
+        toast.success(`Conta ${userInfo.email} conectada com sucesso!`);
+        qc.invalidateQueries({ queryKey: ["email-accounts"] });
+        window.history.replaceState(null, "", window.location.pathname);
+      } catch (err: any) {
+        toast.error("Erro ao salvar conta: " + err.message);
+      } finally {
+        setOauthStep(null);
+      }
+    };
+
+    const handleOAuthRedirect = async () => {
+      const pending = localStorage.getItem("pending_email_account");
+      if (!pending) return;
+
+      setOauthStep("Autenticando com Google...");
+
+      const hasOAuthParams =
+        window.location.search.includes("code=") ||
+        window.location.hash.includes("access_token");
+
+      if (hasOAuthParams && window.location.search.includes("code=")) {
+        setOauthStep("Trocando código de autenticação...");
+        const { error } = await supabase.auth.exchangeCodeForSession(window.location.href);
+        if (error) {
+          toast.error("Erro ao finalizar autenticação Google: " + error.message);
+          setOauthStep(null);
+          return;
+        }
+      }
+
+      setOauthStep("Aguardando token do Google...");
+      let session = (await supabase.auth.getSession()).data.session;
+
+      for (let i = 0; i < 8 && !session?.provider_token; i++) {
+        await new Promise((resolve) => setTimeout(resolve, 350));
+        session = (await supabase.auth.getSession()).data.session;
+      }
+
+      if (!session?.provider_token) {
+        if (hasOAuthParams) {
+          toast.error("Autenticação concluída, mas o token do Gmail não foi liberado. Tente novamente.");
+          window.history.replaceState(null, "", window.location.pathname);
+        }
+        setOauthStep(null);
+        return;
+      }
+
+      await saveGmailAccount(session, pending);
+    };
+
+    handleOAuthRedirect();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event !== "SIGNED_IN" || !session?.provider_token) return;
+      const pending = localStorage.getItem("pending_email_account");
+      if (!pending) return;
+      await saveGmailAccount(session, pending);
+    });
+
+    return () => subscription.unsubscribe();
+  }, [qc]);
+
   const handleConnectGmail = async () => {
     if (!newLabel.trim()) {
       toast.error("Informe um nome para a conta");
@@ -39,7 +442,7 @@ import { format } from "date-fns";
     );
 
     try {
-      const { lovable } = await import("@/integrations/lovable");
+      const { lovable } = await import("@/integrations/lovable/index");
       const result = await lovable.auth.signInWithOAuth("google", {
         redirect_uri: window.location.origin + "/settings",
         extraParams: {
@@ -62,9 +465,18 @@ import { format } from "date-fns";
   };
 
   const handleConnectHostinger = async () => {
-    if (!newLabel.trim()) { toast.error("Informe um nome para a conta"); return; }
-    if (!hostEmail.trim()) { toast.error("Informe o e-mail"); return; }
-    if (!hostPassword.trim()) { toast.error("Informe a senha"); return; }
+    if (!newLabel.trim()) {
+      toast.error("Informe um nome para a conta");
+      return;
+    }
+    if (!hostEmail.trim()) {
+      toast.error("Informe o e-mail");
+      return;
+    }
+    if (!hostPassword.trim()) {
+      toast.error("Informe a senha");
+      return;
+    }
 
     setSaving(true);
     const isGmail = providerTab === "gmail";
@@ -73,7 +485,6 @@ import { format } from "date-fns";
     const resolvedSmtpHost = isGmail ? "smtp.gmail.com" : smtpHost;
     const resolvedSmtpPort = isGmail ? 465 : parseInt(smtpPort);
     try {
-      // Test IMAP connection
       const { data, error } = await supabase.functions.invoke("test-imap", {
         body: {
           host: resolvedImapHost,
@@ -86,7 +497,6 @@ import { format } from "date-fns";
       if (error) throw error;
       if (!data?.success) throw new Error(data?.error || "Falha na conexão IMAP");
 
-      // Save account
       const { error: insertError } = await (supabase.from("email_accounts") as any).insert({
         label: newLabel,
         email: hostEmail,
@@ -141,7 +551,6 @@ import { format } from "date-fns";
         updates.smtp_host = editSmtpHost;
         updates.smtp_port = parseInt(editSmtpPort);
 
-        // If password changed, test and update
         if (editPassword.trim()) {
           const { data, error } = await supabase.functions.invoke("test-imap", {
             body: {
@@ -182,11 +591,16 @@ import { format } from "date-fns";
           <span>{oauthStep}</span>
         </div>
       )}
+
       <div className="flex items-center justify-between">
-        <p className="text-xs text-muted-foreground">
-          {accounts.length} conta(s) configurada(s)
-        </p>
-        <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) resetForm(); }}>
+        <p className="text-xs text-muted-foreground">{accounts.length} conta(s) configurada(s)</p>
+        <Dialog
+          open={dialogOpen}
+          onOpenChange={(v) => {
+            setDialogOpen(v);
+            if (!v) resetForm();
+          }}
+        >
           <DialogTrigger asChild>
             <Button size="sm" variant="outline" className="text-amber-600 border-amber-300 hover:bg-amber-50">
               <Plus className="w-3.5 h-3.5 mr-1" />
@@ -201,7 +615,6 @@ import { format } from "date-fns";
               </DialogDescription>
             </DialogHeader>
 
-            {/* Provider selector */}
             <div className="grid grid-cols-2 gap-3 py-2">
               <button
                 type="button"
@@ -260,7 +673,9 @@ import { format } from "date-fns";
                   </SelectTrigger>
                   <SelectContent>
                     {PLATFORMS.map((p) => (
-                      <SelectItem key={p} value={p}>{p}</SelectItem>
+                      <SelectItem key={p} value={p}>
+                        {p}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -270,10 +685,21 @@ import { format } from "date-fns";
                 <div className="bg-amber-50 border border-amber-200 rounded-md p-3 text-xs text-amber-800">
                   <p className="font-semibold mb-1">⚠ Gmail requer "Senha de App"</p>
                   <p>1. Ative a <strong>verificação em 2 etapas</strong> na sua conta Google</p>
-                  <p>2. Acesse <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer" className="underline font-medium">myaccount.google.com/apppasswords</a></p>
+                  <p>
+                    2. Acesse{" "}
+                    <a
+                      href="https://myaccount.google.com/apppasswords"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline font-medium"
+                    >
+                      myaccount.google.com/apppasswords
+                    </a>
+                  </p>
                   <p>3. Crie uma senha de app e cole no campo abaixo (com ou sem espaços — o sistema remove automaticamente)</p>
                 </div>
               )}
+
               <div className="space-y-2">
                 <Label className="text-xs">E-mail</Label>
                 <Input
@@ -302,46 +728,50 @@ import { format } from "date-fns";
                   </button>
                 </div>
               </div>
+
               {providerTab !== "gmail" && hostEmail.toLowerCase().includes("@gmail.com") && (
                 <div className="bg-blue-50 border border-blue-200 rounded-md p-3 text-xs text-blue-800 flex items-center gap-2">
                   <Mail className="w-4 h-4 shrink-0" />
-                  <span>Este parece ser um e-mail Gmail. <button type="button" className="underline font-semibold" onClick={() => { setProviderTab("gmail"); setImapHost("imap.gmail.com"); setImapPort("993"); setSmtpHost("smtp.gmail.com"); setSmtpPort("465"); }}>Clique aqui para usar a aba Gmail</button> (auto-configura IMAP/SMTP).</span>
+                  <span>
+                    Este parece ser um e-mail Gmail.{" "}
+                    <button
+                      type="button"
+                      className="underline font-semibold"
+                      onClick={() => {
+                        setProviderTab("gmail");
+                        setImapHost("imap.gmail.com");
+                        setImapPort("993");
+                        setSmtpHost("smtp.gmail.com");
+                        setSmtpPort("465");
+                      }}
+                    >
+                      Clique aqui para usar a aba Gmail
+                    </button>{" "}
+                    (auto-configura IMAP/SMTP).
+                  </span>
                 </div>
               )}
+
               {providerTab !== "gmail" && (
                 <>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-2">
                       <Label className="text-xs">IMAP Host</Label>
-                      <Input
-                        value={imapHost}
-                        onChange={(e) => setImapHost(e.target.value)}
-                      />
+                      <Input value={imapHost} onChange={(e) => setImapHost(e.target.value)} />
                     </div>
                     <div className="space-y-2">
                       <Label className="text-xs">IMAP Porta</Label>
-                      <Input
-                        type="number"
-                        value={imapPort}
-                        onChange={(e) => setImapPort(e.target.value)}
-                      />
+                      <Input type="number" value={imapPort} onChange={(e) => setImapPort(e.target.value)} />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-2">
                       <Label className="text-xs">SMTP Host</Label>
-                      <Input
-                        value={smtpHost}
-                        onChange={(e) => setSmtpHost(e.target.value)}
-                      />
+                      <Input value={smtpHost} onChange={(e) => setSmtpHost(e.target.value)} />
                     </div>
                     <div className="space-y-2">
                       <Label className="text-xs">SMTP Porta</Label>
-                      <Input
-                        type="number"
-                        value={smtpPort}
-                        onChange={(e) => setSmtpPort(e.target.value)}
-                      />
+                      <Input type="number" value={smtpPort} onChange={(e) => setSmtpPort(e.target.value)} />
                     </div>
                   </div>
                 </>
@@ -349,9 +779,17 @@ import { format } from "date-fns";
             </div>
 
             {testResult && (
-              <div className={`flex items-center gap-2 text-xs px-3 py-2 rounded-md ${testResult === "success" ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-700 border border-red-200"}`}>
+              <div
+                className={`flex items-center gap-2 text-xs px-3 py-2 rounded-md ${
+                  testResult === "success"
+                    ? "bg-green-50 text-green-700 border border-green-200"
+                    : "bg-red-50 text-red-700 border border-red-200"
+                }`}
+              >
                 {testResult === "success" ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
-                {testResult === "success" ? "Conexão IMAP válida! Pode salvar a conta." : "Falha na conexão. Verifique as credenciais."}
+                {testResult === "success"
+                  ? "Conexão IMAP válida! Pode salvar a conta."
+                  : "Falha na conexão. Verifique as credenciais."}
               </div>
             )}
 
@@ -384,10 +822,7 @@ import { format } from "date-fns";
       ) : (
         <div className="space-y-2">
           {accounts.map((account) => (
-            <div
-              key={account.id}
-              className="flex items-center justify-between border rounded-lg px-3 py-2.5"
-            >
+            <div key={account.id} className="flex items-center justify-between border rounded-lg px-3 py-2.5">
               <div className="flex items-center gap-3 min-w-0">
                 {account.provider === "hostinger" ? (
                   <Server className="w-4 h-4 text-purple-500 shrink-0" />
@@ -422,7 +857,11 @@ import { format } from "date-fns";
                     Conectado
                   </Badge>
                 ) : (
-                  <Badge variant="destructive" className="text-[10px]" title={account.status === "erro" && (account as any).sync_error_message ? (account as any).sync_error_message : undefined}>
+                  <Badge
+                    variant="destructive"
+                    className="text-[10px]"
+                    title={account.status === "erro" && (account as any).sync_error_message ? (account as any).sync_error_message : undefined}
+                  >
                     <XCircle className="w-3 h-3 mr-0.5" />
                     {account.status === "erro" ? "Erro" : "Desconectado"}
                   </Badge>
@@ -485,14 +924,17 @@ import { format } from "date-fns";
         </ol>
       </div>
 
-      {/* Edit Dialog */}
-      <Dialog open={editDialogOpen} onOpenChange={(v) => { setEditDialogOpen(v); if (!v) setEditingAccount(null); }}>
+      <Dialog
+        open={editDialogOpen}
+        onOpenChange={(v) => {
+          setEditDialogOpen(v);
+          if (!v) setEditingAccount(null);
+        }}
+      >
         <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Editar conta</DialogTitle>
-            <DialogDescription>
-              {editingAccount?.email}
-            </DialogDescription>
+            <DialogDescription>{editingAccount?.email}</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1">
@@ -502,9 +944,15 @@ import { format } from "date-fns";
             <div className="space-y-1">
               <Label className="text-xs">Plataforma</Label>
               <Select value={editPlatform} onValueChange={setEditPlatform}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
-                  {PLATFORMS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                  {PLATFORMS.map((p) => (
+                    <SelectItem key={p} value={p}>
+                      {p}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -554,7 +1002,9 @@ import { format } from "date-fns";
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+              Cancelar
+            </Button>
             <Button onClick={handleSaveEdit} disabled={saving} className="bg-amber-600 hover:bg-amber-700">
               {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Pencil className="w-4 h-4 mr-1" />}
               Salvar alterações
@@ -563,7 +1013,6 @@ import { format } from "date-fns";
         </DialogContent>
       </Dialog>
 
-      {/* Sync Config Modal */}
       <SyncConfigModal
         open={syncConfigOpen}
         onOpenChange={setSyncConfigOpen}
@@ -571,18 +1020,22 @@ import { format } from "date-fns";
         saving={syncConfigSaving}
         provider={syncConfigAccount?.provider}
         accountEmail={syncConfigAccount?.email}
-        initialConfig={syncConfigAccount ? {
-          sync_limit: syncConfigAccount.sync_limit ?? 100,
-          sync_subject_filters: syncConfigAccount.sync_subject_filters ?? [],
-          sync_judicial_only: syncConfigAccount.sync_judicial_only ?? true,
-          sync_extra_senders: syncConfigAccount.sync_extra_senders ?? "",
-          sync_attachments: syncConfigAccount.sync_attachments ?? false,
-          sync_attachments_pdf_only: syncConfigAccount.sync_attachments_pdf_only ?? true,
-          sync_period_days: syncConfigAccount.sync_period_days ?? 30,
-          sync_import_all: syncConfigAccount.sync_import_all ?? false,
-          sync_financial: (syncConfigAccount as any).sync_financial ?? false,
-          sync_extra_domains: (syncConfigAccount as any).sync_extra_domains ?? "",
-        } : undefined}
+        initialConfig={
+          syncConfigAccount
+            ? {
+                sync_limit: syncConfigAccount.sync_limit ?? 100,
+                sync_subject_filters: syncConfigAccount.sync_subject_filters ?? [],
+                sync_judicial_only: syncConfigAccount.sync_judicial_only ?? true,
+                sync_extra_senders: syncConfigAccount.sync_extra_senders ?? "",
+                sync_attachments: syncConfigAccount.sync_attachments ?? false,
+                sync_attachments_pdf_only: syncConfigAccount.sync_attachments_pdf_only ?? true,
+                sync_period_days: syncConfigAccount.sync_period_days ?? 30,
+                sync_import_all: syncConfigAccount.sync_import_all ?? false,
+                sync_financial: (syncConfigAccount as any).sync_financial ?? false,
+                sync_extra_domains: (syncConfigAccount as any).sync_extra_domains ?? "",
+              }
+            : undefined
+        }
       />
     </div>
   );
