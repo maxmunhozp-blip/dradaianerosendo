@@ -152,6 +152,30 @@ export default function ClientDetail() {
 
   const docsToScan = [...pendingDocs, ...failedDocs];
 
+  // Docs pending (solicitado status = not uploaded yet)
+  const solicitadoDocsCount = allDocs.filter((d: any) => !d.file_url).length;
+  const pendingDocsCount = pendingDocs.length;
+
+  // Next hearing for this client
+  const { data: nextHearing } = useQuery({
+    queryKey: ["client-next-hearing", id, caseIds],
+    queryFn: async () => {
+      if (caseIds.length === 0) return null;
+      const { data, error } = await supabase
+        .from("hearings")
+        .select("id, title, date")
+        .in("case_id", caseIds)
+        .eq("status", "agendado")
+        .gte("date", new Date().toISOString())
+        .order("date", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: caseIds.length > 0,
+  });
+
   const handleRescanAll = async () => {
     // Reset all docs to pending, then scan all
     for (const doc of uploadedDocs) {
