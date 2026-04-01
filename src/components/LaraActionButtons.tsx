@@ -510,6 +510,7 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
             }
             toast.success("Link de assinatura gerado e WhatsApp aberto!");
           } else {
+            if (waWindowRef) waWindowRef.close();
             toast.success("Documento enviado para assinatura com sucesso!");
           }
           break;
