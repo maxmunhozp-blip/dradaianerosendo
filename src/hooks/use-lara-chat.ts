@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { streamLaraChat, type ChatAttachment } from "@/lib/lara-stream";
 import { expandCommand } from "@/lib/lara-commands";
 import type { ChatMessage } from "@/components/LaraChat";
@@ -7,6 +7,9 @@ import { toast } from "sonner";
 export function useLaraChat(caseId?: string) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [auditContent, setAuditContent] = useState<string | null>(null);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const auditTriggered = useRef<string | null>(null);
 
   const loadHistory = useCallback((dbMessages: any[]) => {
     setMessages(
@@ -19,11 +22,32 @@ export function useLaraChat(caseId?: string) {
     );
   }, []);
 
+  const triggerAudit = useCallback(async () => {
+    if (!caseId || auditTriggered.current === caseId) return;
+    auditTriggered.current = caseId;
+    setAuditLoading(true);
+    setAuditContent(null);
+
+    let content = "";
+    await streamLaraChat({
+      messages: [{ role: "user", content: "__CASE_AUDIT__" }],
+      caseId,
+      onDelta: (text) => {
+        content += text;
+        setAuditContent(content);
+      },
+      onDone: () => setAuditLoading(false),
+      onError: () => {
+        setAuditLoading(false);
+        setAuditContent(null);
+      },
+    });
+  }, [caseId]);
+
   const sendMessage = useCallback(
     async (content: string, attachments: ChatAttachment[]) => {
       const { display, api } = expandCommand(content);
 
-      // Show the display version in the chat bubble
       const userMsg: ChatMessage = {
         id: `user-${Date.now()}`,
         role: "user",
@@ -37,7 +61,6 @@ export function useLaraChat(caseId?: string) {
       let assistantContent = "";
       const assistantId = `assistant-${Date.now()}`;
 
-      // Send the API version to the backend
       const apiMessages = [
         ...messages.map((m) => ({
           role: m.role,
@@ -93,5 +116,5 @@ export function useLaraChat(caseId?: string) {
     [messages, caseId]
   );
 
-  return { messages, isLoading, sendMessage, loadHistory };
+  return { messages, isLoading, sendMessage, loadHistory, auditContent, auditLoading, triggerAudit };
 }
