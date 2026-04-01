@@ -18,6 +18,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import jsPDF from "jspdf";
 
+/** Remove accents and special chars from file names for storage compatibility */
+function sanitizeFileName(name: string): string {
+  return name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9_\-\.]/g, "_");
+}
+
 /** Parse TipTap HTML into structured blocks for PDF rendering */
 function parseHtmlToBlocks(html: string): Array<{
   type: "h1" | "h2" | "h3" | "p" | "hr" | "li";
