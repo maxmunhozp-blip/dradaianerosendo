@@ -531,6 +531,7 @@ function ProfileModal({ open, onOpenChange, editing }: { open: boolean; onOpenCh
     can_view_documents: false, can_edit_documents: false,
     can_access_settings: false,
   });
+  const [selectedIcon, setSelectedIcon] = useState("User");
   const [saving, setSaving] = useState(false);
 
   // Reset form when opening
