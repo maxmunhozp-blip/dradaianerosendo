@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2, MessageSquare, ClipboardList, ExternalLink, FileText, Bell, ScanSearch, CheckCircle2, XCircle } from "lucide-react";
+import { Loader2, MessageSquare, ClipboardList, ExternalLink, FileText, Bell, ScanSearch, CheckCircle2, XCircle, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -15,7 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 interface LaraAction {
-  type: "send_whatsapp" | "create_task" | "open_client" | "generate_document" | "schedule_reminder" | "scan_documents";
+  type: "send_whatsapp" | "create_task" | "open_client" | "generate_document" | "schedule_reminder" | "scan_documents" | "download_document";
   label: string;
   data: Record<string, any>;
 }
@@ -27,6 +27,7 @@ const ACTION_ICONS: Record<string, typeof MessageSquare> = {
   generate_document: FileText,
   schedule_reminder: Bell,
   scan_documents: ScanSearch,
+  download_document: Download,
 };
 
 const ACTION_DESCRIPTIONS: Record<string, (data: Record<string, any>) => string> = {
@@ -36,6 +37,7 @@ const ACTION_DESCRIPTIONS: Record<string, (data: Record<string, any>) => string>
   generate_document: () => `Abrir gerador de documentos para este caso`,
   schedule_reminder: (d) => `Agendar lembrete: "${d.title || ""}" para ${d.date || "data a definir"}`,
   scan_documents: () => `Escanear documentos pendentes com IA para extrair dados automaticamente`,
+  download_document: (d) => `Baixar documento "${d.template || ""}" em ${d.format || "DOCX"}`,
 };
 
 interface ScanResult {
@@ -185,7 +187,12 @@ export function LaraActionButtons({ actions, onScanComplete }: { actions: LaraAc
           break;
 
         case "generate_document":
-          navigate(`/cases/${confirmAction.data.case_id}`);
+          navigate(`/templates`);
+          toast.info("Selecione o caso e tipo de documento na página de templates");
+          break;
+
+        case "download_document":
+          navigate(`/templates`);
           break;
 
         case "schedule_reminder":

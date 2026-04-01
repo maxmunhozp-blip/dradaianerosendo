@@ -11,6 +11,7 @@ import {
   FileStack,
   Bell,
   Mail,
+  Palette,
 } from "lucide-react";
 import { useIntimacaoCount } from "@/hooks/use-intimacoes";
 import { NavLink } from "@/components/NavLink";
@@ -38,6 +39,7 @@ const navItems = [
   { title: "E-mails", url: "/mail", icon: Mail },
   { title: "LARA", url: "/lara", icon: Bot },
   { title: "Templates", url: "/templates", icon: FileStack },
+  { title: "Formatação", url: "/settings/document-branding", icon: Palette },
   { title: "Usuários", url: "/users", icon: ShieldCheck },
   { title: "Configurações", url: "/settings", icon: Settings },
   { title: "LARA Skills", url: "/settings/lara-skills", icon: Bot },

@@ -329,6 +329,75 @@ export type Database = {
           },
         ]
       }
+      document_branding: {
+        Row: {
+          created_at: string | null
+          email_signature_html: string | null
+          font_family: string | null
+          font_size_body: number | null
+          font_size_heading: number | null
+          footer_text: string | null
+          header_text: string | null
+          id: string
+          is_default: boolean | null
+          letterhead_image_url: string | null
+          logo_url: string | null
+          margin_bottom: number | null
+          margin_left: number | null
+          margin_right: number | null
+          margin_top: number | null
+          name: string
+          primary_color: string | null
+          secondary_color: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email_signature_html?: string | null
+          font_family?: string | null
+          font_size_body?: number | null
+          font_size_heading?: number | null
+          footer_text?: string | null
+          header_text?: string | null
+          id?: string
+          is_default?: boolean | null
+          letterhead_image_url?: string | null
+          logo_url?: string | null
+          margin_bottom?: number | null
+          margin_left?: number | null
+          margin_right?: number | null
+          margin_top?: number | null
+          name?: string
+          primary_color?: string | null
+          secondary_color?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email_signature_html?: string | null
+          font_family?: string | null
+          font_size_body?: number | null
+          font_size_heading?: number | null
+          footer_text?: string | null
+          header_text?: string | null
+          id?: string
+          is_default?: boolean | null
+          letterhead_image_url?: string | null
+          logo_url?: string | null
+          margin_bottom?: number | null
+          margin_left?: number | null
+          margin_right?: number | null
+          margin_top?: number | null
+          name?: string
+          primary_color?: string | null
+          secondary_color?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       documents: {
         Row: {
           case_id: string
