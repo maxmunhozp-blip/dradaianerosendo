@@ -23,7 +23,7 @@ import {
 import {
   ArrowLeft, Phone, Mail, Plus, FolderOpen, Send, Loader2,
   Pencil, Trash2, Save, X, ChevronDown, ChevronRight, MapPin, Users, UserX, Baby, ExternalLink, ScanSearch,
-  CheckCircle2, Clock, XCircle, MoreHorizontal,
+  CheckCircle2, Clock, XCircle, MoreHorizontal, AlertTriangle,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -594,7 +594,7 @@ export default function ClientDetail() {
 
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
-        <div>
+        <div className="space-y-2">
           <div className="flex items-center gap-3">
             <h1 className="text-xl font-semibold text-foreground">{client.name}</h1>
             <Select value={client.status} onValueChange={handleStatusChange}>
@@ -608,6 +608,30 @@ export default function ClientDetail() {
                 <SelectItem value="encerrado">Encerrado</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+          {/* Data completeness summary */}
+          <div className="flex flex-wrap gap-x-3 gap-y-1">
+            {(() => {
+              const cl = client as any;
+              const fields: { label: string; filled: boolean }[] = [
+                { label: "CPF", filled: !!cl.cpf },
+                { label: "E-mail", filled: !!cl.email },
+                { label: "Telefone", filled: !!cl.phone },
+                { label: "Endereço", filled: !!(cl.address_street && cl.address_city) },
+                { label: "Profissão", filled: !!cl.profession },
+                { label: "RG", filled: !!cl.rg },
+                { label: "Estado civil", filled: !!cl.marital_status },
+              ];
+              return fields.map(f => (
+                <span key={f.label} className={`inline-flex items-center gap-1 text-[11px] ${f.filled ? 'text-green-600' : 'text-amber-500'}`}>
+                  {f.filled
+                    ? <CheckCircle2 className="w-3 h-3" />
+                    : <AlertTriangle className="w-3 h-3" />
+                  }
+                  {f.label}
+                </span>
+              ));
+            })()}
           </div>
         </div>
         <DropdownMenu>
