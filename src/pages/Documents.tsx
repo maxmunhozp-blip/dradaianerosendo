@@ -73,8 +73,6 @@ export default function Documents() {
         <div className="border border-border rounded-lg">
           <EmptyState
             icon={FileText}
-            title="Nenhum documento"
-            description="Documentos aparecerão aqui quando forem adicionados aos casos."
           />
         </div>
       ) : filtered.length === 0 ? (
