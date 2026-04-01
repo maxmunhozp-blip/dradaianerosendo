@@ -546,16 +546,29 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent, all
           const caseId = confirmAction.data.case_id;
 
           // If current message doesn't contain a legal document, search backwards in allMessages
-          const currentHasDoc = extractLegalDocumentContent(rawText).length > 100;
+          const currentExtracted = extractLegalDocumentContent(rawText);
+          const currentHasDoc = currentExtracted.length > 100;
           if (!currentHasDoc && allMessages && allMessages.length > 0) {
+            // First try extractLegalDocumentContent, then fall back to longest non-confirmation assistant message
+            let found = false;
             for (let i = allMessages.length - 1; i >= 0; i--) {
               const msg = allMessages[i];
               if (msg.role === "assistant") {
                 const extracted = extractLegalDocumentContent(msg.content);
                 if (extracted.length > 100) {
                   rawText = msg.content;
+                  found = true;
                   break;
                 }
+              }
+            }
+            if (!found) {
+              // Fallback: find longest assistant message that isn't a short confirmation
+              const confirmPattern = /acionando|gerando|compreendido|vou gerar|entendido|certo!/i;
+              const candidates = (allMessages || [])
+                .filter(m => m.role === "assistant" && m.content.trim().length > 200 && !confirmPattern.test(m.content.substring(0, 80)));
+              if (candidates.length > 0) {
+                rawText = candidates.reduce((a, b) => a.content.length > b.content.length ? a : b).content;
               }
             }
           }
