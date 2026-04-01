@@ -67,7 +67,7 @@ const App = () => (
             <Route element={<ClientPortalLayout />}>
               <Route path="/portal" element={<PortalHome />} />
               <Route path="/portal/docs" element={<PortalDocs />} />
-              <Route path="/portal/lara" element={<PortalLara />} />
+              <Route path="/portal/chat" element={<PortalChat />} />
               <Route path="/portal/perfil" element={<PortalProfile />} />
             </Route>
 
