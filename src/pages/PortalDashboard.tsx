@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -182,6 +182,21 @@ export default function PortalDashboard() {
   };
 
   const isLoading = clientLoading || casesLoading;
+  const [timelineVisible, setTimelineVisible] = useState(10);
+
+  const timeline = useMemo(() =>
+    documents
+      .map((d) => ({
+        text: `Documento "${d.name}" — ${d.status === "recebido" ? "recebido" : "solicitado"}`,
+        date: d.created_at,
+        type: "document" as const,
+      }))
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+    [documents]
+  );
+  const visibleTimeline = timeline.slice(0, timelineVisible);
+  const hasMoreTimeline = timelineVisible < timeline.length;
+  const pendingChecklist = checklist.filter((c) => !c.done);
 
   if (isLoading) {
     return (
@@ -205,18 +220,6 @@ export default function PortalDashboard() {
       </div>
     );
   }
-
-  const pendingChecklist = checklist.filter((c) => !c.done);
-
-  // Build timeline from documents
-  const timeline = documents
-    .map((d) => ({
-      text: `Documento "${d.name}" — ${d.status === "recebido" ? "recebido" : "solicitado"}`,
-      date: d.created_at,
-      type: "document" as const,
-    }))
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    .slice(0, 10);
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
@@ -374,7 +377,7 @@ export default function PortalDashboard() {
             Atualizações
           </h3>
           <div className="space-y-3">
-            {timeline.map((item, i) => (
+            {visibleTimeline.map((item, i) => (
               <div
                 key={i}
                 className="flex items-start gap-3 py-1.5"
@@ -390,6 +393,18 @@ export default function PortalDashboard() {
               </div>
             ))}
           </div>
+          {hasMoreTimeline && (
+            <div className="pt-3 text-center border-t border-border mt-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs text-muted-foreground"
+                onClick={() => setTimelineVisible(prev => prev + 10)}
+              >
+                Carregar mais ({timeline.length - timelineVisible} restantes)
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>

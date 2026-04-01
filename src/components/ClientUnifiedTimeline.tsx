@@ -89,9 +89,12 @@ const TIMELINE_TABS = [
   { value: "interno", label: "Interno", types: ["mensagem", "checklist", "manual"] },
 ] as const;
 
+const PAGE_SIZE = 30;
+
 export function ClientUnifiedTimeline({ caseIds }: { caseIds: string[] }) {
   const [activeTab, setActiveTab] = useState("geral");
   const [showAddForm, setShowAddForm] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const qc = useQueryClient();
 
   const { data: events = [], isLoading } = useQuery({
@@ -283,6 +286,13 @@ export function ClientUnifiedTimeline({ caseIds }: { caseIds: string[] }) {
   const filteredEvents = currentTab.types
     ? events.filter(e => (currentTab.types as readonly string[]).includes(e.type))
     : events;
+  const visibleEvents = filteredEvents.slice(0, visibleCount);
+  const hasMore = visibleCount < filteredEvents.length;
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    setVisibleCount(PAGE_SIZE);
+  };
 
   if (isLoading) {
     return (
@@ -316,7 +326,7 @@ export function ClientUnifiedTimeline({ caseIds }: { caseIds: string[] }) {
         </Button>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-3">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="mb-3">
         <TabsList className="h-8 w-full grid grid-cols-4">
           {TIMELINE_TABS.map((tab) => {
             const count = tab.types
@@ -350,7 +360,7 @@ export function ClientUnifiedTimeline({ caseIds }: { caseIds: string[] }) {
             <div className="absolute left-[18px] top-4 bottom-4 w-px bg-border" />
 
             <div className="space-y-0">
-              {filteredEvents.map((event, idx) => {
+              {visibleEvents.map((event, idx) => {
                 const Icon = TYPE_ICONS[event.type] || Clock;
                 const isFirst = idx === 0;
                 const iconColor = event.type === "mensagem"
@@ -391,6 +401,18 @@ export function ClientUnifiedTimeline({ caseIds }: { caseIds: string[] }) {
               })}
             </div>
           </div>
+          {hasMore && (
+            <div className="pt-3 text-center border-t border-border mt-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs text-muted-foreground"
+                onClick={() => setVisibleCount(prev => prev + PAGE_SIZE)}
+              >
+                Carregar mais ({filteredEvents.length - visibleCount} restantes)
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>
