@@ -195,6 +195,10 @@ export function ClientUnifiedTimeline({ caseIds }: { caseIds: string[] }) {
     enabled: caseIds.length > 0,
   });
 
+  // Compute available types from data
+  const availableTypes = [...new Set(events.map(e => e.type))].sort();
+  const filteredEvents = activeFilter ? events.filter(e => e.type === activeFilter) : events;
+
   if (isLoading) {
     return (
       <div className="mb-6">
@@ -211,18 +215,48 @@ export function ClientUnifiedTimeline({ caseIds }: { caseIds: string[] }) {
 
   return (
     <div className="mb-6">
-      <div className="flex items-center gap-2 text-sm font-medium text-foreground mb-3">
-        <Clock className="w-4 h-4" />
-        Movimentações ({events.length})
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+          <Clock className="w-4 h-4" />
+          Movimentações ({filteredEvents.length})
+        </div>
       </div>
 
-      {events.length === 0 ? (
+      {availableTypes.length > 1 && (
+        <div className="flex items-center gap-1.5 mb-3 flex-wrap">
+          <Filter className="w-3 h-3 text-muted-foreground" />
+          <Badge
+            variant={activeFilter === null ? "default" : "outline"}
+            className="text-[10px] px-2 py-0.5 cursor-pointer"
+            onClick={() => setActiveFilter(null)}
+          >
+            Todos
+          </Badge>
+          {availableTypes.map((type) => {
+            const Icon = TYPE_ICONS[type] || Clock;
+            const count = events.filter(e => e.type === type).length;
+            return (
+              <Badge
+                key={type}
+                variant={activeFilter === type ? "default" : "outline"}
+                className="text-[10px] px-2 py-0.5 cursor-pointer gap-1"
+                onClick={() => setActiveFilter(activeFilter === type ? null : type)}
+              >
+                <Icon className="w-2.5 h-2.5" />
+                {TYPE_LABELS[type] || type} ({count})
+              </Badge>
+            );
+          })}
+        </div>
+      )}
+
+      {filteredEvents.length === 0 ? (
         <div className="border border-border rounded-lg p-6 text-center text-muted-foreground text-sm">
-          Nenhuma movimentação registrada ainda.
+          {activeFilter ? "Nenhuma movimentação deste tipo." : "Nenhuma movimentação registrada ainda."}
         </div>
       ) : (
         <div className="border border-border rounded-lg divide-y divide-border max-h-[500px] overflow-y-auto">
-          {events.map((event) => {
+          {filteredEvents.map((event) => {
             const Icon = TYPE_ICONS[event.type] || Clock;
             const statusColor = STATUS_COLORS[event.status] || "text-muted-foreground";
 
