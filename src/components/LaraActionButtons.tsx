@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Textarea } from "@/components/ui/textarea";
 import { Loader2, MessageSquare, ClipboardList, ExternalLink, FileText, Bell, ScanSearch, CheckCircle2, XCircle, Download, PenLine, Save, Send } from "lucide-react";
+import RichTextEditor, { type RichTextEditorHandle } from "@/components/RichTextEditor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,6 +17,168 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import jsPDF from "jspdf";
+
+/** Parse TipTap HTML into structured blocks for PDF rendering */
+function parseHtmlToBlocks(html: string): Array<{
+  type: "h1" | "h2" | "h3" | "p" | "hr" | "li";
+  text: string;
+  align?: string;
+  bold?: boolean;
+  listType?: "bullet" | "ordered";
+  listIndex?: number;
+}> {
+  const blocks: Array<any> = [];
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, "text/html");
+
+  function getAlign(el: Element): string {
+    return (el as HTMLElement).style?.textAlign || "left";
+  }
+
+  function extractText(el: Element): string {
+    let text = "";
+    el.childNodes.forEach((node) => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        text += node.textContent || "";
+      } else if (node.nodeType === Node.ELEMENT_NODE) {
+        const tag = (node as Element).tagName.toLowerCase();
+        if (tag === "strong" || tag === "b") {
+          text += `**${extractText(node as Element)}**`;
+        } else if (tag === "em" || tag === "i") {
+          text += `_${extractText(node as Element)}_`;
+        } else if (tag === "u") {
+          text += extractText(node as Element);
+        } else if (tag === "br") {
+          text += "\n";
+        } else {
+          text += extractText(node as Element);
+        }
+      }
+    });
+    return text;
+  }
+
+  function processNode(el: Element) {
+    const tag = el.tagName.toLowerCase();
+    if (tag === "h1") blocks.push({ type: "h1", text: extractText(el), align: getAlign(el) });
+    else if (tag === "h2") blocks.push({ type: "h2", text: extractText(el), align: getAlign(el) });
+    else if (tag === "h3") blocks.push({ type: "h3", text: extractText(el), align: getAlign(el) });
+    else if (tag === "p") blocks.push({ type: "p", text: extractText(el), align: getAlign(el) });
+    else if (tag === "hr") blocks.push({ type: "hr", text: "" });
+    else if (tag === "ul" || tag === "ol") {
+      let idx = 0;
+      el.querySelectorAll(":scope > li").forEach((li) => {
+        idx++;
+        blocks.push({
+          type: "li",
+          text: extractText(li),
+          listType: tag === "ol" ? "ordered" : "bullet",
+          listIndex: idx,
+          align: getAlign(li),
+        });
+      });
+    } else {
+      el.childNodes.forEach((child) => {
+        if (child.nodeType === Node.ELEMENT_NODE) processNode(child as Element);
+      });
+    }
+  }
+
+  doc.body.childNodes.forEach((child) => {
+    if (child.nodeType === Node.ELEMENT_NODE) processNode(child as Element);
+  });
+
+  return blocks;
+}
+
+function generatePdfFromHtml(html: string): Blob {
+  const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const margin = 25;
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  const maxWidth = pageWidth - margin * 2;
+  const blocks = parseHtmlToBlocks(html);
+
+  let y = margin;
+
+  function checkPage(needed: number) {
+    if (y + needed > pageHeight - margin) {
+      pdf.addPage();
+      y = margin;
+    }
+  }
+
+  function drawText(text: string, fontSize: number, fontStyle: string, lineHeight: number, align: string = "left") {
+    // Handle bold markers
+    const segments = text.split(/(\*\*.*?\*\*)/g);
+    const fullText = text.replace(/\*\*/g, "").replace(/_/g, "");
+    
+    pdf.setFontSize(fontSize);
+    const isBold = text.startsWith("**") && text.endsWith("**");
+    pdf.setFont("helvetica", isBold ? "bold" : fontStyle);
+    
+    const cleanText = fullText;
+    const lines = pdf.splitTextToSize(cleanText, maxWidth);
+
+    for (const line of lines) {
+      checkPage(lineHeight);
+      let x = margin;
+      if (align === "center") x = pageWidth / 2;
+      else if (align === "right") x = pageWidth - margin;
+      else if (align === "justify") x = margin;
+
+      const pdfAlign = align === "justify" ? "left" : align as "left" | "center" | "right";
+      pdf.text(line, x, y, { align: pdfAlign as any });
+      y += lineHeight;
+    }
+  }
+
+  for (const block of blocks) {
+    switch (block.type) {
+      case "h1":
+        checkPage(12);
+        y += 3;
+        drawText(block.text, 16, "bold", 8, block.align);
+        y += 2;
+        break;
+      case "h2":
+        checkPage(10);
+        y += 2;
+        drawText(block.text, 14, "bold", 7, block.align);
+        y += 1.5;
+        break;
+      case "h3":
+        checkPage(8);
+        y += 1.5;
+        drawText(block.text, 12, "bold", 6, block.align);
+        y += 1;
+        break;
+      case "p":
+        if (!block.text.trim()) {
+          y += 3;
+          break;
+        }
+        drawText(block.text, 11, "normal", 5.5, block.align);
+        y += 2;
+        break;
+      case "li": {
+        const prefix = block.listType === "ordered" ? `${block.listIndex}. ` : "• ";
+        drawText(prefix + block.text, 11, "normal", 5.5, block.align);
+        y += 1;
+        break;
+      }
+      case "hr":
+        checkPage(6);
+        y += 2;
+        pdf.setDrawColor(180);
+        pdf.line(margin, y, pageWidth - margin, y);
+        y += 4;
+        break;
+    }
+  }
+
+  return pdf.output("blob");
+}
 
 interface LaraAction {
   type: "send_whatsapp" | "create_task" | "open_client" | "generate_document" | "schedule_reminder" | "scan_documents" | "download_document" | "send_for_signature" | "generate_pdf";
@@ -84,6 +246,7 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
 
   // Scan state
   const [scanning, setScanning] = useState(false);
+  const editorRef = useRef<RichTextEditorHandle>(null);
   const [scanResults, setScanResults] = useState<ScanResult[]>([]);
   const [scanProgress, setScanProgress] = useState(0);
   const [scanTotal, setScanTotal] = useState(0);
@@ -284,24 +447,7 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
               .replace(/```[\s\S]*?```/g, "")
               .trim();
 
-            const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-            const pdfMargin = 25;
-            const pdfPageWidth = pdf.internal.pageSize.getWidth();
-            const pdfMaxWidth = pdfPageWidth - pdfMargin * 2;
-            pdf.setFont("helvetica", "normal");
-            pdf.setFontSize(12);
-            const pdfLines = pdf.splitTextToSize(cleanText, pdfMaxWidth);
-            let pdfY = pdfMargin;
-            const pdfLineHeight = 6;
-            for (const line of pdfLines) {
-              if (pdfY + pdfLineHeight > pdf.internal.pageSize.getHeight() - pdfMargin) {
-                pdf.addPage();
-                pdfY = pdfMargin;
-              }
-              pdf.text(line, pdfMargin, pdfY);
-              pdfY += pdfLineHeight;
-            }
-            const pdfBlob = pdf.output("blob");
+            const pdfBlob = generatePdfFromHtml(`<p>${cleanText.replace(/\n\n/g, "</p><p>").replace(/\n/g, "<br/>")}</p>`);
 
             const fileName = `${caseId}/${Date.now()}_${docName.replace(/\s+/g, "_")}.pdf`;
             const { error: uploadError } = await supabase.storage
@@ -525,10 +671,10 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
             </DialogTitle>
             <DialogDescription>Edite o texto antes de gerar o PDF.</DialogDescription>
           </DialogHeader>
-          <Textarea
-            value={editableText}
-            onChange={(e) => setEditableText(e.target.value)}
-            className="flex-1 min-h-[50vh] font-mono text-sm resize-none"
+          <RichTextEditor
+            ref={editorRef}
+            initialContent={editableText}
+            className="flex-1"
           />
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => {
@@ -539,29 +685,10 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
               Cancelar
             </Button>
             <Button onClick={() => {
-              if (!editMeta || !editableText.trim()) return;
-              // Generate PDF from edited text
-              const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-              const margin = 25;
-              const pageWidth = pdf.internal.pageSize.getWidth();
-              const maxWidth = pageWidth - margin * 2;
-              pdf.setFont("helvetica", "normal");
-              pdf.setFontSize(12);
-
-              const lines = pdf.splitTextToSize(editableText, maxWidth);
-              let y = margin;
-              const lineHeight = 6;
-
-              for (const line of lines) {
-                if (y + lineHeight > pdf.internal.pageSize.getHeight() - margin) {
-                  pdf.addPage();
-                  y = margin;
-                }
-                pdf.text(line, margin, y);
-                y += lineHeight;
-              }
-
-              const pdfBlob = pdf.output("blob");
+              if (!editMeta) return;
+              const html = editorRef.current?.getHTML() || "";
+              if (!html.trim()) return;
+              const pdfBlob = generatePdfFromHtml(html);
               const previewUrl = URL.createObjectURL(pdfBlob);
 
               // Auto-open in new tab as fallback
