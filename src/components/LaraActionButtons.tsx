@@ -511,7 +511,7 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
           </DialogHeader>
           <div className="flex-1 min-h-0 border rounded-md overflow-hidden bg-muted">
             {pdfPreviewUrl && (
-              <iframe src={pdfPreviewUrl} className="w-full h-[60vh]" title="PDF Preview" />
+              <embed src={pdfPreviewUrl} type="application/pdf" className="w-full h-[60vh]" />
             )}
           </div>
           <DialogFooter className="gap-2">
