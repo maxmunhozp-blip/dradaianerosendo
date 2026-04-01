@@ -275,6 +275,29 @@ export function DocumentRow({ doc, clientName, clientEmail, clientCpf, clientPho
               </Button>
             </>
           )}
+          {doc.file_url && doc.file_url !== "" && (!doc.signature_status || doc.signature_status === "none") && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              title="Enviar para assinatura"
+              onClick={(e) => { e.stopPropagation(); setSignatureOpen(true); }}
+            >
+              <PenLine className="w-3.5 h-3.5" />
+            </Button>
+          )}
+          {doc.signature_status === "sent" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs gap-1"
+              title="Ver links de assinatura"
+              onClick={(e) => { e.stopPropagation(); setSignatureOpen(true); }}
+            >
+              <PenLine className="w-3 h-3" />
+              Ver link
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="icon"
