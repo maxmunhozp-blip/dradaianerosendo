@@ -775,15 +775,20 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
                 toast.error("Telefone do cliente não encontrado");
                 return;
               }
-              // Download first so client can attach
+              // Open WhatsApp window SYNCHRONOUSLY to avoid popup blocker
+              const cleanPhone = phone.replace(/\D/g, "");
+              const whatsNum = cleanPhone.startsWith("55") ? cleanPhone : "55" + cleanPhone;
+              const msg = encodeURIComponent(`Olá ${clientNameShort}! Segue em anexo o documento "${docName}" para sua análise e assinatura.`);
+              const waWindow = window.open("about:blank", "_blank");
+              // Download PDF
               const a = document.createElement("a");
               a.href = pdfPreviewUrl!;
               a.download = `${docName.replace(/\s+/g, "_")}.pdf`;
               a.click();
-              // Open WhatsApp
-              const cleanPhone = phone.replace(/\D/g, "");
-              const msg = encodeURIComponent(`Olá ${clientNameShort}! Segue em anexo o documento "${docName}" para sua análise e assinatura.`);
-              window.open(`https://wa.me/${cleanPhone}?text=${msg}`, "_blank");
+              // Redirect the already-opened window to WhatsApp
+              if (waWindow) {
+                waWindow.location.href = `https://wa.me/${whatsNum}?text=${msg}`;
+              }
               toast.success("PDF baixado — anexe no WhatsApp");
             }}>
               <Send className="w-4 h-4 mr-1" /> Enviar ao cliente
