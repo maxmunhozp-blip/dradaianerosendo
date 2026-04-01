@@ -611,6 +611,27 @@ function ProfileModal({ open, onOpenChange, editing }: { open: boolean; onOpenCh
             <Input className="h-8 text-xs" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Breve descrição do perfil" />
           </div>
 
+          <div className="space-y-1.5">
+            <Label className="text-xs">Ícone</Label>
+            <div className="flex flex-wrap gap-1.5">
+              {ICON_OPTIONS.map((opt) => {
+                const isActive = selectedIcon === opt.name;
+                return (
+                  <button
+                    key={opt.name}
+                    type="button"
+                    onClick={() => setSelectedIcon(opt.name)}
+                    className={`w-8 h-8 rounded-md border flex items-center justify-center transition-colors ${
+                      isActive ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-muted/50 text-muted-foreground"
+                    }`}
+                  >
+                    <opt.icon className="w-4 h-4" />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <div className="space-y-3">
             <p className="text-xs font-medium text-muted-foreground">Permissões</p>
             {PERMISSION_GROUPS.map((group) => (
