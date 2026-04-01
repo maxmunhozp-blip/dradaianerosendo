@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCase, useUpdateCase, useDeleteCase } from "@/hooks/use-cases";
 import { useDocumentsByCase, useCreateDocument, useUploadDocument } from "@/hooks/use-documents";
