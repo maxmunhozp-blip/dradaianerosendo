@@ -345,8 +345,10 @@ REGRAS:
 - O documento DEVE ter file_url (já estar no sistema com arquivo). Se não tiver, informe que precisa fazer upload primeiro.
 - Se o documento já tiver signature_status = "sent" ou "signed", informe que já foi enviado/assinado.
 - Use os dados REAIS do contexto para preencher signatário. NUNCA invente dados.
-- Se faltar o e-mail do cliente (obrigatório para assinatura), peça para cadastrar antes.
+- Se faltar o e-mail do cliente, inclua a ação MESMO ASSIM — o sistema pedirá o e-mail na tela de confirmação.
 - Após o envio, o sistema gerará o link de assinatura e oferecerá envio via WhatsApp automaticamente.
+- SEMPRE inclua a ação send_for_signature quando a advogada pedir para assinar um documento ou quando gerar um documento que precisa de assinatura (procuração, contrato, etc).
+- Se houver mais de um documento elegível, inclua uma ação para cada documento.
 
 ## VERIFICAÇÃO DE STATUS DE ASSINATURAS
 
