@@ -270,7 +270,7 @@ export function LaraChat({
       <div className="flex items-center gap-2 px-4 py-3 border-b border-border shrink-0">
         <div className="w-2 h-2 rounded-full bg-success" />
         <span className="text-sm font-medium text-foreground">LARA</span>
-        <span className="text-xs text-muted-foreground">Assistente Jurídica IA</span>
+        <span className="text-xs text-muted-foreground">Estagiária Jurídica IA</span>
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
