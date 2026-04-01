@@ -525,6 +525,19 @@ async function fetchOfficeContext(supabase: any, hasCaseId: boolean): Promise<st
           if (fields) ctx += `\n  ${d.name}: ${fields}`;
         }
       }
+      // Include signature status info
+      const docsWithSignature = docs.filter((d: any) => d.signature_status && d.signature_status !== "none");
+      if (docsWithSignature.length > 0) {
+        ctx += `\n- Assinaturas digitais:`;
+        for (const d of docsWithSignature) {
+          ctx += `\n  ${d.name}: ${d.signature_status === "signed" ? "✅ Assinado" : d.signature_status === "sent" ? "⏳ Aguardando" : d.signature_status === "rejected" ? "❌ Recusado" : d.signature_status}`;
+          if (d.signature_requested_at) ctx += ` (enviado em ${d.signature_requested_at})`;
+          if (d.signature_completed_at) ctx += ` (concluído em ${d.signature_completed_at})`;
+          if (d.signers && Array.isArray(d.signers) && d.signers.length > 0) {
+            ctx += ` — Signatários: ${d.signers.map((s: any) => `${s.name || "?"} (${s.status || "pending"})${s.sign_url ? " link:" + s.sign_url : ""}`).join("; ")}`;
+          }
+        }
+      }
       ctx += `\n- Checklist (${checklist.length}): ${checklist.length > 0 ? checklist.map((c: any) => `${c.label} (${c.done ? "concluído" : "PENDENTE"})`).join(", ") : "Nenhum"}`;
       ctx += `\n- Audiências (${hearings.length}): ${hearings.length > 0 ? hearings.map((h: any) => `${h.title} em ${h.date} (${h.status})`).join(", ") : "Nenhuma"}`;
       ctx += `\n- Dados faltantes no cadastro: ${missingFields.length > 0 ? missingFields.join(", ") : "Nenhum — cadastro completo"}`;
