@@ -1,8 +1,10 @@
 import { useState } from "react";
-import { useUsers, useSetUserRole, useRemoveUserRole } from "@/hooks/use-users";
+import { useUsers, useSetUserRole, useRemoveUserRole, useUserPermissions, useUpdatePermission, type UserPermissions } from "@/hooks/use-users";
 import { useAuth } from "@/hooks/use-auth";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -11,13 +13,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,22 +28,78 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Shield, ShieldOff, Users, Loader2 } from "lucide-react";
+import { Shield, ShieldOff, Users, Loader2, ChevronDown, FolderOpen, UserCircle, FileText, Settings, Eye, PenLine } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
+
+const PERMISSION_GROUPS = [
+  {
+    label: "Casos",
+    icon: FolderOpen,
+    color: "text-blue-600 bg-blue-500/10",
+    permissions: [
+      { key: "can_view_cases", label: "Visualizar casos", icon: Eye },
+      { key: "can_edit_cases", label: "Criar e editar casos", icon: PenLine },
+    ],
+  },
+  {
+    label: "Clientes",
+    icon: UserCircle,
+    color: "text-emerald-600 bg-emerald-500/10",
+    permissions: [
+      { key: "can_view_clients", label: "Visualizar clientes", icon: Eye },
+      { key: "can_edit_clients", label: "Criar e editar clientes", icon: PenLine },
+    ],
+  },
+  {
+    label: "Documentos",
+    icon: FileText,
+    color: "text-violet-600 bg-violet-500/10",
+    permissions: [
+      { key: "can_view_documents", label: "Visualizar documentos", icon: Eye },
+      { key: "can_edit_documents", label: "Upload e gerenciar documentos", icon: PenLine },
+    ],
+  },
+  {
+    label: "Configurações",
+    icon: Settings,
+    color: "text-amber-600 bg-amber-500/10",
+    permissions: [
+      { key: "can_access_settings", label: "Acessar configurações do sistema", icon: Settings },
+    ],
+  },
+];
 
 export default function UsersManagement() {
   const { user: currentUser } = useAuth();
   const { data: users, isLoading } = useUsers();
+  const { data: allPermissions } = useUserPermissions();
   const setRole = useSetUserRole();
   const removeRole = useRemoveUserRole();
+  const updatePermission = useUpdatePermission();
 
+  const [openUsers, setOpenUsers] = useState<Record<string, boolean>>({});
   const [confirmAction, setConfirmAction] = useState<{
     userId: string;
     email: string;
     action: "set" | "remove";
     role?: "admin" | "client";
   } | null>(null);
+
+  const toggleUser = (id: string) =>
+    setOpenUsers((p) => ({ ...p, [id]: !p[id] }));
+
+  const getPerms = (userId: string): UserPermissions | undefined =>
+    allPermissions?.find((p) => p.user_id === userId);
+
+  const handleToggle = async (userId: string, field: string, value: boolean) => {
+    try {
+      await updatePermission.mutateAsync({ userId, field, value });
+      toast.success("Permissão atualizada");
+    } catch (e: any) {
+      toast.error(e.message || "Erro ao atualizar permissão");
+    }
+  };
 
   const handleSetRole = (userId: string, email: string, role: "admin" | "client") => {
     setConfirmAction({ userId, email, action: "set", role });
@@ -80,6 +136,16 @@ export default function UsersManagement() {
     }
   };
 
+  const countActivePerms = (perms?: UserPermissions) => {
+    if (!perms) return 0;
+    return [
+      perms.can_view_cases, perms.can_edit_cases,
+      perms.can_view_clients, perms.can_edit_clients,
+      perms.can_view_documents, perms.can_edit_documents,
+      perms.can_access_settings,
+    ].filter(Boolean).length;
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
@@ -92,54 +158,70 @@ export default function UsersManagement() {
         </div>
       </div>
 
-      <div className="rounded-lg border bg-card">
-        {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-          </div>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>E-mail</TableHead>
-                <TableHead>Permissão</TableHead>
-                <TableHead>Cadastro</TableHead>
-                <TableHead>Último acesso</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {users?.map((u) => {
-                const isSelf = u.user_id === currentUser?.id;
-                return (
-                  <TableRow key={u.user_id}>
-                    <TableCell className="font-medium">
-                      {u.email}
-                      {isSelf && (
-                        <span className="ml-2 text-xs text-muted-foreground">(você)</span>
-                      )}
-                    </TableCell>
-                    <TableCell>{getRoleBadge(u.role)}</TableCell>
-                    <TableCell className="text-muted-foreground text-sm">
-                      {format(new Date(u.created_at), "dd/MM/yyyy")}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground text-sm">
-                      {u.last_sign_in_at
-                        ? format(new Date(u.last_sign_in_at), "dd/MM/yyyy HH:mm")
-                        : "Nunca"}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {isSelf ? (
-                        <span className="text-xs text-muted-foreground">—</span>
-                      ) : (
-                        <div className="flex items-center justify-end gap-2">
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {users?.map((u) => {
+            const isSelf = u.user_id === currentUser?.id;
+            const isOpen = openUsers[u.user_id] || false;
+            const perms = getPerms(u.user_id);
+            const activeCount = countActivePerms(perms);
+
+            return (
+              <Collapsible key={u.user_id} open={isOpen} onOpenChange={() => toggleUser(u.user_id)}>
+                <Card>
+                  <CollapsibleTrigger asChild>
+                    <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                            <UserCircle className="w-5 h-5 text-primary" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="text-sm font-medium truncate">{u.email}</p>
+                              {isSelf && (
+                                <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">você</span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              {getRoleBadge(u.role)}
+                              <span className="text-[11px] text-muted-foreground">
+                                {activeCount}/7 acessos ativos
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3 shrink-0">
+                          <div className="text-right hidden sm:block">
+                            <p className="text-[11px] text-muted-foreground">
+                              Cadastro: {format(new Date(u.created_at), "dd/MM/yyyy")}
+                            </p>
+                            <p className="text-[11px] text-muted-foreground">
+                              Último acesso: {u.last_sign_in_at ? format(new Date(u.last_sign_in_at), "dd/MM HH:mm") : "Nunca"}
+                            </p>
+                          </div>
+                          <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+                        </div>
+                      </div>
+                    </CardHeader>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <CardContent className="pt-0 space-y-5">
+                      {/* Role selector */}
+                      {!isSelf && (
+                        <div className="flex items-center gap-3 pb-4 border-b">
+                          <Label className="text-xs text-muted-foreground w-24 shrink-0">Tipo de acesso:</Label>
                           <Select
                             value={u.role === "sem_role" ? undefined : u.role}
                             onValueChange={(val) =>
                               handleSetRole(u.user_id, u.email, val as "admin" | "client")
                             }
                           >
-                            <SelectTrigger className="w-[130px] h-8 text-xs">
+                            <SelectTrigger className="w-[160px] h-8 text-xs">
                               <SelectValue placeholder="Definir role" />
                             </SelectTrigger>
                             <SelectContent>
@@ -158,30 +240,73 @@ export default function UsersManagement() {
                           {u.role !== "sem_role" && (
                             <Button
                               variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-destructive hover:text-destructive"
+                              size="sm"
+                              className="h-8 text-xs text-destructive hover:text-destructive gap-1"
                               onClick={() => handleRemoveRole(u.user_id, u.email)}
                             >
-                              <ShieldOff className="w-4 h-4" />
+                              <ShieldOff className="w-3.5 h-3.5" />
+                              Remover
                             </Button>
                           )}
                         </div>
                       )}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-              {(!users || users.length === 0) && (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                    Nenhum usuário encontrado
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        )}
-      </div>
+
+                      {/* Granular permissions */}
+                      <div className="space-y-4">
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Permissões granulares</p>
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          {PERMISSION_GROUPS.map((group) => (
+                            <div key={group.label} className="rounded-lg border p-3 space-y-3">
+                              <div className="flex items-center gap-2">
+                                <div className={`w-7 h-7 rounded-md flex items-center justify-center ${group.color}`}>
+                                  <group.icon className="w-3.5 h-3.5" />
+                                </div>
+                                <span className="text-xs font-medium">{group.label}</span>
+                              </div>
+                              <div className="space-y-2.5">
+                                {group.permissions.map((perm) => {
+                                  const isActive = perms ? (perms as any)[perm.key] === true : false;
+                                  return (
+                                    <div key={perm.key} className="flex items-center justify-between">
+                                      <div className="flex items-center gap-2">
+                                        <perm.icon className="w-3 h-3 text-muted-foreground" />
+                                        <Label className="text-[12px] font-normal cursor-pointer">{perm.label}</Label>
+                                      </div>
+                                      <Switch
+                                        checked={isActive}
+                                        disabled={isSelf}
+                                        onCheckedChange={(val) => handleToggle(u.user_id, perm.key, val)}
+                                      />
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {isSelf && (
+                        <p className="text-[11px] text-muted-foreground italic">
+                          Você não pode alterar suas próprias permissões.
+                        </p>
+                      )}
+                    </CardContent>
+                  </CollapsibleContent>
+                </Card>
+              </Collapsible>
+            );
+          })}
+
+          {(!users || users.length === 0) && (
+            <Card>
+              <CardContent className="py-8 text-center text-muted-foreground text-sm">
+                Nenhum usuário encontrado
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
 
       <AlertDialog open={!!confirmAction} onOpenChange={() => setConfirmAction(null)}>
         <AlertDialogContent>
