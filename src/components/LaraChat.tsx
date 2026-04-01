@@ -3,6 +3,7 @@ import { Send, Paperclip, FileText, Image, X, Loader2, MessageSquare, CheckCircl
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { LaraActionButtons } from "@/components/LaraActionButtons";
 import ReactMarkdown from "react-markdown";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
