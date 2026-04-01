@@ -224,7 +224,6 @@ export default function Clients() {
           <EmptyState
             icon={Search}
             title="Nenhum resultado"
-            description="Nenhum cliente encontrado com os filtros aplicados."
           />
         </div>
       ) : (
