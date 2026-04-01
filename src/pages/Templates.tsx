@@ -21,7 +21,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { FileText, Loader2, Copy, RefreshCw, Sparkles, Download, FileDown, Stamp } from "lucide-react";
+import { FileText, Loader2, Copy, RefreshCw, Sparkles, Download, FileDown, Stamp, Eye, EyeOff } from "lucide-react";
 
 const FORMAT_INSTRUCTIONS = `
 
