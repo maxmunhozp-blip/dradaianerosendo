@@ -1228,6 +1228,8 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
                     body: {
                       account_id: selectedAccountId,
                       to: emailTo.trim(),
+                      cc: emailCc.trim() || undefined,
+                      bcc: emailBcc.trim() || undefined,
                       subject: emailSubject,
                       body: emailBody,
                     },
