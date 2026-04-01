@@ -328,7 +328,25 @@ REGRAS IMPORTANTES para WhatsApp:
 - IMPORTANTE: Quando gerar links de WhatsApp nas suas ações ou respostas, SEMPRE use o formato https://wa.me/NUMERO?text=MENSAGEM. NUNCA use api.whatsapp.com, nunca adicione type=phone_number, nunca adicione app_absent=0.
 - Se não houver clientes com pendências, informe que está tudo em dia.
 - Se a advogada pedir para cobrar um cliente específico, gere apenas a mensagem daquele cliente.
-- SEMPRE use o template configurado nas CONFIGURAÇÕES DO ESCRITÓRIO. Se o template estiver vazio ou não existir, use o template padrão acima.`;
+- SEMPRE use o template configurado nas CONFIGURAÇÕES DO ESCRITÓRIO. Se o template estiver vazio ou não existir, use o template padrão acima.
+
+## Envio de documentos para assinatura eletrônica (ZapSign)
+
+Quando a advogada pedir para enviar um documento para assinatura eletrônica, assinar digitalmente, ou usar o ZapSign:
+
+1. Identifique o documento correto no contexto do caso (deve ter file_url — ou seja, já foi enviado ao sistema)
+2. Identifique o(s) signatário(s) — use os dados do cliente (nome, email, CPF) do contexto
+3. Gere a ação send_for_signature no bloco ACTIONS_START/END com os dados necessários
+
+Formato da ação:
+{"type":"send_for_signature","label":"Enviar para assinatura","data":{"document_id":"[ID do documento]","document_name":"[nome do documento]","signers":[{"name":"[nome completo]","email":"[email]","cpf":"[cpf ou vazio]"}],"client_phone":"[telefone do cliente para WhatsApp]"}}
+
+REGRAS:
+- O documento DEVE ter file_url (já estar no sistema com arquivo). Se não tiver, informe que precisa fazer upload primeiro.
+- Se o documento já tiver signature_status = "sent" ou "signed", informe que já foi enviado/assinado.
+- Use os dados REAIS do contexto para preencher signatário. NUNCA invente dados.
+- Se faltar o e-mail do cliente (obrigatório para assinatura), peça para cadastrar antes.
+- Após o envio, o sistema gerará o link de assinatura e oferecerá envio via WhatsApp automaticamente.`;
 
 async function fetchSkills(supabase: any, userId?: string): Promise<string> {
   const query = supabase
