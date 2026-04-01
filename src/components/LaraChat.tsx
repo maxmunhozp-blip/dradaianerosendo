@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, Paperclip, FileText, Image, X, Loader2, MessageSquare, CheckCircle2, Scale, Save, ClipboardList } from "lucide-react";
+import { Send, Paperclip, FileText, Image, X, Loader2, MessageSquare, CheckCircle2, Scale, Save, ClipboardList, AlertTriangle, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import ReactMarkdown from "react-markdown";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -177,7 +178,7 @@ function SaveDataBlock({ action, clientId, caseId }: { action: SaveDataAction; c
 
 export function LaraChat({
   messages, onSend, isLoading = false, className, pendingCommand, onCommandConsumed,
-  clientId, caseId,
+  clientId, caseId, auditContent, auditLoading,
 }: {
   messages: ChatMessage[];
   onSend: (content: string, attachments: ChatAttachment[]) => void;
@@ -187,9 +188,12 @@ export function LaraChat({
   onCommandConsumed?: () => void;
   clientId?: string;
   caseId?: string;
+  auditContent?: string | null;
+  auditLoading?: boolean;
 }) {
   const [input, setInput] = useState("");
   const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
+  const [auditOpen, setAuditOpen] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -266,11 +270,37 @@ export function LaraChat({
       <div className="flex items-center gap-2 px-4 py-3 border-b border-border shrink-0">
         <div className="w-2 h-2 rounded-full bg-success" />
         <span className="text-sm font-medium text-foreground">LARA</span>
-        <span className="text-xs text-muted-foreground">Assistente Jurídica IA</span>
+        <span className="text-xs text-muted-foreground">Estagiária Jurídica IA</span>
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
-        {messages.length === 0 && (
+        {/* Audit card */}
+        {(auditContent || auditLoading) && (
+          <Collapsible open={auditOpen} onOpenChange={setAuditOpen}>
+            <div className="rounded-lg border border-amber-200 bg-amber-50 overflow-hidden">
+              <CollapsibleTrigger asChild>
+                <button className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-amber-800 hover:bg-amber-100 transition-colors">
+                  <span className="flex items-center gap-1.5">
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    Auditoria do caso
+                    {auditLoading && <Loader2 className="w-3 h-3 animate-spin" />}
+                  </span>
+                  {auditOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="px-3 pb-3 text-sm text-amber-900">
+                  <div className="prose prose-sm max-w-none prose-headings:text-amber-900 prose-p:text-amber-800 prose-li:text-amber-800 prose-strong:text-amber-900">
+                    <ReactMarkdown>{auditContent || ""}</ReactMarkdown>
+                    {auditLoading && <span className="inline-block w-1.5 h-4 bg-amber-600 animate-pulse ml-0.5" />}
+                  </div>
+                </div>
+              </CollapsibleContent>
+            </div>
+          </Collapsible>
+        )}
+
+        {messages.length === 0 && !auditContent && !auditLoading && (
           <div className="text-center py-8">
             <p className="text-sm text-muted-foreground">Inicie uma conversa com a LARA.</p>
             <p className="text-xs text-muted-foreground mt-2">

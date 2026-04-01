@@ -61,7 +61,7 @@ export default function CaseDetail() {
   const { data: checklist = [] } = useChecklistByCase(id!);
   const { data: dbMessages = [] } = useMessagesByCase(id!);
 
-  const { messages: chatMessages, isLoading: chatLoading, sendMessage, loadHistory } = useLaraChat(id);
+  const { messages: chatMessages, isLoading: chatLoading, sendMessage, loadHistory, auditContent, auditLoading, triggerAudit } = useLaraChat(id);
 
   const navigate = useNavigate();
   const updateCase = useUpdateCase();
@@ -95,6 +95,13 @@ export default function CaseDetail() {
       setHistoryLoaded(true);
     }
   }, [dbMessages, historyLoaded, loadHistory]);
+
+  // Trigger audit when case loads
+  useEffect(() => {
+    if (caseData && id) {
+      triggerAudit();
+    }
+  }, [caseData, id, triggerAudit]);
 
   if (caseLoading) return <DetailSkeleton />;
 
@@ -564,6 +571,8 @@ export default function CaseDetail() {
             isLoading={chatLoading}
             clientId={(caseData as any)?.client_id}
             caseId={id}
+            auditContent={auditContent}
+            auditLoading={auditLoading}
           />
         </div>
       )}
