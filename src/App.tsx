@@ -36,6 +36,7 @@ import NotFound from "./pages/NotFound.tsx";
 import PublicDataRequest from "./pages/PublicDataRequest";
 import LaraSkills from "./pages/LaraSkills";
 import DocumentBranding from "./pages/DocumentBranding";
+import EmailSettings from "./pages/EmailSettings";
 
 const queryClient = new QueryClient();
 
@@ -116,6 +117,7 @@ const App = () => {
                 <Route path="/mail" element={<MailPage />} />
                 <Route path="/settings/lara-skills" element={<LaraSkills />} />
                 <Route path="/settings/document-branding" element={<DocumentBranding />} />
+                <Route path="/settings/emails" element={<EmailSettings />} />
               </Route>
             </Route>
 
