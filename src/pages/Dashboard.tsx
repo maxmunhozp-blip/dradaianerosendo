@@ -6,6 +6,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { StatCardSkeleton } from "@/components/Skeletons";
 import { Link } from "react-router-dom";
 import { useClients } from "@/hooks/use-clients";
+import { useOwnerFilter } from "@/hooks/use-owner-filter";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
