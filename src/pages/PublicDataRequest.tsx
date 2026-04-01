@@ -98,23 +98,32 @@ export default function PublicDataRequest() {
 
   const loadRequest = async () => {
     try {
-      const { data, error: fetchError } = await publicSupabase
+      // First try to find by token (any status)
+      const { data: anyRequest, error: anyError } = await publicSupabase
         .from("data_requests")
-        .select("fields_requested, client_id")
+        .select("fields_requested, client_id, status, expires_at")
         .eq("token", token!)
-        .eq("status", "pending")
-        .gt("expires_at", new Date().toISOString())
-        .single();
+        .maybeSingle();
 
-      if (fetchError || !data) {
-        setError("Este link expirou ou já foi utilizado.");
+      if (anyError || !anyRequest) {
+        setError("Link inválido. Verifique se o endereço está correto.");
         setLoading(false);
         return;
       }
 
-      setRequestData(data as { fields_requested: string[]; client_id: string });
+      if (anyRequest.status === "completed") {
+        setError("Dados já enviados — obrigado! Pode fechar esta página.");
+        setLoading(false);
+        return;
+      }
 
-      // Fetch client name (anon can't read clients, so we skip if blocked)
+      if (new Date(anyRequest.expires_at) < new Date()) {
+        setError("Link expirado — entre em contato com seu advogado para solicitar um novo.");
+        setLoading(false);
+        return;
+      }
+
+      setRequestData(anyRequest as { fields_requested: string[]; client_id: string });
       setClientName("");
       setLoading(false);
     } catch {
