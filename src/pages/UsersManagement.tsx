@@ -545,6 +545,7 @@ function ProfileModal({ open, onOpenChange, editing }: { open: boolean; onOpenCh
       } else {
         setName("");
         setDescription("");
+        setSelectedIcon("User");
         setPermissions({
           can_view_cases: false, can_edit_cases: false,
           can_view_clients: false, can_edit_clients: false,
