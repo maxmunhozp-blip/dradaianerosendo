@@ -72,7 +72,7 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
   const [pdfPreviewBlob, setPdfPreviewBlob] = useState<Blob | null>(null);
   const [pdfPreviewMeta, setPdfPreviewMeta] = useState<{ docName: string; caseId: string; action: LaraAction; actionIndex: number } | null>(null);
-  const [savingPdf, setSavingPdf] = false);
+  const [savingPdf, setSavingPdf] = useState(false);
 
   // Text editor state (before PDF generation)
   const [editingText, setEditingText] = useState(false);
