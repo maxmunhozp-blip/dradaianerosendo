@@ -155,9 +155,12 @@ export default function ClientDetail() {
     }
     setScanProgress("");
     setScanning(false);
+    // Invalidate all related queries to refresh UI
     queryClient.invalidateQueries({ queryKey: ["extraction-suggestions", id] });
     queryClient.invalidateQueries({ queryKey: ["client-all-docs", id] });
-    toast.success(`Escaneamento concluído (${success}/${docsToScan.length}) — verifique as sugestões abaixo.`);
+    queryClient.invalidateQueries({ queryKey: ["client", id] });
+    queryClient.invalidateQueries({ queryKey: ["cases-by-client", id] });
+    toast.success(`Escaneamento concluído (${success}/${docsToScan.length}) — verifique os dados preenchidos acima.`);
   };
 
   // Section states
