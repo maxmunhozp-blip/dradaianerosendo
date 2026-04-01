@@ -4,8 +4,9 @@ import { StatusBadge } from "./StatusBadge";
 import {
   Download, Scale, ChevronDown, ChevronRight,
   Bold, Italic, List, Paperclip, Save, Loader2, Eye,
-  CheckCircle2, AlertCircle, Trash2,
+  CheckCircle2, AlertCircle, Trash2, PenLine,
 } from "lucide-react";
+import { SignatureModal, SignatureStatusBadge } from "@/components/SignatureModal";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
