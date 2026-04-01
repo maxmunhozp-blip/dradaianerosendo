@@ -60,7 +60,7 @@ export default function PortalAssistente() {
   // Init message — hidden from UI
   useEffect(() => {
     if (caseId && messages.length === 0 && !isLoading) {
-      sendMessage("__PORTAL_INIT__", [], { isPortalMode: true });
+      sendMessage("__PORTAL_INIT__", [], { isPortalMode: true, clientId: session?.clientId });
     }
   }, [caseId]);
 
