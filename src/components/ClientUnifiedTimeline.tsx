@@ -368,7 +368,7 @@ export function ClientUnifiedTimeline({ caseIds }: { caseIds: string[] }) {
                     <div className="flex-1 min-w-0 pt-0.5">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm font-semibold text-foreground">
-                          {event.title.replace(/^[📄⚖️⚠️✅]\s?/, "")}
+                          {event.title}
                         </span>
                         <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded flex-shrink-0">
                           {formatDateFull(event.event_date)}
