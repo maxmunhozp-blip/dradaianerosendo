@@ -46,9 +46,23 @@ Deno.serve(async (req) => {
       await admin.from("user_roles").insert({ user_id: data.user.id, role });
     }
 
-    // If role is client, link to existing client record by email
+    // If role is client, link or create client record
     if (role === "client" && data.user) {
+      // Try to link existing client by email
       await admin.rpc("link_client_by_email", { _user_id: data.user.id, _email: email });
+
+      // Check if a client was linked
+      const { data: linked } = await admin.from("clients").select("id").eq("user_id", data.user.id).maybeSingle();
+      if (!linked) {
+        // No existing client — create one automatically
+        await admin.from("clients").insert({
+          name: name || email,
+          email,
+          status: "ativo",
+          user_id: data.user.id,
+          owner_id: caller.id,
+        });
+      }
     }
 
     // Update permissions based on role
