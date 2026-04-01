@@ -479,7 +479,7 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
 
             const pdfBlob = generatePdfFromHtml(`<p>${cleanText.replace(/\n\n/g, "</p><p>").replace(/\n/g, "<br/>")}</p>`);
 
-            const fileName = `${caseId}/${Date.now()}_${docName.replace(/\s+/g, "_")}.pdf`;
+            const fileName = `${caseId}/${Date.now()}_${sanitizeFileName(docName)}.pdf`;
             const { error: uploadError } = await supabase.storage
               .from("case-documents")
               .upload(fileName, pdfBlob, { contentType: "application/pdf" });
