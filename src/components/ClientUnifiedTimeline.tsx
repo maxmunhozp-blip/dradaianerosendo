@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Clock, FileText, PenLine, Bell, MessageSquare, Scale, AlertTriangle, CheckCircle2, ArrowRight } from "lucide-react";
+import { Clock, FileText, PenLine, Bell, MessageSquare, Scale, AlertTriangle, CheckCircle2, Gavel, ClipboardCheck } from "lucide-react";
 import { Link } from "react-router-dom";
 
 interface TimelineEvent {
@@ -11,24 +11,32 @@ interface TimelineEvent {
   type: string;
   status: string;
   event_date: string;
-  created_at: string;
   case_type?: string;
 }
 
 const TYPE_ICONS: Record<string, React.ElementType> = {
   documento: FileText,
   assinatura: PenLine,
-  audiencia: Bell,
+  audiencia: Gavel,
   intimacao: AlertTriangle,
   mensagem: MessageSquare,
   manual: Clock,
   peticao: Scale,
+  checklist: ClipboardCheck,
+  timeline: Bell,
 };
 
 const STATUS_COLORS: Record<string, string> = {
   concluído: "text-green-600",
+  assinado: "text-green-600",
+  signed: "text-green-600",
+  realizada: "text-green-600",
+  done: "text-green-600",
   "atenção_necessária": "text-amber-600",
   pendente: "text-blue-600",
+  sent: "text-blue-600",
+  agendado: "text-blue-600",
+  novo: "text-amber-500",
 };
 
 function formatDate(dateStr: string) {
@@ -43,7 +51,7 @@ function formatDate(dateStr: string) {
   if (mins < 60) return `há ${mins}min`;
   if (hours < 24) return `há ${hours}h`;
   if (days < 7) return `há ${days}d`;
-  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
+  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
 }
 
 export function ClientUnifiedTimeline({ caseIds }: { caseIds: string[] }) {
@@ -51,29 +59,123 @@ export function ClientUnifiedTimeline({ caseIds }: { caseIds: string[] }) {
     queryKey: ["client-unified-timeline", caseIds],
     queryFn: async () => {
       if (caseIds.length === 0) return [];
-      
-      // Fetch timeline events for all cases
-      const { data: timelineData, error: tlError } = await supabase
-        .from("case_timeline")
-        .select("id, case_id, title, description, type, status, event_date, created_at")
-        .in("case_id", caseIds)
-        .order("event_date", { ascending: false })
-        .limit(50);
-      
-      if (tlError) throw tlError;
 
       // Fetch case types for labels
       const { data: casesData } = await supabase
         .from("cases")
         .select("id, case_type")
         .in("id", caseIds);
-
       const caseTypeMap = new Map((casesData || []).map(c => [c.id, c.case_type]));
 
-      return (timelineData || []).map(e => ({
-        ...e,
-        case_type: caseTypeMap.get(e.case_id) || "",
-      })) as TimelineEvent[];
+      // Fetch all sources in parallel
+      const [tlRes, docRes, hearRes, intRes, checkRes] = await Promise.all([
+        supabase
+          .from("case_timeline")
+          .select("id, case_id, title, description, type, status, event_date")
+          .in("case_id", caseIds)
+          .order("event_date", { ascending: false }),
+        supabase
+          .from("documents")
+          .select("id, case_id, name, category, status, signature_status, created_at")
+          .in("case_id", caseIds)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("hearings")
+          .select("id, case_id, title, location, status, date")
+          .in("case_id", caseIds)
+          .order("date", { ascending: false }),
+        supabase
+          .from("intimacoes")
+          .select("id, case_id, raw_email_subject, ai_summary, status, created_at, deadline_date")
+          .in("case_id", caseIds)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("checklist_items")
+          .select("id, case_id, label, done, created_at")
+          .in("case_id", caseIds)
+          .order("created_at", { ascending: false }),
+      ]);
+
+      const unified: TimelineEvent[] = [];
+
+      // Timeline entries
+      for (const e of tlRes.data || []) {
+        unified.push({
+          id: `tl-${e.id}`,
+          case_id: e.case_id,
+          title: e.title,
+          description: e.description || "",
+          type: e.type || "timeline",
+          status: e.status || "",
+          event_date: e.event_date,
+          case_type: caseTypeMap.get(e.case_id) || "",
+        });
+      }
+
+      // Documents
+      for (const d of docRes.data || []) {
+        const sigLabel = d.signature_status === "signed" ? " (assinado)" :
+                         d.signature_status === "sent" ? " (aguardando assinatura)" : "";
+        unified.push({
+          id: `doc-${d.id}`,
+          case_id: d.case_id,
+          title: `📄 ${d.name}${sigLabel}`,
+          description: `Categoria: ${d.category} · Status: ${d.status}`,
+          type: d.signature_status && d.signature_status !== "none" ? "assinatura" : "documento",
+          status: d.signature_status === "signed" ? "assinado" : d.status,
+          event_date: d.created_at,
+          case_type: caseTypeMap.get(d.case_id) || "",
+        });
+      }
+
+      // Hearings
+      for (const h of hearRes.data || []) {
+        unified.push({
+          id: `hear-${h.id}`,
+          case_id: h.case_id,
+          title: `⚖️ ${h.title}`,
+          description: h.location ? `Local: ${h.location}` : "",
+          type: "audiencia",
+          status: h.status,
+          event_date: h.date,
+          case_type: caseTypeMap.get(h.case_id) || "",
+        });
+      }
+
+      // Intimações
+      for (const i of intRes.data || []) {
+        unified.push({
+          id: `int-${i.id}`,
+          case_id: i.case_id || "",
+          title: `⚠️ ${i.raw_email_subject || "Intimação"}`,
+          description: i.ai_summary || "",
+          type: "intimacao",
+          status: i.status,
+          event_date: i.created_at,
+          case_type: i.case_id ? (caseTypeMap.get(i.case_id) || "") : "",
+        });
+      }
+
+      // Checklist items completed
+      for (const c of checkRes.data || []) {
+        if (c.done) {
+          unified.push({
+            id: `chk-${c.id}`,
+            case_id: c.case_id,
+            title: `✅ ${c.label}`,
+            description: "Item concluído",
+            type: "checklist",
+            status: "concluído",
+            event_date: c.created_at,
+            case_type: caseTypeMap.get(c.case_id) || "",
+          });
+        }
+      }
+
+      // Sort all by date descending
+      unified.sort((a, b) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime());
+
+      return unified;
     },
     enabled: caseIds.length > 0,
   });
@@ -104,7 +206,7 @@ export function ClientUnifiedTimeline({ caseIds }: { caseIds: string[] }) {
           Nenhuma movimentação registrada ainda.
         </div>
       ) : (
-        <div className="border border-border rounded-lg divide-y divide-border max-h-[400px] overflow-y-auto">
+        <div className="border border-border rounded-lg divide-y divide-border max-h-[500px] overflow-y-auto">
           {events.map((event) => {
             const Icon = TYPE_ICONS[event.type] || Clock;
             const statusColor = STATUS_COLORS[event.status] || "text-muted-foreground";
