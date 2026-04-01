@@ -19,6 +19,7 @@ import {
 import {
   ArrowLeft, Phone, Mail, Plus, FolderOpen, Send, Loader2,
   Pencil, Trash2, Save, X, ChevronDown, ChevronRight, MapPin, Users, UserX, Baby, ExternalLink, ScanSearch,
+  CheckCircle2, Clock, XCircle,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -94,7 +95,7 @@ export default function ClientDetail() {
       if (caseIds.length === 0) return [];
       const { data, error } = await supabase
         .from("documents")
-        .select("id, name, case_id, file_url, extraction_status")
+        .select("id, name, case_id, file_url, extraction_status, extracted_data")
         .in("case_id", caseIds);
       if (error) throw error;
       return data || [];
@@ -102,22 +103,30 @@ export default function ClientDetail() {
     enabled: caseIds.length > 0,
   });
 
-  const pendingDocs = allDocs.filter(
-    (d: any) => d.file_url && (!d.extraction_status || d.extraction_status === "pending")
-  );
+  const hasExtractedData = (d: any) =>
+    d?.extracted_data && typeof d.extracted_data === "object" && Object.keys(d.extracted_data).length > 0;
+
+  const uploadedDocs = allDocs.filter((d: any) => d.file_url);
+  const doneDocs = uploadedDocs.filter((d: any) => d.extraction_status === "done" && hasExtractedData(d));
+  const failedDocs = uploadedDocs.filter((d: any) => d.extraction_status === "failed" || (d.extraction_status === "done" && !hasExtractedData(d)));
+  const pendingDocs = uploadedDocs.filter((d: any) => !d.extraction_status || d.extraction_status === "pending");
+  const allScanned = uploadedDocs.length > 0 && doneDocs.length === uploadedDocs.length;
+  const canScan = !scanning && (!allScanned || failedDocs.length > 0 || pendingDocs.length > 0);
+
+  const docsToScan = [...pendingDocs, ...failedDocs];
 
   const handleScanAll = async () => {
-    if (pendingDocs.length === 0) {
+    if (docsToScan.length === 0) {
       toast.info("Nenhum documento pendente para escanear");
       return;
     }
     setScanning(true);
     let success = 0;
-    for (let i = 0; i < pendingDocs.length; i++) {
-      const doc = pendingDocs[i];
-      setScanProgress(`Escaneando documento ${i + 1} de ${pendingDocs.length}...`);
+    for (let i = 0; i < docsToScan.length; i++) {
+      const doc = docsToScan[i];
+      setScanProgress(`Escaneando documento ${i + 1} de ${docsToScan.length}...`);
       try {
-        await supabase.functions.invoke("process-document", {
+        const { data, error } = await supabase.functions.invoke("process-document", {
           body: {
             document_id: doc.id,
             case_id: doc.case_id,
@@ -126,16 +135,22 @@ export default function ClientDetail() {
             file_name: doc.name,
           },
         });
-        success++;
+        if (error || !data?.success) {
+          // Mark as failed
+          await supabase.from("documents").update({ extraction_status: "failed" }).eq("id", doc.id);
+        } else {
+          success++;
+        }
       } catch (e) {
         console.error(`Erro ao escanear ${doc.name}:`, e);
+        await supabase.from("documents").update({ extraction_status: "failed" }).eq("id", doc.id);
       }
     }
     setScanProgress("");
     setScanning(false);
     queryClient.invalidateQueries({ queryKey: ["extraction-suggestions", id] });
     queryClient.invalidateQueries({ queryKey: ["client-all-docs", id] });
-    toast.success(`Escaneamento concluído (${success}/${pendingDocs.length}) — verifique as sugestões abaixo.`);
+    toast.success(`Escaneamento concluído (${success}/${docsToScan.length}) — verifique as sugestões abaixo.`);
   };
 
   // Section states
@@ -447,22 +462,50 @@ export default function ClientDetail() {
       )}
 
       {/* Scan + Extraction Suggestions */}
-      {allDocs.length > 0 && (
-        <div className="flex items-center gap-3 mb-2">
+      {uploadedDocs.length > 0 && (
+        <div className="mb-3 space-y-2">
           <Button
-            variant="outline"
+            variant={allScanned ? "outline" : failedDocs.length > 0 ? "outline" : "outline"}
             size="sm"
             onClick={handleScanAll}
-            disabled={scanning || pendingDocs.length === 0}
-            className="gap-2"
+            disabled={!canScan}
+            className={`gap-2 ${allScanned ? "border-green-500 text-green-700" : failedDocs.length > 0 ? "border-amber-500 text-amber-700" : ""}`}
           >
             {scanning ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : allScanned ? (
+              <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
             ) : (
               <ScanSearch className="w-3.5 h-3.5" />
             )}
-            {scanning ? scanProgress : `Escanear documentos com IA (${pendingDocs.length})`}
+            {scanning
+              ? scanProgress
+              : allScanned
+              ? "Escaneamento concluído"
+              : failedDocs.length > 0
+              ? `Reescanear documentos com falha (${failedDocs.length})`
+              : `Escanear documentos com IA (${docsToScan.length})`}
           </Button>
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+            {uploadedDocs.map((doc: any) => {
+              const isDone = doc.extraction_status === "done" && hasExtractedData(doc);
+              const isFailed = doc.extraction_status === "failed" || (doc.extraction_status === "done" && !hasExtractedData(doc));
+              return (
+                <span key={doc.id} className="flex items-center gap-1">
+                  {isDone ? (
+                    <CheckCircle2 className="w-3 h-3 text-green-600" />
+                  ) : isFailed ? (
+                    <XCircle className="w-3 h-3 text-destructive" />
+                  ) : (
+                    <Clock className="w-3 h-3 text-muted-foreground" />
+                  )}
+                  <span className={isDone ? "text-green-700" : isFailed ? "text-destructive" : ""}>
+                    {doc.name.length > 25 ? doc.name.slice(0, 22) + "..." : doc.name}
+                  </span>
+                </span>
+              );
+            })}
+          </div>
         </div>
       )}
       <ExtractionSuggestions clientId={client.id} />
