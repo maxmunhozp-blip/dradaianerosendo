@@ -25,10 +25,10 @@ Deno.serve(async (req) => {
     const { data: isAdmin } = await anonClient.rpc("has_role", { _user_id: caller.id, _role: "admin" });
     if (!isAdmin) throw new Error("Apenas administradores podem criar usuários");
 
-    const { email, password, name, role } = await req.json();
+    const { email, password, name, role, sendWelcomeEmail } = await req.json();
     if (!email || !password) throw new Error("E-mail e senha são obrigatórios");
 
-    const admin = createClient(supabaseUrl, serviceRoleKey);
+    const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } });
 
     // Create user
     const { data, error } = await admin.auth.admin.createUser({
@@ -48,13 +48,9 @@ Deno.serve(async (req) => {
 
     // If role is client, link or create client record
     if (role === "client" && data.user) {
-      // Try to link existing client by email
       await admin.rpc("link_client_by_email", { _user_id: data.user.id, _email: email });
-
-      // Check if a client was linked
       const { data: linked } = await admin.from("clients").select("id").eq("user_id", data.user.id).maybeSingle();
       if (!linked) {
-        // No existing client — create one automatically
         await admin.from("clients").insert({
           name: name || email,
           email,
@@ -80,7 +76,61 @@ Deno.serve(async (req) => {
       }, { onConflict: "user_id" });
     }
 
-    return new Response(JSON.stringify({ user: { id: data.user.id, email: data.user.email } }), {
+    // Send welcome email if requested
+    let welcomeEmailSent = false;
+    if (sendWelcomeEmail && data.user) {
+      try {
+        const { data: emailSettings } = await admin
+          .from("settings")
+          .select("key, value")
+          .in("key", ["office_name", "office_phone"]);
+
+        const officeName = emailSettings?.find((s: any) => s.key === "office_name")?.value || "Escritório";
+
+        const roleLabel = role === "client" ? "cliente" : role === "advogado" ? "advogado(a)" : "administrador(a)";
+        const portalUrl = `${supabaseUrl.replace(".supabase.co", "")}`; // placeholder
+
+        const htmlBody = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #0F172A;">Bem-vindo(a) ao ${officeName}!</h2>
+            <p>Olá${name ? `, ${name}` : ""}!</p>
+            <p>Sua conta foi criada com sucesso como <strong>${roleLabel}</strong>.</p>
+            <p>Seus dados de acesso:</p>
+            <ul>
+              <li><strong>E-mail:</strong> ${email}</li>
+              <li><strong>Senha:</strong> a senha definida pelo administrador</li>
+            </ul>
+            <p>Recomendamos que altere sua senha no primeiro acesso.</p>
+            <br/>
+            <p style="color: #64748b; font-size: 12px;">Este é um e-mail automático enviado pelo ${officeName}.</p>
+          </div>
+        `;
+
+        // Try sending via send-email edge function
+        const emailRes = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${serviceRoleKey}`,
+          },
+          body: JSON.stringify({
+            to: email,
+            subject: `Bem-vindo(a) ao ${officeName}`,
+            html: htmlBody,
+          }),
+        });
+
+        if (emailRes.ok) {
+          welcomeEmailSent = true;
+        } else {
+          console.error("Welcome email failed:", await emailRes.text());
+        }
+      } catch (emailErr) {
+        console.error("Error sending welcome email:", emailErr);
+      }
+    }
+
+    return new Response(JSON.stringify({ user: { id: data.user.id, email: data.user.email }, welcomeEmailSent }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e: any) {
