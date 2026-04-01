@@ -1,0 +1,1 @@
+UPDATE documents SET extraction_status = 'pending' WHERE extraction_status = 'processing';
