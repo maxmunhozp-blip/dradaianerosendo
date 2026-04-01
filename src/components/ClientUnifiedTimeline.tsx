@@ -372,3 +372,144 @@ export function ClientUnifiedTimeline({ caseIds }: { caseIds: string[] }) {
     </div>
   );
 }
+
+// ── Add Manual Event Dialog ──
+
+function AddManualEventDialog({
+  open,
+  onOpenChange,
+  caseOptions,
+  onSubmit,
+  isPending,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  caseOptions: { id: string; case_type: string }[];
+  onSubmit: (data: { case_id: string; title: string; description: string; type: string; status: string }) => void;
+  isPending: boolean;
+}) {
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [type, setType] = useState("manual");
+  const [status, setStatus] = useState("atualização_recebida");
+  const [caseId, setCaseId] = useState(caseOptions[0]?.id || "");
+
+  const handleSubmit = () => {
+    if (!title.trim()) {
+      toast.error("Informe o título da movimentação.");
+      return;
+    }
+    if (!caseId) {
+      toast.error("Selecione o caso.");
+      return;
+    }
+    onSubmit({ case_id: caseId, title: title.trim(), description: description.trim(), type, status });
+  };
+
+  const handleOpenChange = (v: boolean) => {
+    if (!v) {
+      setTitle("");
+      setDescription("");
+      setType("manual");
+      setStatus("atualização_recebida");
+      setCaseId(caseOptions[0]?.id || "");
+    }
+    onOpenChange(v);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-sm font-medium">Nova movimentação</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          {caseOptions.length > 1 && (
+            <div className="space-y-1">
+              <Label className="text-[11px]">Caso *</Label>
+              <Select value={caseId} onValueChange={setCaseId}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Selecione o caso" />
+                </SelectTrigger>
+                <SelectContent>
+                  {caseOptions.map((c) => (
+                    <SelectItem key={c.id} value={c.id} className="text-xs">
+                      {c.case_type}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          <div className="space-y-1">
+            <Label className="text-[11px]">Título *</Label>
+            <Input
+              className="h-8 text-xs"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Ex: Protocolo de petição inicial"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <Label className="text-[11px]">Descrição</Label>
+            <Textarea
+              className="text-xs min-h-[60px]"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Detalhes opcionais..."
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <Label className="text-[11px]">Tipo</Label>
+              <Select value={type} onValueChange={setType}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {MANUAL_TYPES.map((t) => (
+                    <SelectItem key={t.value} value={t.value} className="text-xs">
+                      {t.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[11px]">Status</Label>
+              <Select value={status} onValueChange={setStatus}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {MANUAL_STATUSES.map((s) => (
+                    <SelectItem key={s.value} value={s.value} className="text-xs">
+                      {s.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <Button className="w-full gap-2" onClick={handleSubmit} disabled={isPending}>
+            {isPending ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Salvando...
+              </>
+            ) : (
+              <>
+                <Plus className="w-4 h-4" />
+                Registrar movimentação
+              </>
+            )}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
