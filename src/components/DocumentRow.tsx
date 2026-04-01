@@ -98,6 +98,55 @@ export function DocumentRow({ doc, clientName, clientEmail, clientCpf, clientPho
     outro: "Outro",
   };
 
+  // Fetch email accounts on mount
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from("email_accounts").select("id, email, label").in("status", ["active", "conectado"]);
+      if (data && data.length > 0) {
+        setEmailAccounts(data);
+        setSelectedAccountId(data[0].id);
+      }
+    })();
+  }, []);
+
+  const openEmailDialog = () => {
+    setEmailTo(clientEmail || "");
+    setEmailSubject(`Documento: ${doc.name}`);
+    setEmailBody(`Olá,\n\nSegue em anexo o documento "${doc.name}".\n\nAtenciosamente.`);
+    setEmailCc("");
+    setEmailBcc("");
+    setShowCcBcc(false);
+    setEmailOpen(true);
+  };
+
+  const handleSendEmail = async () => {
+    if (!emailTo.trim()) { toast.error("Informe o destinatário"); return; }
+    if (!doc.file_url) { toast.error("Documento sem arquivo"); return; }
+    setSendingEmail(true);
+    try {
+      const signedUrl = await getSignedUrl(doc.file_url);
+      if (!signedUrl) throw new Error("Erro ao gerar URL do arquivo");
+
+      const { error } = await supabase.functions.invoke("send-email", {
+        body: {
+          account_id: selectedAccountId || undefined,
+          to: emailTo.trim(),
+          cc: emailCc.trim() || undefined,
+          bcc: emailBcc.trim() || undefined,
+          subject: emailSubject,
+          body: emailBody + `\n\n📎 Documento: ${doc.name}\n${signedUrl}`,
+        },
+      });
+      if (error) throw error;
+      toast.success("E-mail enviado com sucesso!");
+      setEmailOpen(false);
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao enviar e-mail");
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
   const isPdf = doc.file_url?.toLowerCase().endsWith(".pdf");
   const isImage = /\.(jpg|jpeg|png|webp|gif)$/i.test(doc.file_url || "");
 
