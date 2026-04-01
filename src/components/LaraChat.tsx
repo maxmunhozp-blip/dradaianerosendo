@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, Paperclip, FileText, Image, X, Loader2, MessageSquare, CheckCircle2, Scale, Save, ClipboardList } from "lucide-react";
+import { Send, Paperclip, FileText, Image, X, Loader2, MessageSquare, CheckCircle2, Scale, Save, ClipboardList, AlertTriangle, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import ReactMarkdown from "react-markdown";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
