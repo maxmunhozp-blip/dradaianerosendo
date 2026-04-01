@@ -197,10 +197,14 @@ export default function ClientDetail() {
       toast.info("Nenhum documento pendente para escanear");
       return;
     }
+    setScanDocList(docsToScan.map(d => ({ id: d.id, name: d.name })));
+    setScanResults({});
+    setScanCurrentIndex(0);
     setScanning(true);
     let success = 0;
     for (let i = 0; i < docsToScan.length; i++) {
       const doc = docsToScan[i];
+      setScanCurrentIndex(i);
       setScanProgress(`Escaneando documento ${i + 1} de ${docsToScan.length}...`);
       try {
         const result = await Promise.race([
@@ -217,17 +221,22 @@ export default function ClientDetail() {
         ]) as any;
         if (result?.error || !result?.data?.success) {
           await supabase.from("documents").update({ extraction_status: "failed" }).eq("id", doc.id);
+          setScanResults(prev => ({ ...prev, [doc.id]: { confidence: "low", fieldsFound: 0 } }));
         } else {
           success++;
+          const fieldsFound = result?.data?.suggestions_created || result?.data?.fields_found || 0;
+          const confidence = fieldsFound > 2 ? "high" : "low";
+          setScanResults(prev => ({ ...prev, [doc.id]: { confidence, fieldsFound } }));
         }
       } catch (e) {
         console.error(`Erro ao escanear ${doc.name}:`, e);
         await supabase.from("documents").update({ extraction_status: "failed" }).eq("id", doc.id);
+        setScanResults(prev => ({ ...prev, [doc.id]: { confidence: "low", fieldsFound: 0 } }));
       }
     }
+    setScanCurrentIndex(docsToScan.length);
     setScanProgress("");
     setScanning(false);
-    // Invalidate all related queries to refresh UI
     queryClient.invalidateQueries({ queryKey: ["extraction-suggestions", id] });
     queryClient.invalidateQueries({ queryKey: ["client-all-docs", id] });
     queryClient.invalidateQueries({ queryKey: ["clients", id] });
