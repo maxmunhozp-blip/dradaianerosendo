@@ -45,6 +45,11 @@ Deno.serve(async (req) => {
       await admin.rpc("set_user_role", { _target_user_id: data.user.id, _role: role });
     }
 
+    // If role is client, link to existing client record by email
+    if (role === "client" && data.user) {
+      await admin.rpc("link_client_by_email", { _user_id: data.user.id, _email: email });
+    }
+
     return new Response(JSON.stringify({ user: { id: data.user.id, email: data.user.email } }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
