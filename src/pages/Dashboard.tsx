@@ -90,62 +90,90 @@ export default function Dashboard() {
   );
 }
 
-function ZapSignStatus() {
+function IntegrationStatusBar() {
   const { data, isLoading } = useQuery({
-    queryKey: ["zapsign-status"],
+    queryKey: ["integrations-status"],
     queryFn: async () => {
-      const { data: setting } = await supabase
+      // Check ZapSign
+      const { data: zapSetting } = await supabase
         .from("settings")
         .select("value")
         .eq("key", "signature_api_token")
         .maybeSingle();
 
-      if (!setting?.value) return { connected: false, error: null };
-
-      try {
-        const res = await supabase.functions.invoke("test-zapsign", {
-          body: { token: setting.value },
-        });
-        if (res.error) return { connected: false, error: "Erro ao testar" };
-        const body = res.data as any;
-        return { connected: body.valid === true, error: body.valid ? null : (body.hint || "Token inválido") };
-      } catch {
-        return { connected: false, error: "Falha na conexão" };
+      let zapSignConnected = false;
+      if (zapSetting?.value) {
+        try {
+          const res = await supabase.functions.invoke("test-zapsign", { body: { token: zapSetting.value } });
+          zapSignConnected = !res.error && (res.data as any)?.valid === true;
+        } catch {}
       }
+
+      // Check WhatsApp
+      const { data: whatsappSetting } = await supabase
+        .from("settings")
+        .select("value")
+        .eq("key", "whatsapp_token")
+        .maybeSingle();
+      const whatsappConnected = !!whatsappSetting?.value;
+
+      // Check E-mail accounts
+      const { data: emailAccounts } = await supabase
+        .from("email_accounts")
+        .select("id, status")
+        .limit(10);
+      const emailConnected = (emailAccounts || []).some((a: any) => a.status === "conectado");
+      const emailCount = (emailAccounts || []).length;
+
+      return { zapSignConnected, whatsappConnected, emailConnected, emailCount };
     },
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
 
-  const connected = data?.connected ?? false;
+  const integrations = [
+    {
+      name: "ZapSign",
+      icon: PenLine,
+      connected: data?.zapSignConnected ?? false,
+      link: "/admin?tab=config",
+    },
+    {
+      name: "WhatsApp",
+      icon: MessageSquare,
+      connected: data?.whatsappConnected ?? false,
+      link: "/admin?tab=config",
+    },
+    {
+      name: `E-mail${data?.emailCount ? ` (${data.emailCount})` : ""}`,
+      icon: Mail,
+      connected: data?.emailConnected ?? false,
+      link: "/admin?tab=emails",
+    },
+  ];
 
   return (
-    <div className="mt-6 mb-2">
-      <Link
-        to="/admin?tab=config"
-        className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-border hover:bg-muted/50 transition-colors"
-      >
-        {isLoading ? (
-          <>
-            <Plug className="w-4 h-4 text-muted-foreground animate-pulse" />
-            <span className="text-xs text-muted-foreground">Verificando ZapSign...</span>
-          </>
-        ) : connected ? (
-          <>
-            <PlugZap className="w-4 h-4 text-emerald-500" />
-            <span className="text-xs text-foreground font-medium">ZapSign</span>
-            <span className="w-2 h-2 rounded-full bg-emerald-500" />
-            <span className="text-[10px] text-emerald-600">Conectado</span>
-          </>
-        ) : (
-          <>
-            <Plug className="w-4 h-4 text-destructive" />
-            <span className="text-xs text-foreground font-medium">ZapSign</span>
-            <span className="w-2 h-2 rounded-full bg-destructive" />
-            <span className="text-[10px] text-destructive">Desconectado</span>
-          </>
-        )}
-      </Link>
+    <div className="mt-6 mb-2 flex flex-wrap gap-2">
+      {integrations.map((integ) => (
+        <Link
+          key={integ.name}
+          to={integ.link}
+          className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-border hover:bg-muted/50 transition-colors"
+        >
+          {isLoading ? (
+            <>
+              <Plug className="w-4 h-4 text-muted-foreground animate-pulse" />
+              <span className="text-xs text-muted-foreground">{integ.name}</span>
+            </>
+          ) : (
+            <>
+              <integ.icon className={`w-4 h-4 ${integ.connected ? "text-emerald-500" : "text-muted-foreground"}`} />
+              <span className="text-xs text-foreground font-medium">{integ.name}</span>
+              <span className={`w-2 h-2 rounded-full ${integ.connected ? "bg-emerald-500" : "bg-muted-foreground/40"}`} />
+            </>
+          )}
+        </Link>
+      ))}
     </div>
   );
 }
