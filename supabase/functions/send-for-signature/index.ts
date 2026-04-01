@@ -25,20 +25,21 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Step 1 — Get ZapSign token
-    const { data: tokenRow } = await supabase
-      .from("settings")
-      .select("value")
-      .eq("key", "signature_api_token")
-      .single();
+    // Step 1 — Get ZapSign token and sandbox setting
+    const [tokenResult, sandboxResult] = await Promise.all([
+      supabase.from("settings").select("value").eq("key", "signature_api_token").single(),
+      supabase.from("settings").select("value").eq("key", "signature_sandbox").single(),
+    ]);
 
-    const apiToken = tokenRow?.value;
+    const apiToken = tokenResult.data?.value;
     if (!apiToken) {
       return new Response(
         JSON.stringify({ error: "Configure o token ZapSign nas Configurações." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    const useSandbox = sandboxResult.data?.value !== "false";
 
     // Step 2 — Get document and download PDF
     const { data: doc, error: docError } = await supabase
@@ -89,13 +90,14 @@ Deno.serve(async (req) => {
     const zapSignBody = {
       name: doc.name,
       base64_pdf: base64,
+      sandbox: useSandbox,
       lang: "pt-BR",
       signers: signers.map((s: any) => ({
         name: s.name,
         email: s.email,
         cpf: s.cpf?.replace(/\D/g, "") || undefined,
         auth_mode: "assinaturaTela",
-        send_automatic_email: true,
+        send_automatic_email: !useSandbox,
         lock_name: true,
       })),
     };
