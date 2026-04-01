@@ -522,6 +522,14 @@ async function fetchCaseContext(supabase: any, caseId: string): Promise<string> 
       .order("date", { ascending: true }),
   ]);
 
+  // Fetch extraction suggestions for this client
+  const clientId = (caseData as any).clients?.id || caseData.client_id;
+  const { data: extractionSuggestions } = await supabase
+    .from("extraction_suggestions")
+    .select("field_path, suggested_value, current_value, status, document_id")
+    .eq("case_id", caseId)
+    .eq("status", "pending");
+
   const docs = docsResult.data || [];
   const checklist = checklistResult.data || [];
   const hearings = hearingsResult.data || [];
