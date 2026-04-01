@@ -61,7 +61,7 @@ export default function CaseDetail() {
   const { data: checklist = [] } = useChecklistByCase(id!);
   const { data: dbMessages = [] } = useMessagesByCase(id!);
 
-  const { messages: chatMessages, isLoading: chatLoading, sendMessage, loadHistory } = useLaraChat(id);
+  const { messages: chatMessages, isLoading: chatLoading, sendMessage, loadHistory, auditContent, auditLoading, triggerAudit } = useLaraChat(id);
 
   const navigate = useNavigate();
   const updateCase = useUpdateCase();
