@@ -645,7 +645,7 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent, all
           }
 
           if (needsEditor) {
-            const caseId = confirmAction.data.case_id || "";
+            const caseId = (confirmAction.data.case_id && /^[0-9a-f-]{36}$/i.test(confirmAction.data.case_id) ? confirmAction.data.case_id : contextCaseId) || "";
             const docName = confirmAction.data.document_name || "Documento";
             const cleanText = resolveDocumentDraft(messageContent, allMessages);
 
