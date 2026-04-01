@@ -969,7 +969,22 @@ Use seu conhecimento jurídico para complementar os dados do LexML com explicaç
       ? `\n\nMODO PORTAL DO CLIENTE: Você está atendendo o CLIENTE diretamente pelo portal. Use linguagem simples e acolhedora. Não use termos técnicos jurídicos sem explicar. Foque apenas no processo deste cliente. Não mencione outros clientes. Responda como se fosse uma atendente do escritório, não como assistente da advogada. NÃO inclua blocos de ação (ACTIONS_START/END, wizard-choice, save-data-action, whatsapp-action). Apenas responda de forma conversacional.\n\n`
       : "";
 
-    const fullSystemPrompt = officeContext + "\n\n" + SYSTEM_PROMPT + portalModePrefix + "\n\n" + settingsContext + intimacoesContext + skillsContext + (caseContext ? "\n\n" + caseContext : "") + lexmlContext;
+    let fullSystemPrompt: string;
+    if (isPortalMode) {
+      const portalCtx = await fetchPortalClientContext(clientUserId, supabase);
+      const sofiaPrompt = buildSofiaSystemPrompt(portalCtx || {
+        firstName: "cliente",
+        clientName: "cliente",
+        mainCase: null,
+        caseStatus: "em acompanhamento",
+        pendingDocs: [],
+        documents: [],
+        allCases: [],
+      });
+      fullSystemPrompt = sofiaPrompt + "\n\n" + settingsContext + (caseContext ? "\n\n" + caseContext : "");
+    } else {
+      fullSystemPrompt = officeContext + "\n\n" + SYSTEM_PROMPT + portalModePrefix + "\n\n" + settingsContext + intimacoesContext + skillsContext + (caseContext ? "\n\n" + caseContext : "") + lexmlContext;
+    }
 
     // Build messages for the AI API
     const aiMessages: any[] = [
