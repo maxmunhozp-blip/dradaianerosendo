@@ -1,4 +1,4 @@
-import { Users, Plus, Bot, CalendarDays, Clock, MapPin, Bell, AlertTriangle, RefreshCw, PenLine, CheckCircle2, Clock4, FolderOpen } from "lucide-react";
+import { Users, Plus, Bot, CalendarDays, Clock, MapPin, Bell, AlertTriangle, PenLine, CheckCircle2, Clock4, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AnimatedCounter } from "@/components/AnimatedCounter";
 import { Link } from "react-router-dom";
