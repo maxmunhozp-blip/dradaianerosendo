@@ -1,10 +1,10 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { StatusBadge } from "./StatusBadge";
 import {
   Download, Scale, ChevronDown, ChevronRight,
   Bold, Italic, List, Paperclip, Save, Loader2, Eye,
-  CheckCircle2, AlertCircle, Trash2, PenLine,
+  CheckCircle2, AlertCircle, Trash2, PenLine, Mail,
 } from "lucide-react";
 import { SignatureModal, SignatureStatusBadge } from "@/components/SignatureModal";
 import { Button } from "@/components/ui/button";
