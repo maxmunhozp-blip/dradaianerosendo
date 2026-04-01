@@ -4,8 +4,9 @@ import { StatusBadge } from "./StatusBadge";
 import {
   Download, Scale, ChevronDown, ChevronRight,
   Bold, Italic, List, Paperclip, Save, Loader2, Eye,
-  CheckCircle2, AlertCircle, Trash2,
+  CheckCircle2, AlertCircle, Trash2, PenLine,
 } from "lucide-react";
+import { SignatureModal, SignatureStatusBadge } from "@/components/SignatureModal";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -40,7 +41,13 @@ interface DocumentRowProps {
     case_id: string;
     extraction_status?: string | null;
     extraction_confidence?: string | null;
+    signature_status?: string | null;
+    signers?: any | null;
   };
+  clientName?: string;
+  clientEmail?: string;
+  clientCpf?: string;
+  clientPhone?: string;
 }
 
 const statusOptions = [
@@ -57,13 +64,14 @@ const categoryOptions = [
   { value: "outro", label: "Outro" },
 ];
 
-export function DocumentRow({ doc }: DocumentRowProps) {
+export function DocumentRow({ doc, clientName, clientEmail, clientCpf, clientPhone }: DocumentRowProps) {
   const [expanded, setExpanded] = useState(false);
   const [notes, setNotes] = useState(doc.notes || "");
   const [saving, setSaving] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [signatureOpen, setSignatureOpen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const updateDoc = useUpdateDocument();
@@ -214,6 +222,9 @@ export function DocumentRow({ doc }: DocumentRowProps) {
                   Extração falhou
                 </Badge>
               )}
+              {doc.signature_status && doc.signature_status !== "none" && (
+                <SignatureStatusBadge status={doc.signature_status} />
+              )}
               {doc.notes && doc.notes.trim() && (
                 <Badge variant="outline" className="text-[10px] px-1.5 py-0">
                   Com anotações
@@ -263,6 +274,29 @@ export function DocumentRow({ doc }: DocumentRowProps) {
                 <Download className="w-3.5 h-3.5" />
               </Button>
             </>
+          )}
+          {doc.file_url && doc.file_url !== "" && (!doc.signature_status || doc.signature_status === "none") && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              title="Enviar para assinatura"
+              onClick={(e) => { e.stopPropagation(); setSignatureOpen(true); }}
+            >
+              <PenLine className="w-3.5 h-3.5" />
+            </Button>
+          )}
+          {doc.signature_status === "sent" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs gap-1"
+              title="Ver links de assinatura"
+              onClick={(e) => { e.stopPropagation(); setSignatureOpen(true); }}
+            >
+              <PenLine className="w-3 h-3" />
+              Ver link
+            </Button>
           )}
           <Button
             variant="ghost"
@@ -402,6 +436,17 @@ export function DocumentRow({ doc }: DocumentRowProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {/* Signature Modal */}
+      <SignatureModal
+        open={signatureOpen}
+        onOpenChange={setSignatureOpen}
+        documentId={doc.id}
+        documentName={doc.name}
+        clientName={clientName}
+        clientEmail={clientEmail}
+        clientCpf={clientCpf}
+        clientPhone={clientPhone}
+      />
     </div>
   );
 }

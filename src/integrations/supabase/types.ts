@@ -411,6 +411,11 @@ export type Database = {
           id: string
           name: string
           notes: string | null
+          signature_completed_at: string | null
+          signature_doc_token: string | null
+          signature_requested_at: string | null
+          signature_status: string | null
+          signers: Json | null
           status: string
           uploaded_by: string
         }
@@ -426,6 +431,11 @@ export type Database = {
           id?: string
           name: string
           notes?: string | null
+          signature_completed_at?: string | null
+          signature_doc_token?: string | null
+          signature_requested_at?: string | null
+          signature_status?: string | null
+          signers?: Json | null
           status?: string
           uploaded_by?: string
         }
@@ -441,6 +451,11 @@ export type Database = {
           id?: string
           name?: string
           notes?: string | null
+          signature_completed_at?: string | null
+          signature_doc_token?: string | null
+          signature_requested_at?: string | null
+          signature_status?: string | null
+          signers?: Json | null
           status?: string
           uploaded_by?: string
         }

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, type ReactNode } from "react";
+import { PenLine, Eye, EyeOff } from "lucide-react";
 import {
   Save,
   MessageSquare,
@@ -53,6 +54,7 @@ const ALL_KEYS = [
   "hours_saturday_start",
   "hours_saturday_end",
   "hours_sunday",
+  "signature_api_token",
 ];
 
 function CollapsibleSection({
@@ -278,6 +280,95 @@ function SyncLogSection({ open, onOpenChange }: { open: boolean; onOpenChange: (
     </CollapsibleSection>
   );
 }
+function SignatureSettings({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [showToken, setShowToken] = useState(false);
+  const [testing, setTesting] = useState(false);
+
+  const testConnection = async () => {
+    if (!value) {
+      toast.error("Insira o token antes de testar.");
+      return;
+    }
+    setTesting(true);
+    try {
+      const res = await fetch("https://api.zapsign.com.br/api/v1/users/me/", {
+        headers: { Authorization: `Bearer ${value}` },
+      });
+      if (res.ok) {
+        toast.success("Conexão OK! Token válido.");
+      } else {
+        toast.error("Token inválido. Verifique e tente novamente.");
+      }
+    } catch {
+      toast.error("Erro ao conectar com ZapSign.");
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <Label className="text-xs">Token da API ZapSign</Label>
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Input
+              type={showToken ? "text" : "password"}
+              placeholder="Seu token ZapSign"
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              className="pr-9"
+            />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-0 top-0 h-full w-9"
+              onClick={() => setShowToken(!showToken)}
+            >
+              {showToken ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+            </Button>
+          </div>
+        </div>
+        <p className="text-[11px] text-muted-foreground">
+          Encontre em{" "}
+          <span className="font-medium">app.zapsign.com.br → Configurações → Integrações → API</span>
+        </p>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <Button variant="outline" size="sm" className="text-xs gap-1.5" onClick={testConnection} disabled={testing}>
+          {testing ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
+          Testar conexão
+        </Button>
+      </div>
+
+      {value && (
+        <div className="bg-muted/50 rounded-md p-3 text-xs text-muted-foreground space-y-2">
+          <p className="font-medium text-foreground">Configure o webhook no ZapSign:</p>
+          <div className="flex items-center gap-2">
+            <code className="flex-1 bg-background border rounded px-2 py-1.5 text-[11px] font-mono break-all">
+              {`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/signature-webhook`}
+            </code>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-7 w-7 shrink-0"
+              onClick={() => {
+                navigator.clipboard.writeText(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/signature-webhook`);
+                toast.success("URL copiada!");
+              }}
+            >
+              <Copy className="w-3 h-3" />
+            </Button>
+          </div>
+          <p className="text-[10px]">
+            No painel ZapSign: Configurações → Webhooks → Adicione a URL acima para o evento "Documento finalizado".
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Settings() {
   const [values, setValues] = useState<Record<string, string>>({});
@@ -291,6 +382,7 @@ export default function Settings() {
     templates: false,
     hours: false,
     intimacoes: false,
+    signature: false,
   });
 
   // Case types management
@@ -763,6 +855,21 @@ export default function Settings() {
             />
           </div>
         </div>
+      </CollapsibleSection>
+
+      {/* Assinatura Digital */}
+      <CollapsibleSection
+        open={openSections.signature}
+        onOpenChange={() => toggle("signature")}
+        icon={PenLine}
+        iconBg="bg-primary/10 text-primary"
+        title="Assinatura Digital"
+        description="Configure a integração com ZapSign para assinaturas eletrônicas"
+      >
+        <SignatureSettings
+          value={val("signature_api_token")}
+          onChange={(v) => set("signature_api_token", v)}
+        />
       </CollapsibleSection>
 
       {/* Monitoramento de Intimações */}
