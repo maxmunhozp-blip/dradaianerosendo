@@ -1,4 +1,4 @@
-import { Users, Plus, Bot, CalendarDays, Clock, MapPin, Bell, AlertTriangle, RefreshCw, PenLine, CheckCircle2, Clock4 } from "lucide-react";
+import { Users, Plus, Bot, CalendarDays, Clock, MapPin, Bell, AlertTriangle, RefreshCw, PenLine, CheckCircle2, Clock4, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AnimatedCounter } from "@/components/AnimatedCounter";
 import { Link } from "react-router-dom";
@@ -31,10 +31,21 @@ function SyncEmailsButton() {
 export default function Dashboard() {
   const { ownerFilter } = useOwnerFilter();
   const { data: clients = [], isLoading: clientsLoading } = useClients();
+  const { data: casesData = [], isLoading: casesLoading } = useQuery({
+    queryKey: ["cases-summary-dashboard", ownerFilter],
+    queryFn: async () => {
+      let q = supabase.from("cases").select("id, status, case_type, clients(name)").order("created_at", { ascending: false });
+      if (ownerFilter) q = q.eq("owner_id", ownerFilter);
+      const { data, error } = await q;
+      if (error) throw error;
+      return data;
+    },
+  });
 
   const isLoading = clientsLoading;
 
   const activeClients = clients.filter((c) => c.status === "ativo").length;
+  const activeCases = casesData.filter((c: any) => !["arquivado", "encerrado"].includes(c.status));
 
   return (
     <div className="p-6 max-w-6xl">
@@ -63,7 +74,7 @@ export default function Dashboard() {
       {/* Upcoming hearings */}
       <UpcomingHearings />
 
-      <div className="grid grid-cols-1 gap-4 mt-8 mb-8">
+      <div className="grid grid-cols-2 gap-4 mt-8 mb-8">
         <div className="border border-border rounded-lg p-4 hover:border-t-amber-500 hover:border-t-2 transition-all">
           <div className="flex items-center justify-between mb-3">
             <Users className="w-4 h-4 text-muted-foreground" />
@@ -73,6 +84,15 @@ export default function Dashboard() {
           </p>
           <p className="text-xs text-muted-foreground mt-0.5">Clientes ativos</p>
         </div>
+        <Link to="/clients" className="border border-border rounded-lg p-4 hover:border-t-amber-500 hover:border-t-2 transition-all">
+          <div className="flex items-center justify-between mb-3">
+            <FolderOpen className="w-4 h-4 text-muted-foreground" />
+          </div>
+          <p className="text-2xl font-semibold text-foreground tabular-nums">
+            {casesLoading ? <Skeleton className="h-8 w-12 inline-block" /> : <AnimatedCounter value={activeCases.length} />}
+          </p>
+          <p className="text-xs text-muted-foreground mt-0.5">Casos em andamento</p>
+        </Link>
       </div>
 
       {/* Signature status */}
