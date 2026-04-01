@@ -134,9 +134,9 @@ serve(async (req) => {
       });
     }
 
-    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
-    if (!ANTHROPIC_API_KEY) {
-      throw new Error("ANTHROPIC_API_KEY not configured");
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) {
+      throw new Error("LOVABLE_API_KEY not configured");
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -147,7 +147,6 @@ serve(async (req) => {
     await sb.from("documents").update({ extraction_status: "processing" }).eq("id", document_id);
 
     // Step 1: Download file from storage
-    // Extract the storage path from the public URL
     const storagePath = file_url?.split("/case-documents/")[1];
     if (!storagePath) {
       throw new Error("Could not extract storage path from URL");
@@ -175,56 +174,53 @@ serve(async (req) => {
     const isPdf = lowerName.endsWith(".pdf");
     const isImage = lowerName.endsWith(".jpg") || lowerName.endsWith(".jpeg") || lowerName.endsWith(".png");
 
-    let contentBlock: any;
-    if (isPdf) {
-      contentBlock = { type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } };
-    } else if (isImage) {
-      const mimeType = lowerName.endsWith(".png") ? "image/png" : "image/jpeg";
-      contentBlock = { type: "image", source: { type: "base64", media_type: mimeType, data: base64 } };
-    } else {
-      // For other files, try as PDF
-      contentBlock = { type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } };
+    let mimeType = "application/pdf";
+    if (isImage) {
+      mimeType = lowerName.endsWith(".png") ? "image/png" : "image/jpeg";
     }
 
-    // Step 3: Call Claude
+    const dataUrl = `data:${mimeType};base64,${base64}`;
+
+    // Step 3: Call Lovable AI Gateway (OpenAI-compatible with Gemini vision)
     const systemPrompt =
       "Você é um extrator de dados de documentos jurídicos brasileiros. Analise o documento e retorne APENAS um JSON com os campos encontrados. Não invente dados. Se um campo não estiver claramente visível, omita-o. Retorne somente o JSON, sem texto adicional.";
 
-    const anthropicRes = await fetch("https://api.anthropic.com/v1/messages", {
+    const userContent: any[] = [
+      {
+        type: "image_url",
+        image_url: { url: dataUrl },
+      },
+      { type: "text", text: buildPrompt(docType) },
+    ];
+
+    const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
-        "x-api-key": ANTHROPIC_API_KEY,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "claude-opus-4-6",
-        max_tokens: 1024,
-        system: systemPrompt,
+        model: "google/gemini-2.5-flash",
         messages: [
-          {
-            role: "user",
-            content: [
-              contentBlock,
-              { type: "text", text: buildPrompt(docType) },
-            ],
-          },
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userContent },
         ],
+        max_tokens: 1024,
       }),
     });
 
-    if (!anthropicRes.ok) {
-      const errText = await anthropicRes.text();
-      console.error("Anthropic error:", anthropicRes.status, errText);
+    if (!aiRes.ok) {
+      const errText = await aiRes.text();
+      console.error("AI Gateway error:", aiRes.status, errText);
       await sb.from("documents").update({ extraction_status: "failed" }).eq("id", document_id);
       return new Response(JSON.stringify({ error: "AI extraction failed", details: errText }), {
-        status: 500,
+        status: aiRes.status === 429 ? 429 : aiRes.status === 402 ? 402 : 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const anthropicData = await anthropicRes.json();
-    const textContent = anthropicData.content?.find((c: any) => c.type === "text")?.text || "{}";
+    const aiData = await aiRes.json();
+    const textContent = aiData.choices?.[0]?.message?.content || "{}";
 
     // Parse JSON from response (handle markdown code blocks)
     let extracted: Record<string, string> = {};
