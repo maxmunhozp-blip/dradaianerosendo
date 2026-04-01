@@ -357,7 +357,7 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
           break;
       }
 
-      const idx = actions.indexOf(confirmAction);
+      const idx = allActions.indexOf(confirmAction);
       setExecuted((prev) => new Set(prev).add(idx));
     } catch (e: any) {
       toast.error("Erro ao executar: " + (e.message || "erro desconhecido"));
