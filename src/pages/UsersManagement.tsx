@@ -29,7 +29,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Shield, ShieldOff, Users, Loader2, ChevronDown, FolderOpen, UserCircle, FileText, Settings, Eye, PenLine, Briefcase, GraduationCap, Calculator, MonitorSmartphone } from "lucide-react";
+import { Shield, ShieldOff, Users, Loader2, ChevronDown, FolderOpen, UserCircle, FileText, Settings, Eye, PenLine, Briefcase, GraduationCap, Calculator, MonitorSmartphone, ClipboardList, Search } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 
