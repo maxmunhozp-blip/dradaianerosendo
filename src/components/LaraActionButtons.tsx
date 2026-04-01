@@ -228,14 +228,6 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
           if (!docText.trim()) { toast.error("Conteúdo do documento não encontrado"); break; }
           if (!caseId) { toast.error("Caso não identificado"); break; }
 
-          // Generate PDF with jsPDF
-          const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-          const margin = 25;
-          const pageWidth = pdf.internal.pageSize.getWidth();
-          const maxWidth = pageWidth - margin * 2;
-          pdf.setFont("helvetica", "normal");
-          pdf.setFontSize(12);
-
           const cleanText = docText
             .replace(/#{1,6}\s/g, "")
             .replace(/\*\*(.*?)\*\*/g, "$1")
@@ -244,27 +236,10 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
             .replace(/```[\s\S]*?```/g, "")
             .trim();
 
-          const lines = pdf.splitTextToSize(cleanText, maxWidth);
-          let y = margin;
-          const lineHeight = 6;
-
-          for (const line of lines) {
-            if (y + lineHeight > pdf.internal.pageSize.getHeight() - margin) {
-              pdf.addPage();
-              y = margin;
-            }
-            pdf.text(line, margin, y);
-            y += lineHeight;
-          }
-
-          const pdfBlob = pdf.output("blob");
-          const previewUrl = URL.createObjectURL(pdfBlob);
-
-          // Show preview instead of saving immediately
           const idx = allActions.indexOf(confirmAction);
-          setPdfPreviewBlob(pdfBlob);
-          setPdfPreviewUrl(previewUrl);
-          setPdfPreviewMeta({ docName, caseId, action: confirmAction, actionIndex: idx });
+          setEditableText(cleanText);
+          setEditMeta({ docName, caseId, action: confirmAction, actionIndex: idx });
+          setEditingText(true);
           setConfirmAction(null);
           break;
         }
