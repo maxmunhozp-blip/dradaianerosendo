@@ -682,6 +682,7 @@ function AddUserModal({ open, onOpenChange }: { open: boolean; onOpenChange: (v:
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [role, setRole] = useState<"admin" | "advogado" | "client">("advogado");
+  const [sendWelcome, setSendWelcome] = useState(true);
   const [saving, setSaving] = useState(false);
   const queryClient = useQueryClient();
 
@@ -701,18 +702,24 @@ function AddUserModal({ open, onOpenChange }: { open: boolean; onOpenChange: (v:
             "Content-Type": "application/json",
             Authorization: `Bearer ${session?.access_token}`,
           },
-          body: JSON.stringify({ email: email.trim(), password, name: name.trim(), role }),
+          body: JSON.stringify({ email: email.trim(), password, name: name.trim(), role, sendWelcomeEmail: sendWelcome }),
         }
       );
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Erro ao criar usuário");
       toast.success(`Usuário ${email} criado com sucesso`);
+      if (sendWelcome && json.welcomeEmailSent) {
+        toast.success("E-mail de boas-vindas enviado!");
+      } else if (sendWelcome && !json.welcomeEmailSent) {
+        toast.info("Usuário criado, mas o e-mail de boas-vindas não pôde ser enviado (configure o domínio de e-mail nas configurações).");
+      }
       queryClient.invalidateQueries({ queryKey: ["users-with-roles"] });
       queryClient.invalidateQueries({ queryKey: ["user-permissions"] });
       setEmail("");
       setPassword("");
       setName("");
       setRole("advogado");
+      setSendWelcome(true);
       onOpenChange(false);
     } catch (e: any) {
       toast.error(e.message || "Erro ao criar usuário");
@@ -752,6 +759,10 @@ function AddUserModal({ open, onOpenChange }: { open: boolean; onOpenChange: (v:
                 <SelectItem value="client">Cliente</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+          <div className="flex items-center gap-2">
+            <Switch id="send-welcome" checked={sendWelcome} onCheckedChange={setSendWelcome} />
+            <Label htmlFor="send-welcome" className="text-xs cursor-pointer">Enviar e-mail de boas-vindas</Label>
           </div>
           <Button className="w-full" onClick={handleCreate} disabled={saving}>
             {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
