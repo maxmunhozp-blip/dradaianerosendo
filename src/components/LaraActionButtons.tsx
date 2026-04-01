@@ -500,7 +500,9 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
             const whatsMsg = `Olá ${firstSigner.name}! Segue o link para assinar o documento "${docName}":\n\n${firstSigner.sign_url}\n\nÉ só clicar no link, rolar até o final e assinar.`;
             const encodedMsg = encodeURIComponent(whatsMsg);
             const phone = client_phone.replace(/\D/g, "");
-            window.open(`https://wa.me/${phone}?text=${encodedMsg}`, "_blank");
+            if (waWindowRef) {
+              waWindowRef.location.href = `https://wa.me/${phone}?text=${encodedMsg}`;
+            }
             toast.success("Link de assinatura gerado e WhatsApp aberto!");
           } else {
             toast.success("Documento enviado para assinatura com sucesso!");
