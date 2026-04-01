@@ -159,6 +159,9 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Signature status */}
+      <SignaturePanel ownerFilter={ownerFilter} />
+
       {/* Upcoming hearings */}
       <UpcomingHearings />
 
