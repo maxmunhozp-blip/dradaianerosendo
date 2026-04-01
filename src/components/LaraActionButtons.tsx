@@ -249,12 +249,97 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
           break;
 
         case "send_for_signature": {
-          const { document_id, client_phone } = confirmAction.data;
+          let { document_id, client_phone } = confirmAction.data;
           const signers = [{ name: signerName.trim(), email: signerEmail.trim(), cpf: signerCpf.trim() || undefined }];
           if (!document_id) {
             toast.error("Documento não identificado");
             break;
           }
+
+          // Check if document exists in DB with a file_url
+          const { data: existingDoc } = await supabase
+            .from("documents")
+            .select("id, file_url")
+            .eq("id", document_id)
+            .single();
+
+          if (!existingDoc || !existingDoc.file_url) {
+            // Document doesn't exist or has no file — need to generate PDF first
+            const docText = messageContent || "";
+            const caseId = confirmAction.data.case_id || document_id;
+            const docName = confirmAction.data.document_name || "Documento";
+
+            if (!docText.trim()) {
+              toast.error("Conteúdo do documento não encontrado. Gere o PDF primeiro usando 'Gerar PDF'.");
+              break;
+            }
+
+            toast.info("Gerando PDF e salvando antes de enviar para assinatura...");
+
+            const cleanText = docText
+              .replace(/#{1,6}\s/g, "")
+              .replace(/\*\*(.*?)\*\*/g, "$1")
+              .replace(/\*(.*?)\*/g, "$1")
+              .replace(/ACTIONS_START[\s\S]*?ACTIONS_END/g, "")
+              .replace(/```[\s\S]*?```/g, "")
+              .trim();
+
+            const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+            const pdfMargin = 25;
+            const pdfPageWidth = pdf.internal.pageSize.getWidth();
+            const pdfMaxWidth = pdfPageWidth - pdfMargin * 2;
+            pdf.setFont("helvetica", "normal");
+            pdf.setFontSize(12);
+            const pdfLines = pdf.splitTextToSize(cleanText, pdfMaxWidth);
+            let pdfY = pdfMargin;
+            const pdfLineHeight = 6;
+            for (const line of pdfLines) {
+              if (pdfY + pdfLineHeight > pdf.internal.pageSize.getHeight() - pdfMargin) {
+                pdf.addPage();
+                pdfY = pdfMargin;
+              }
+              pdf.text(line, pdfMargin, pdfY);
+              pdfY += pdfLineHeight;
+            }
+            const pdfBlob = pdf.output("blob");
+
+            const fileName = `${caseId}/${Date.now()}_${docName.replace(/\s+/g, "_")}.pdf`;
+            const { error: uploadError } = await supabase.storage
+              .from("case-documents")
+              .upload(fileName, pdfBlob, { contentType: "application/pdf" });
+
+            if (uploadError) {
+              toast.error("Erro ao fazer upload do PDF: " + uploadError.message);
+              break;
+            }
+
+            const { data: urlData } = supabase.storage
+              .from("case-documents")
+              .getPublicUrl(fileName);
+
+            const { data: newDoc, error: docError } = await supabase
+              .from("documents")
+              .insert({
+                case_id: caseId,
+                name: docName,
+                file_url: urlData.publicUrl,
+                status: "aprovado",
+                category: "peticao",
+                uploaded_by: "lara",
+                signature_status: "none",
+              })
+              .select("id")
+              .single();
+
+            if (docError || !newDoc) {
+              toast.error("Erro ao criar documento: " + (docError?.message || "erro desconhecido"));
+              break;
+            }
+
+            document_id = newDoc.id;
+            toast.success("PDF salvo! Enviando para assinatura...");
+          }
+
           const { data: sigResult, error: sigError } = await supabase.functions.invoke("send-for-signature", {
             body: { document_id, signers },
           });
