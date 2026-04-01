@@ -139,7 +139,7 @@ export default function UsersManagement() {
     userId: string;
     email: string;
     action: "set" | "remove";
-    role?: "admin" | "client";
+    role?: "admin" | "advogado" | "client";
   } | null>(null);
 
   const toggleUser = (id: string) =>
