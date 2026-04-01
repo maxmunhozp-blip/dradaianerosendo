@@ -15,7 +15,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { ProcessTimeline } from "@/components/ProcessTimeline";
 import { DetailSkeleton } from "@/components/Skeletons";
 import { CaseTimeline } from "@/components/CaseTimeline";
-import { ArrowLeft, Upload, Plus, FileText, ClipboardList, FolderOpen, FileDown, Scale, PanelRightClose, PanelRightOpen, CalendarDays, Clock, MapPin, MessageSquare, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeft, Upload, Plus, FileText, ClipboardList, FolderOpen, FileDown, Scale, PanelRightClose, PanelRightOpen, CalendarDays, Clock, MapPin, MessageSquare, Pencil, Trash2, Send } from "lucide-react";
 import { useHearingsByCase } from "@/hooks/use-hearings";
 import { HearingModal } from "@/components/HearingModal";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +23,7 @@ import { format, differenceInHours, isBefore } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { GenerateDocumentsModal } from "@/components/GenerateDocumentsModal";
 import { PeticaoModal } from "@/components/PeticaoModal";
+import { RequestDataModal } from "@/components/RequestDataModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -83,6 +84,7 @@ export default function CaseDetail() {
   });
   const [showHearingModal, setShowHearingModal] = useState(false);
   const { data: hearings = [] } = useHearingsByCase(id!);
+  const [showRequestData, setShowRequestData] = useState(false);
   const [showEditCase, setShowEditCase] = useState(false);
   const [editCaseType, setEditCaseType] = useState("");
   const [editDescription, setEditDescription] = useState("");
@@ -277,6 +279,10 @@ export default function CaseDetail() {
             )}
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setShowRequestData(true)}>
+              <Send className="w-3.5 h-3.5 mr-1.5" />
+              Solicitar dados
+            </Button>
             <Button variant="outline" size="sm" onClick={() => setShowPeticao(true)}>
               <Scale className="w-3.5 h-3.5 mr-1.5" />
               Montar Petição
@@ -308,6 +314,15 @@ export default function CaseDetail() {
           clientName={clientName}
           clientCpf={(caseData as any).clients?.cpf || null}
           clientEmail={(caseData as any).clients?.email || null}
+        />
+
+        <RequestDataModal
+          open={showRequestData}
+          onOpenChange={setShowRequestData}
+          caseId={id!}
+          clientId={caseData.client_id}
+          clientData={(caseData as any).clients || {}}
+          caseData={caseData as Record<string, unknown>}
         />
 
         <PeticaoModal

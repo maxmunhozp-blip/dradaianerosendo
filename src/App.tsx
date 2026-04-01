@@ -25,6 +25,7 @@ import Templates from "@/pages/Templates";
 import Intimacoes from "@/pages/Intimacoes";
 import MailPage from "@/pages/MailPage";
 import NotFound from "./pages/NotFound.tsx";
+import PublicDataRequest from "./pages/PublicDataRequest";
 
 const queryClient = new QueryClient();
 
@@ -39,6 +40,7 @@ const App = () => (
             {/* Public */}
             <Route path="/login" element={<Login />} />
             <Route path="/portal/login" element={<PortalLogin />} />
+            <Route path="/dados/:token" element={<PublicDataRequest />} />
 
             {/* Protected admin routes */}
             <Route element={<ProtectedRoute />}>

@@ -240,6 +240,57 @@ export type Database = {
         }
         Relationships: []
       }
+      data_requests: {
+        Row: {
+          case_id: string
+          client_id: string
+          completed_at: string | null
+          created_at: string
+          expires_at: string
+          fields_requested: Json
+          id: string
+          status: string
+          token: string
+        }
+        Insert: {
+          case_id: string
+          client_id: string
+          completed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          fields_requested?: Json
+          id?: string
+          status?: string
+          token?: string
+        }
+        Update: {
+          case_id?: string
+          client_id?: string
+          completed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          fields_requested?: Json
+          id?: string
+          status?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_requests_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_requests_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       documents: {
         Row: {
           case_id: string
