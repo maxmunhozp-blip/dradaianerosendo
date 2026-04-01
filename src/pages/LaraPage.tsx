@@ -119,6 +119,8 @@ export default function LaraPage() {
               isLoading={isLoading}
               pendingCommand={pendingCommand}
               onCommandConsumed={() => setPendingCommand(null)}
+              clientId={selectedCase?.client_id}
+              caseId={activeCaseId}
             />
           </div>
 
