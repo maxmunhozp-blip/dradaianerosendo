@@ -129,6 +129,13 @@ export default function Templates() {
     if (!generatedContent) return;
 
     try {
+      const b = branding;
+      const fontFamily = b?.font_family || "Arial";
+      const bodySize = (b?.font_size_body || 12) * 2; // half-points
+      const headingSize = (b?.font_size_heading || 14) * 2;
+      const primaryColor = (b?.primary_color || "#1E3A5F").replace("#", "");
+      const secondaryColor = (b?.secondary_color || "#2B9E8F").replace("#", "");
+
       const lines = generatedContent.split("\n");
       const children: Paragraph[] = [];
 
@@ -139,46 +146,46 @@ export default function Templates() {
           continue;
         }
 
-        // Headings
         if (trimmed.startsWith("### ")) {
           children.push(new Paragraph({
             heading: HeadingLevel.HEADING_3,
-            children: [new TextRun({ text: trimmed.replace(/^###\s*/, ""), bold: true, font: "Arial", size: 24 })],
+            children: [new TextRun({ text: trimmed.replace(/^###\s*/, ""), bold: true, font: fontFamily, size: bodySize + 2, color: primaryColor })],
           }));
         } else if (trimmed.startsWith("## ")) {
           children.push(new Paragraph({
             heading: HeadingLevel.HEADING_2,
-            children: [new TextRun({ text: trimmed.replace(/^##\s*/, ""), bold: true, font: "Arial", size: 28 })],
+            spacing: { before: 240, after: 120 },
+            children: [new TextRun({ text: trimmed.replace(/^##\s*/, ""), bold: true, font: fontFamily, size: headingSize, color: primaryColor })],
           }));
         } else if (trimmed.startsWith("# ")) {
           children.push(new Paragraph({
             heading: HeadingLevel.HEADING_1,
             alignment: AlignmentType.CENTER,
-            children: [new TextRun({ text: trimmed.replace(/^#\s*/, ""), bold: true, font: "Arial", size: 32 })],
+            spacing: { before: 360, after: 240 },
+            children: [new TextRun({ text: trimmed.replace(/^#\s*/, ""), bold: true, font: fontFamily, size: headingSize + 4, color: primaryColor })],
           }));
         } else if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
           children.push(new Paragraph({
             numbering: { reference: "bullets", level: 0 },
-            children: [new TextRun({ text: trimmed.replace(/^[-*]\s*/, ""), font: "Arial", size: 24 })],
+            children: [new TextRun({ text: trimmed.replace(/^[-*]\s*/, ""), font: fontFamily, size: bodySize })],
           }));
         } else if (/^\d+\.\s/.test(trimmed)) {
           children.push(new Paragraph({
             numbering: { reference: "numbers", level: 0 },
-            children: [new TextRun({ text: trimmed.replace(/^\d+\.\s*/, ""), font: "Arial", size: 24 })],
+            children: [new TextRun({ text: trimmed.replace(/^\d+\.\s*/, ""), font: fontFamily, size: bodySize })],
           }));
         } else {
-          // Parse bold markers
           const runs: TextRun[] = [];
           const parts = trimmed.split(/(\*\*[^*]+\*\*)/g);
           for (const part of parts) {
             if (part.startsWith("**") && part.endsWith("**")) {
-              runs.push(new TextRun({ text: part.slice(2, -2), bold: true, font: "Arial", size: 24 }));
+              runs.push(new TextRun({ text: part.slice(2, -2), bold: true, font: fontFamily, size: bodySize }));
             } else if (part) {
-              runs.push(new TextRun({ text: part, font: "Arial", size: 24 }));
+              runs.push(new TextRun({ text: part, font: fontFamily, size: bodySize }));
             }
           }
           children.push(new Paragraph({
-            spacing: { after: 120 },
+            spacing: { after: 120, line: 360 },
             alignment: AlignmentType.JUSTIFIED,
             children: runs,
           }));
@@ -187,6 +194,52 @@ export default function Templates() {
 
       const templateLabel = TEMPLATE_TYPES.find((t) => t.value === selectedTemplate)?.label || "Documento";
       const clientName = (selectedCaseData as any)?.clients?.name || "Cliente";
+
+      // Build header/footer if branding enabled
+      const headers: any = {};
+      const footers: any = {};
+
+      if (useLetterhead && b) {
+        const headerChildren: Paragraph[] = [];
+        if (b.header_text) {
+          const headerLines = (b.header_text as string).split("\n");
+          for (let i = 0; i < headerLines.length; i++) {
+            headerChildren.push(new Paragraph({
+              children: [new TextRun({
+                text: headerLines[i],
+                font: fontFamily,
+                size: i === 0 ? bodySize : bodySize - 2,
+                bold: i === 0,
+                color: primaryColor,
+              })],
+            }));
+          }
+          headerChildren.push(new Paragraph({
+            border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: secondaryColor, space: 1 } },
+            children: [],
+          }));
+        }
+        if (headerChildren.length > 0) {
+          headers.default = new Header({ children: headerChildren });
+        }
+
+        if (b.footer_text) {
+          footers.default = new Footer({
+            children: [
+              new Paragraph({
+                border: { top: { style: BorderStyle.SINGLE, size: 3, color: secondaryColor, space: 1 } },
+                children: [],
+              }),
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [new TextRun({ text: b.footer_text as string, font: fontFamily, size: bodySize - 4, color: "718096" })],
+              }),
+            ],
+          });
+        }
+      }
+
+      const mmToDxa = (mm: number) => Math.round(mm * 56.7);
 
       const doc = new Document({
         numbering: {
@@ -204,15 +257,22 @@ export default function Templates() {
           ],
         },
         styles: {
-          default: { document: { run: { font: "Arial", size: 24 } } },
+          default: { document: { run: { font: fontFamily, size: bodySize } } },
         },
         sections: [{
           properties: {
             page: {
               size: { width: 11906, height: 16838 },
-              margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 },
+              margin: {
+                top: mmToDxa(b?.margin_top || 30),
+                right: mmToDxa(b?.margin_right || 20),
+                bottom: mmToDxa(b?.margin_bottom || 25),
+                left: mmToDxa(b?.margin_left || 30),
+              },
             },
           },
+          headers,
+          footers,
           children,
         }],
       });
@@ -220,7 +280,7 @@ export default function Templates() {
       const buffer = await Packer.toBlob(doc);
       const fileName = `${templateLabel.replace(/\s+/g, "_")}_${clientName.replace(/\s+/g, "_")}.docx`;
       saveAs(buffer, fileName);
-      toast.success("Documento DOCX exportado com sucesso");
+      toast.success("Documento DOCX exportado com papel timbrado!");
     } catch (e) {
       console.error("Erro ao exportar DOCX:", e);
       toast.error("Erro ao exportar documento");
