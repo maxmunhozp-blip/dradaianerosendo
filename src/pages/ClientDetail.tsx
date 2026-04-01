@@ -23,7 +23,7 @@ import {
 import {
   ArrowLeft, Phone, Mail, Plus, FolderOpen, Send, Loader2,
   Pencil, Trash2, Save, X, ChevronDown, ChevronRight, MapPin, Users, UserX, Baby, ExternalLink, ScanSearch,
-  CheckCircle2, Clock, XCircle, MoreHorizontal,
+  CheckCircle2, Clock, XCircle, MoreHorizontal, AlertTriangle,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
