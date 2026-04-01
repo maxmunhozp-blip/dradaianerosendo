@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Loader2, MessageSquare, ClipboardList, ExternalLink, FileText, Bell, ScanSearch, CheckCircle2, XCircle, Download, PenLine, Save, Send } from "lucide-react";
 import RichTextEditor, { type RichTextEditorHandle } from "@/components/RichTextEditor";
@@ -235,6 +235,7 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
   const [pdfPreviewBlob, setPdfPreviewBlob] = useState<Blob | null>(null);
   const [pdfPreviewMeta, setPdfPreviewMeta] = useState<{ docName: string; caseId: string; action: LaraAction; actionIndex: number } | null>(null);
   const [savingPdf, setSavingPdf] = useState(false);
+  const [clientInfo, setClientInfo] = useState<{ phone: string; name: string } | null>(null);
 
   // Text editor state (before PDF generation)
   const [editingText, setEditingText] = useState(false);
@@ -250,6 +251,22 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
   const [scanResults, setScanResults] = useState<ScanResult[]>([]);
   const [scanProgress, setScanProgress] = useState(0);
   const [scanTotal, setScanTotal] = useState(0);
+
+  // Fetch client phone/name when preview meta is set
+  useEffect(() => {
+    if (!pdfPreviewMeta?.caseId) { setClientInfo(null); return; }
+    (async () => {
+      const { data } = await supabase
+        .from("cases")
+        .select("client_id, clients(name, phone)")
+        .eq("id", pdfPreviewMeta.caseId)
+        .single();
+      if (data && (data as any).clients) {
+        const c = (data as any).clients;
+        setClientInfo({ phone: c.phone || "", name: c.name || "" });
+      }
+    })();
+  }, [pdfPreviewMeta?.caseId]);
 
   const allActions = [...actions, ...dynamicActions];
 
@@ -776,8 +793,8 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
             </Button>
             <Button variant="outline" size="sm" onClick={() => {
               if (!pdfPreviewBlob || !pdfPreviewMeta) return;
-              const phone = pdfPreviewMeta.action?.data?.client_phone || "";
-              const clientNameShort = (pdfPreviewMeta.action?.data?.client_name || "").split(" ")[0];
+              const phone = clientInfo?.phone || pdfPreviewMeta.action?.data?.client_phone || "";
+              const clientNameShort = (clientInfo?.name || pdfPreviewMeta.action?.data?.client_name || "").split(" ")[0];
               const docName = pdfPreviewMeta.docName || "documento";
               if (!phone) {
                 toast.error("Telefone do cliente não encontrado");
