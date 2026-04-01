@@ -478,9 +478,11 @@ async function fetchOfficeContext(supabase: any, hasCaseId: boolean): Promise<st
   const statusCounts: Record<string, number> = {};
   for (const c of cases || []) { statusCounts[c.status] = (statusCounts[c.status] || 0) + 1; }
   const pendingDocs = allDocs.filter((d: any) => d.status === "solicitado");
+  const receivedDocs = allDocs.filter((d: any) => d.status !== "solicitado" && d.status !== "aprovado");
+  const approvedDocs = allDocs.filter((d: any) => d.status === "aprovado");
   const pendingChecklist = allChecklist.filter((c: any) => !c.done);
 
-  ctx += `\nRESUMO: ${clients.length} clientes, ${(cases || []).length} casos, ${pendingDocs.length} documentos pendentes (solicitados), ${pendingChecklist.length} itens de checklist pendentes.`;
+  ctx += `\nRESUMO: ${clients.length} clientes, ${(cases || []).length} casos | Documentos: ${approvedDocs.length} aprovados, ${receivedDocs.length} enviados, ${pendingDocs.length} pendentes | ${pendingChecklist.length} itens de checklist pendentes.`;
   ctx += `\nCasos por status: ${Object.entries(statusCounts).map(([s, n]) => `${s}: ${n}`).join(", ") || "N/A"}`;
   ctx += "\n=== FIM DOS DADOS ===";
 
