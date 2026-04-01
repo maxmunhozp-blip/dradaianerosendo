@@ -17,6 +17,7 @@ import { useIntimacaoCount } from "@/hooks/use-intimacoes";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
+import { useMyPermissions } from "@/hooks/use-my-permissions";
 import {
   Sidebar,
   SidebarContent,
@@ -30,19 +31,26 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
-const navItems = [
+interface NavItem {
+  title: string;
+  url: string;
+  icon: any;
+  permission?: string; // key from MyPermissions
+}
+
+const navItems: NavItem[] = [
   { title: "Painel", url: "/", icon: LayoutDashboard },
-  { title: "Clientes", url: "/clients", icon: Users },
-  { title: "Documentos", url: "/documents", icon: FolderOpen },
-  { title: "Agenda", url: "/agenda", icon: CalendarDays },
-  { title: "Intimações", url: "/intimacoes", icon: Bell },
-  { title: "E-mails", url: "/mail", icon: Mail },
+  { title: "Clientes", url: "/clients", icon: Users, permission: "can_view_clients" },
+  { title: "Documentos", url: "/documents", icon: FolderOpen, permission: "can_view_documents" },
+  { title: "Agenda", url: "/agenda", icon: CalendarDays, permission: "can_view_cases" },
+  { title: "Intimações", url: "/intimacoes", icon: Bell, permission: "can_view_cases" },
+  { title: "E-mails", url: "/mail", icon: Mail, permission: "can_access_settings" },
   { title: "LARA", url: "/lara", icon: Bot },
-  { title: "Templates", url: "/templates", icon: FileStack },
-  { title: "Formatação", url: "/settings/document-branding", icon: Palette },
-  { title: "Usuários", url: "/users", icon: ShieldCheck },
-  { title: "Configurações", url: "/settings", icon: Settings },
-  { title: "LARA Skills", url: "/settings/lara-skills", icon: Bot },
+  { title: "Templates", url: "/templates", icon: FileStack, permission: "can_edit_documents" },
+  { title: "Formatação", url: "/settings/document-branding", icon: Palette, permission: "can_access_settings" },
+  { title: "Usuários", url: "/users", icon: ShieldCheck, permission: "can_access_settings" },
+  { title: "Configurações", url: "/settings", icon: Settings, permission: "can_access_settings" },
+  { title: "LARA Skills", url: "/settings/lara-skills", icon: Bot, permission: "can_access_settings" },
 ];
 
 export function AppSidebar() {
@@ -52,11 +60,18 @@ export function AppSidebar() {
   const currentPath = location.pathname;
   const { signOut, user } = useAuth();
   const { data: intimacaoCount = 0 } = useIntimacaoCount();
+  const { data: perms } = useMyPermissions();
 
   const isActive = (path: string) => {
     if (path === "/") return currentPath === "/";
     return currentPath.startsWith(path);
   };
+
+  const visibleItems = navItems.filter((item) => {
+    if (!item.permission) return true;
+    if (!perms) return false;
+    return (perms as any)[item.permission] === true;
+  });
 
   return (
     <Sidebar collapsible="icon">
@@ -78,7 +93,7 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navItems.map((item) => (
+              {visibleItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild
