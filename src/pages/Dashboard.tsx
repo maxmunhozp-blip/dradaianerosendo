@@ -294,3 +294,75 @@ function UrgentIntimacoes() {
     </div>
   );
 }
+
+function SignaturePanel({ ownerFilter }: { ownerFilter: string | null }) {
+  const { data: docs = [], isLoading } = useQuery({
+    queryKey: ["signature-docs-dashboard", ownerFilter],
+    queryFn: async () => {
+      let q = supabase
+        .from("documents")
+        .select("id, name, signature_status, signature_requested_at, signature_completed_at, case_id, cases(case_type, clients(name))")
+        .in("signature_status", ["sent", "signed", "rejected"])
+        .order("signature_requested_at", { ascending: false })
+        .limit(10);
+      if (ownerFilter) q = q.eq("owner_id", ownerFilter);
+      const { data, error } = await q;
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const pending = docs.filter((d: any) => d.signature_status === "sent");
+  const completed = docs.filter((d: any) => d.signature_status === "signed");
+  const rejected = docs.filter((d: any) => d.signature_status === "rejected");
+
+  return (
+    <div className="mt-8">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-sm font-medium text-foreground">Assinaturas digitais</h2>
+        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1"><Clock4 className="w-3 h-3 text-amber-500" />{pending.length} pendente{pending.length !== 1 ? "s" : ""}</span>
+          <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-emerald-500" />{completed.length} assinado{completed.length !== 1 ? "s" : ""}</span>
+        </div>
+      </div>
+      <div className="border border-border rounded-lg divide-y divide-border">
+        {isLoading ? (
+          Array.from({ length: 2 }).map((_, i) => (
+            <div key={i} className="px-4 py-3">
+              <Skeleton className="h-4 w-48" />
+              <Skeleton className="h-3 w-24 mt-1.5" />
+            </div>
+          ))
+        ) : docs.length === 0 ? (
+          <div className="px-4 py-6 text-center">
+            <PenLine className="w-5 h-5 text-muted-foreground mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">Nenhum documento enviado para assinatura</p>
+          </div>
+        ) : (
+          docs.map((d: any) => {
+            const statusMap: Record<string, { label: string; variant: "outline" | "destructive"; color: string }> = {
+              sent: { label: "Aguardando", variant: "outline", color: "border-amber-300 text-amber-600 bg-amber-50" },
+              signed: { label: "Assinado", variant: "outline", color: "border-emerald-300 text-emerald-600 bg-emerald-50" },
+              rejected: { label: "Recusado", variant: "destructive", color: "" },
+            };
+            const s = statusMap[d.signature_status] || statusMap.sent;
+            return (
+              <Link key={d.id} to={`/cases/${d.case_id}`} className="flex items-center justify-between px-4 py-3 hover:bg-muted/50 transition-colors">
+                <div>
+                  <p className="text-sm font-medium text-foreground truncate max-w-xs">{d.name}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {(d as any).cases?.case_type} — {(d as any).cases?.clients?.name}
+                    {d.signature_requested_at && ` · Enviado ${format(new Date(d.signature_requested_at), "dd/MM/yyyy")}`}
+                  </p>
+                </div>
+                <Badge variant={s.variant} className={`text-[10px] ${s.color}`}>
+                  {s.label}
+                </Badge>
+              </Link>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
