@@ -78,7 +78,7 @@ export default function PortalAssistente() {
       return;
     }
     setChipsVisible(false);
-    sendMessage(trimmed, [], { isPortalMode: true });
+    sendMessage(trimmed, [], { isPortalMode: true, clientId: session?.clientId });
     setInput("");
   };
 
