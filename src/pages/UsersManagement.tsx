@@ -540,6 +540,7 @@ function ProfileModal({ open, onOpenChange, editing }: { open: boolean; onOpenCh
       if (editing) {
         setName(editing.name);
         setDescription(editing.description || "");
+        setSelectedIcon(editing.icon || "User");
         setPermissions({ ...permissions, ...editing.permissions });
       } else {
         setName("");
