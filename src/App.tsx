@@ -37,6 +37,7 @@ import PublicDataRequest from "./pages/PublicDataRequest";
 import LaraSkills from "./pages/LaraSkills";
 import DocumentBranding from "./pages/DocumentBranding";
 import EmailSettings from "./pages/EmailSettings";
+import AdminPage from "./pages/AdminPage";
 
 const queryClient = new QueryClient();
 
@@ -110,6 +111,7 @@ const App = () => {
                 <Route path="/lara" element={<LaraPage />} />
                 <Route path="/documents" element={<Documents />} />
                 <Route path="/agenda" element={<Agenda />} />
+                <Route path="/admin" element={<AdminPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/users" element={<UsersManagement />} />
                 <Route path="/templates" element={<Templates />} />
