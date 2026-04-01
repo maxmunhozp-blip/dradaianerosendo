@@ -61,7 +61,10 @@ Deno.serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-    const { phone, message } = parsed.data;
+    let { phone, message } = parsed.data;
+    // Sanitize phone: digits only, ensure country code
+    phone = phone.replace(/\D/g, "");
+    if (!phone.startsWith("55")) phone = "55" + phone;
 
     // Load Z-API credentials from settings table
     const { data: settings, error: settingsError } = await supabase
