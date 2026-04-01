@@ -93,6 +93,8 @@ export default function Dashboard() {
 }
 
 function IntegrationStatusBar() {
+  const prevStatusRef = useRef<{ zapSign?: boolean; whatsapp?: boolean; email?: boolean } | null>(null);
+
   const { data, isLoading } = useQuery({
     queryKey: ["integrations-status"],
     queryFn: async () => {
@@ -129,9 +131,31 @@ function IntegrationStatusBar() {
 
       return { zapSignConnected, whatsappConnected, emailConnected, emailCount };
     },
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
+    staleTime: 60 * 1000,
+    refetchInterval: 2 * 60 * 1000,
+    refetchOnWindowFocus: true,
   });
+
+  useEffect(() => {
+    if (!data) return;
+    const prev = prevStatusRef.current;
+    if (prev !== null) {
+      if (prev.zapSign === true && !data.zapSignConnected) {
+        toast.error("ZapSign desconectado", { description: "A integração com ZapSign perdeu a conexão." });
+      }
+      if (prev.whatsapp === true && !data.whatsappConnected) {
+        toast.error("WhatsApp desconectado", { description: "A integração com WhatsApp perdeu a conexão." });
+      }
+      if (prev.email === true && !data.emailConnected) {
+        toast.error("E-mail desconectado", { description: "Nenhuma conta de e-mail conectada." });
+      }
+    }
+    prevStatusRef.current = {
+      zapSign: data.zapSignConnected,
+      whatsapp: data.whatsappConnected,
+      email: data.emailConnected,
+    };
+  }, [data]);
 
   const integrations = [
     {
