@@ -90,13 +90,14 @@ Deno.serve(async (req) => {
     const zapSignBody = {
       name: doc.name,
       base64_pdf: base64,
+      sandbox: useSandbox,
       lang: "pt-BR",
       signers: signers.map((s: any) => ({
         name: s.name,
         email: s.email,
         cpf: s.cpf?.replace(/\D/g, "") || undefined,
         auth_mode: "assinaturaTela",
-        send_automatic_email: true,
+        send_automatic_email: !useSandbox,
         lock_name: true,
       })),
     };
