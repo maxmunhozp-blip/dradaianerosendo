@@ -29,6 +29,7 @@ import Intimacoes from "@/pages/Intimacoes";
 import MailPage from "@/pages/MailPage";
 import NotFound from "./pages/NotFound.tsx";
 import PublicDataRequest from "./pages/PublicDataRequest";
+import LaraSkills from "./pages/LaraSkills";
 
 const queryClient = new QueryClient();
 
