@@ -286,6 +286,13 @@ export function ClientUnifiedTimeline({ caseIds }: { caseIds: string[] }) {
   const filteredEvents = currentTab.types
     ? events.filter(e => (currentTab.types as readonly string[]).includes(e.type))
     : events;
+  const visibleEvents = filteredEvents.slice(0, visibleCount);
+  const hasMore = visibleCount < filteredEvents.length;
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    setVisibleCount(PAGE_SIZE);
+  };
 
   if (isLoading) {
     return (
