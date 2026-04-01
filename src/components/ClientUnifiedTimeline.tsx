@@ -89,9 +89,12 @@ const TIMELINE_TABS = [
   { value: "interno", label: "Interno", types: ["mensagem", "checklist", "manual"] },
 ] as const;
 
+const PAGE_SIZE = 30;
+
 export function ClientUnifiedTimeline({ caseIds }: { caseIds: string[] }) {
   const [activeTab, setActiveTab] = useState("geral");
   const [showAddForm, setShowAddForm] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const qc = useQueryClient();
 
   const { data: events = [], isLoading } = useQuery({
