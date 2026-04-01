@@ -19,6 +19,7 @@ const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/lara-chat`;
 export async function streamLaraChat({
   messages,
   caseId,
+  isPortalMode,
   onDelta,
   onDone,
   onError,
