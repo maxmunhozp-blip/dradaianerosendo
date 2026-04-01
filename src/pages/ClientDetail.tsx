@@ -1133,10 +1133,19 @@ export default function ClientDetail() {
       />
 
       {/* ═══ SECTION 5: ANOTAÇÕES ═══ */}
-      <div className="mt-6">
-        <h2 className="text-sm font-semibold text-foreground mb-3">Anotações</h2>
-        <Textarea value={notes ?? client.notes ?? ""} onChange={e => setNotes(e.target.value)} placeholder="Anotações sobre o cliente..." className="min-h-[200px]" />
-        <Button size="sm" className="mt-3" onClick={handleSaveNotes} disabled={updateClient.isPending}>Salvar</Button>
+      <div className="space-y-3 mt-6">
+        <Collapsible open={notesOpen} onOpenChange={setNotesOpen}>
+          <div className="border border-border rounded-lg overflow-hidden">
+            <SectionHeader icon={Pencil} title="Anotações" open={notesOpen}
+              onToggle={() => setNotesOpen(!notesOpen)} />
+            <CollapsibleContent>
+              <div className="p-4">
+                <Textarea value={notes ?? client.notes ?? ""} onChange={e => setNotes(e.target.value)} placeholder="Anotações sobre o cliente..." className="min-h-[200px]" />
+                <Button size="sm" className="mt-3" onClick={handleSaveNotes} disabled={updateClient.isPending}>Salvar</Button>
+              </div>
+            </CollapsibleContent>
+          </div>
+        </Collapsible>
       </div>
 
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
