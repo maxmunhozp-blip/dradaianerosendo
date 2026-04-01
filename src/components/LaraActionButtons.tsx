@@ -1068,6 +1068,97 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Email Send Dialog */}
+      <Dialog open={emailDialogOpen} onOpenChange={(open) => {
+        if (!open) { setEmailDialogOpen(false); setEmailTo(""); setEmailSubject(""); setEmailBody(""); }
+      }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="w-4 h-4" />
+              Enviar documento por e-mail
+            </DialogTitle>
+            <DialogDescription>O documento será enviado via SMTP pela conta de e-mail configurada.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            {emailAccounts.length > 1 && (
+              <div className="space-y-1.5">
+                <Label>Conta de envio</Label>
+                <select
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={selectedAccountId}
+                  onChange={e => setSelectedAccountId(e.target.value)}
+                >
+                  {emailAccounts.map(acc => (
+                    <option key={acc.id} value={acc.id}>{acc.label} ({acc.email})</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {emailAccounts.length === 1 && (
+              <div className="text-xs text-muted-foreground">
+                Enviando de: <span className="font-medium text-foreground">{emailAccounts[0].email}</span>
+              </div>
+            )}
+            {emailAccounts.length === 0 && (
+              <div className="text-sm text-destructive">
+                Nenhuma conta de e-mail configurada. Configure uma conta em Administrador → E-mails.
+              </div>
+            )}
+            <div className="space-y-1.5">
+              <Label htmlFor="email-to">Para *</Label>
+              <Input id="email-to" type="email" value={emailTo} onChange={e => setEmailTo(e.target.value)} placeholder="email@exemplo.com" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="email-subject">Assunto</Label>
+              <Input id="email-subject" value={emailSubject} onChange={e => setEmailSubject(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="email-body">Mensagem</Label>
+              <textarea
+                id="email-body"
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[120px] resize-y"
+                value={emailBody}
+                onChange={e => setEmailBody(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setEmailDialogOpen(false)} disabled={sendingEmail}>Cancelar</Button>
+            <Button
+              disabled={sendingEmail || !emailTo.trim() || !selectedAccountId || emailAccounts.length === 0}
+              onClick={async () => {
+                setSendingEmail(true);
+                try {
+                  const { data, error } = await supabase.functions.invoke("send-email", {
+                    body: {
+                      account_id: selectedAccountId,
+                      to: emailTo.trim(),
+                      subject: emailSubject,
+                      body: emailBody,
+                    },
+                  });
+                  if (error) throw new Error(error.message);
+                  if (data?.error) throw new Error(data.error);
+                  toast.success("E-mail enviado com sucesso!");
+                  setEmailDialogOpen(false);
+                  setEmailTo("");
+                  setEmailSubject("");
+                  setEmailBody("");
+                } catch (e: any) {
+                  toast.error("Erro ao enviar e-mail: " + (e.message || "erro desconhecido"));
+                } finally {
+                  setSendingEmail(false);
+                }
+              }}
+            >
+              {sendingEmail && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
+              <Send className="w-4 h-4 mr-1" /> Enviar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
