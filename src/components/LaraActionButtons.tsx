@@ -66,16 +66,24 @@ function sanitizeFileName(name: string): string {
     .replace(/[^a-zA-Z0-9_\-\.]/g, "_");
 }
 
-/** Parse TipTap HTML into structured blocks for PDF rendering */
-function parseHtmlToBlocks(html: string): Array<{
-  type: "h1" | "h2" | "h3" | "p" | "hr" | "li";
+/** Parse TipTap HTML into structured blocks with inline segments for PDF rendering */
+interface TextSegment {
   text: string;
-  align?: string;
-  bold?: boolean;
+  bold: boolean;
+  italic: boolean;
+  underline: boolean;
+}
+
+interface PdfBlock {
+  type: "h1" | "h2" | "h3" | "p" | "hr" | "li";
+  segments: TextSegment[];
+  align: string;
   listType?: "bullet" | "ordered";
   listIndex?: number;
-}> {
-  const blocks: Array<any> = [];
+}
+
+function parseHtmlToBlocks(html: string): PdfBlock[] {
+  const blocks: PdfBlock[] = [];
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, "text/html");
 
@@ -83,43 +91,43 @@ function parseHtmlToBlocks(html: string): Array<{
     return (el as HTMLElement).style?.textAlign || "left";
   }
 
-  function extractText(el: Element): string {
-    let text = "";
+  function extractSegments(el: Node, inherited: { bold: boolean; italic: boolean; underline: boolean }): TextSegment[] {
+    const segments: TextSegment[] = [];
     el.childNodes.forEach((node) => {
       if (node.nodeType === Node.TEXT_NODE) {
-        text += node.textContent || "";
+        const text = node.textContent || "";
+        if (text) segments.push({ text, ...inherited });
       } else if (node.nodeType === Node.ELEMENT_NODE) {
         const tag = (node as Element).tagName.toLowerCase();
-        if (tag === "strong" || tag === "b") {
-          text += `**${extractText(node as Element)}**`;
-        } else if (tag === "em" || tag === "i") {
-          text += `_${extractText(node as Element)}_`;
-        } else if (tag === "u") {
-          text += extractText(node as Element);
-        } else if (tag === "br") {
-          text += "\n";
+        const next = { ...inherited };
+        if (tag === "strong" || tag === "b") next.bold = true;
+        if (tag === "em" || tag === "i") next.italic = true;
+        if (tag === "u") next.underline = true;
+        if (tag === "br") {
+          segments.push({ text: "\n", ...inherited });
         } else {
-          text += extractText(node as Element);
+          segments.push(...extractSegments(node, next));
         }
       }
     });
-    return text;
+    return segments;
   }
+
+  const defaultStyle = { bold: false, italic: false, underline: false };
 
   function processNode(el: Element) {
     const tag = el.tagName.toLowerCase();
-    if (tag === "h1") blocks.push({ type: "h1", text: extractText(el), align: getAlign(el) });
-    else if (tag === "h2") blocks.push({ type: "h2", text: extractText(el), align: getAlign(el) });
-    else if (tag === "h3") blocks.push({ type: "h3", text: extractText(el), align: getAlign(el) });
-    else if (tag === "p") blocks.push({ type: "p", text: extractText(el), align: getAlign(el) });
-    else if (tag === "hr") blocks.push({ type: "hr", text: "" });
-    else if (tag === "ul" || tag === "ol") {
+    if (["h1", "h2", "h3", "p"].includes(tag)) {
+      blocks.push({ type: tag as any, segments: extractSegments(el, defaultStyle), align: getAlign(el) });
+    } else if (tag === "hr") {
+      blocks.push({ type: "hr", segments: [], align: "left" });
+    } else if (tag === "ul" || tag === "ol") {
       let idx = 0;
       el.querySelectorAll(":scope > li").forEach((li) => {
         idx++;
         blocks.push({
           type: "li",
-          text: extractText(li),
+          segments: extractSegments(li, defaultStyle),
           listType: tag === "ol" ? "ordered" : "bullet",
           listIndex: idx,
           align: getAlign(li),
@@ -156,29 +164,86 @@ function generatePdfFromHtml(html: string): Blob {
     }
   }
 
-  function drawText(text: string, fontSize: number, fontStyle: string, lineHeight: number, align: string = "left") {
-    // Handle bold markers
-    const segments = text.split(/(\*\*.*?\*\*)/g);
-    const fullText = text.replace(/\*\*/g, "").replace(/_/g, "");
-    
-    pdf.setFontSize(fontSize);
-    const isBold = text.startsWith("**") && text.endsWith("**");
-    pdf.setFont("helvetica", isBold ? "bold" : fontStyle);
-    
-    const cleanText = fullText;
-    const lines = pdf.splitTextToSize(cleanText, maxWidth);
+  function getFontStyle(seg: TextSegment): string {
+    if (seg.bold && seg.italic) return "bolditalic";
+    if (seg.bold) return "bold";
+    if (seg.italic) return "italic";
+    return "normal";
+  }
 
-    for (const line of lines) {
+  function drawSegments(segments: TextSegment[], fontSize: number, defaultFontStyle: string, lineHeight: number, align: string) {
+    pdf.setFontSize(fontSize);
+
+    // If no segments or empty, skip
+    const fullText = segments.map(s => s.text).join("");
+    if (!fullText.trim()) return;
+
+    // Check if all segments share the same style — use simple path
+    const allSameStyle = segments.length <= 1 || segments.every(s =>
+      getFontStyle(s) === getFontStyle(segments[0])
+    );
+
+    if (allSameStyle) {
+      const style = segments.length > 0 ? getFontStyle(segments[0]) : defaultFontStyle;
+      pdf.setFont("helvetica", style);
+      const lines = pdf.splitTextToSize(fullText, maxWidth);
+      for (const line of lines) {
+        checkPage(lineHeight);
+        let x = margin;
+        if (align === "center") x = pageWidth / 2;
+        else if (align === "right") x = pageWidth - margin;
+        const pdfAlign = (align === "justify" ? "left" : align) as "left" | "center" | "right";
+        pdf.text(line, x, y, { align: pdfAlign });
+        y += lineHeight;
+      }
+      return;
+    }
+
+    // Mixed styles: render segment by segment, wrapping manually
+    // First, split into words with their styles
+    interface StyledWord { word: string; style: string; }
+    const words: StyledWord[] = [];
+    for (const seg of segments) {
+      const style = getFontStyle(seg);
+      const parts = seg.text.split(/(\s+)/);
+      for (const part of parts) {
+        if (part) words.push({ word: part, style });
+      }
+    }
+
+    let lineWords: StyledWord[] = [];
+    let lineWidth = 0;
+
+    function flushLine() {
+      if (lineWords.length === 0) return;
       checkPage(lineHeight);
       let x = margin;
-      if (align === "center") x = pageWidth / 2;
-      else if (align === "right") x = pageWidth - margin;
-      else if (align === "justify") x = margin;
-
-      const pdfAlign = align === "justify" ? "left" : align as "left" | "center" | "right";
-      pdf.text(line, x, y, { align: pdfAlign as any });
+      if (align === "center") {
+        x = (pageWidth - lineWidth) / 2;
+      } else if (align === "right") {
+        x = pageWidth - margin - lineWidth;
+      }
+      for (const w of lineWords) {
+        pdf.setFont("helvetica", w.style);
+        pdf.text(w.word, x, y);
+        x += pdf.getTextWidth(w.word);
+      }
       y += lineHeight;
+      lineWords = [];
+      lineWidth = 0;
     }
+
+    for (const w of words) {
+      if (w.word === "\n") { flushLine(); continue; }
+      pdf.setFont("helvetica", w.style);
+      const ww = pdf.getTextWidth(w.word);
+      if (lineWidth + ww > maxWidth && lineWords.length > 0) {
+        flushLine();
+      }
+      lineWords.push(w);
+      lineWidth += ww;
+    }
+    flushLine();
   }
 
   for (const block of blocks) {
@@ -186,32 +251,32 @@ function generatePdfFromHtml(html: string): Blob {
       case "h1":
         checkPage(12);
         y += 3;
-        drawText(block.text, 16, "bold", 8, block.align);
+        drawSegments(block.segments, 16, "bold", 8, block.align);
         y += 2;
         break;
       case "h2":
         checkPage(10);
         y += 2;
-        drawText(block.text, 14, "bold", 7, block.align);
+        drawSegments(block.segments, 14, "bold", 7, block.align);
         y += 1.5;
         break;
       case "h3":
         checkPage(8);
         y += 1.5;
-        drawText(block.text, 12, "bold", 6, block.align);
+        drawSegments(block.segments, 12, "bold", 6, block.align);
         y += 1;
         break;
-      case "p":
-        if (!block.text.trim()) {
-          y += 3;
-          break;
-        }
-        drawText(block.text, 11, "normal", 5.5, block.align);
+      case "p": {
+        const text = block.segments.map(s => s.text).join("");
+        if (!text.trim()) { y += 3; break; }
+        drawSegments(block.segments, 11, "normal", 5.5, block.align);
         y += 2;
         break;
+      }
       case "li": {
         const prefix = block.listType === "ordered" ? `${block.listIndex}. ` : "• ";
-        drawText(prefix + block.text, 11, "normal", 5.5, block.align);
+        const prefixSeg: TextSegment = { text: prefix, bold: false, italic: false, underline: false };
+        drawSegments([prefixSeg, ...block.segments], 11, "normal", 5.5, block.align);
         y += 1;
         break;
       }
