@@ -23,6 +23,7 @@ export default function PortalDocs() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploadingDocId, setUploadingDocId] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
 
   const { data: cases = [] } = useQuery({
     queryKey: ["portal-docs-cases", session?.clientId],
@@ -47,48 +48,81 @@ export default function PortalDocs() {
   const pending = documents.filter(d => d.status === "solicitado");
   const sent = documents.filter(d => d.status !== "solicitado");
 
-  const uploadMut = useMutation({
-    mutationFn: async ({ file, caseId }: { file: File; caseId: string }) => {
-      if (file.size > 10 * 1024 * 1024) throw new Error("Arquivo muito grande (máx. 10MB)");
+  const handleUpload = (docId: string) => {
+    setUploadingDocId(docId);
+    fileRef.current?.click();
+  };
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !caseIds[0]) return;
+    if (fileRef.current) fileRef.current.value = "";
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Arquivo muito grande (máx. 10MB)");
+      setUploadingDocId(null);
+      return;
+    }
+
+    setIsUploading(true);
+    setUploadProgress(0);
+
+    // Simulate progress for UX (real upload doesn't provide progress with supabase-js)
+    const progressInterval = setInterval(() => {
+      setUploadProgress(prev => {
+        if (prev >= 90) { clearInterval(progressInterval); return 90; }
+        return prev + Math.random() * 15;
+      });
+    }, 500);
+
+    try {
       const safeName = file.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9._-]/g, "_");
-      const filePath = `${caseId}/${Date.now()}-${safeName}`;
+      const filePath = `${caseIds[0]}/${Date.now()}-${safeName}`;
 
       const { error: upErr } = await pub.storage.from("case-documents").upload(filePath, file);
       if (upErr) throw upErr;
 
       const { data: urlData } = pub.storage.from("case-documents").getPublicUrl(filePath);
 
-      const { error: dbErr } = await pub.from("documents").insert({
-        case_id: caseId,
-        name: file.name,
-        category: "pessoal",
-        status: "recebido",
-        uploaded_by: "cliente",
-        file_url: urlData.publicUrl,
-      });
-      if (dbErr) throw dbErr;
-    },
-    onSuccess: () => {
-      toast.success("Documento enviado!");
-      queryClient.invalidateQueries({ queryKey: ["portal-docs-list"] });
-      setUploadingDocId(null);
-    },
-    onError: (err: any) => {
+      // If uploading for a pending doc, update it; otherwise create new
+      if (uploadingDocId) {
+        const existingDoc = documents.find(d => d.id === uploadingDocId);
+        if (existingDoc) {
+          await pub.from("documents").update({
+            status: "recebido",
+            uploaded_by: "cliente",
+            file_url: urlData.publicUrl,
+          }).eq("id", uploadingDocId);
+        }
+      } else {
+        await pub.from("documents").insert({
+          case_id: caseIds[0],
+          name: file.name,
+          category: "pessoal",
+          status: "recebido",
+          uploaded_by: "cliente",
+          file_url: urlData.publicUrl,
+        });
+      }
+
+      clearInterval(progressInterval);
+      setUploadProgress(100);
+
+      setTimeout(() => {
+        toast.success("Documento enviado com sucesso!");
+        queryClient.invalidateQueries({ queryKey: ["portal-docs-list"] });
+        queryClient.invalidateQueries({ queryKey: ["portal-pending-docs"] });
+        setUploadingDocId(null);
+        setIsUploading(false);
+        setUploadProgress(0);
+      }, 500);
+    } catch (err: any) {
+      clearInterval(progressInterval);
       toast.error(err.message || "Erro ao enviar");
       setUploadingDocId(null);
-    },
-  });
-
-  const handleUpload = (docId: string) => {
-    setUploadingDocId(docId);
-    fileRef.current?.click();
-  };
-
-  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !caseIds[0]) return;
-    uploadMut.mutate({ file, caseId: caseIds[0] });
-    if (fileRef.current) fileRef.current.value = "";
+      setIsUploading(false);
+      setUploadProgress(0);
+    }
   };
 
   if (isLoading) {
@@ -105,47 +139,82 @@ export default function PortalDocs() {
     <div style={{ maxWidth: 440, margin: "0 auto", padding: "24px 16px" }}>
       <input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={handleFile} />
 
-      <p style={{ fontFamily: "var(--wizard-font-display)", fontSize: 20, fontWeight: 600, color: "var(--wizard-primary)", marginBottom: 20 }}>
+      <p style={{
+        fontFamily: "var(--wizard-font-display)", fontSize: 20,
+        fontWeight: 600, color: "var(--wizard-primary)", marginBottom: 20,
+      }}>
         Documentos
       </p>
+
+      {/* Upload progress overlay */}
+      {isUploading && (
+        <div style={{
+          background: "#fff", borderRadius: 12, padding: "20px 16px",
+          border: "1px solid #E5E7EB", marginBottom: 16, textAlign: "center",
+        }}>
+          <div style={{
+            width: "100%", height: 8, borderRadius: 4,
+            background: "#E5E7EB", marginBottom: 12, overflow: "hidden",
+          }}>
+            <div style={{
+              height: "100%", borderRadius: 4,
+              background: "var(--wizard-accent)",
+              width: `${Math.round(uploadProgress)}%`,
+              transition: "width .3s ease",
+            }} />
+          </div>
+          <p style={{ fontSize: 15, fontWeight: 600, color: "var(--wizard-primary)" }}>
+            Enviando... {Math.round(uploadProgress)}%
+          </p>
+          <p style={{ fontSize: 12, color: "#9CA3AF", marginTop: 4 }}>
+            Não feche o aplicativo até concluir
+          </p>
+        </div>
+      )}
 
       {/* Pending */}
       {pending.length > 0 && (
         <div style={{ marginBottom: 20 }}>
-          <p style={{ fontSize: 14, fontWeight: 700, color: "#92400E", marginBottom: 10 }}>
-            Pendentes ({pending.length})
-          </p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {pending.map(doc => (
-              <div key={doc.id} style={{
-                background: "#fff", borderRadius: 12, padding: "14px 16px",
-                border: "1px solid #FCD34D", display: "flex", alignItems: "center", justifyContent: "space-between",
-              }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, flex: 1 }}>
-                  <FileX size={18} color="#92400E" />
-                  <span style={{ fontSize: 14, color: "var(--wizard-primary)", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {doc.name}
-                  </span>
-                </div>
-                <button
-                  onClick={() => handleUpload(doc.id)}
-                  disabled={uploadMut.isPending}
-                  style={{
-                    background: "var(--wizard-accent)", color: "#fff", border: "none",
-                    borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 700,
-                    cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
-                    fontFamily: "var(--wizard-font-body)", flexShrink: 0,
-                  }}
-                >
-                  {uploadMut.isPending && uploadingDocId === doc.id ? (
-                    <Loader2 size={14} className="animate-spin" />
-                  ) : (
+          <div style={{
+            background: "#FFF5F5", borderRadius: 12, padding: "14px 16px",
+            border: "1px solid #FEB2B2", marginBottom: 8,
+          }}>
+            <p style={{ fontSize: 14, fontWeight: 700, color: "#C53030", marginBottom: 10 }}>
+              Aguardando envio ({pending.length})
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {pending.map(doc => (
+                <div key={doc.id} style={{
+                  background: "#fff", borderRadius: 10, padding: "12px 14px",
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, flex: 1 }}>
+                    <FileX size={18} color="#C53030" />
+                    <span style={{
+                      fontSize: 14, color: "var(--wizard-primary)", fontWeight: 500,
+                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                    }}>
+                      {doc.name}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => handleUpload(doc.id)}
+                    disabled={isUploading}
+                    style={{
+                      background: "var(--wizard-accent)", color: "#fff", border: "none",
+                      borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 700,
+                      cursor: isUploading ? "not-allowed" : "pointer",
+                      opacity: isUploading ? 0.5 : 1,
+                      display: "flex", alignItems: "center", gap: 6,
+                      fontFamily: "var(--wizard-font-body)", flexShrink: 0,
+                    }}
+                  >
                     <Upload size={14} />
-                  )}
-                  Enviar
-                </button>
-              </div>
-            ))}
+                    Enviar
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
@@ -153,7 +222,9 @@ export default function PortalDocs() {
       {/* Sent */}
       {sent.length > 0 && (
         <div>
-          <p style={{ fontSize: 14, fontWeight: 700, color: "var(--wizard-primary)", marginBottom: 10 }}>
+          <p style={{
+            fontSize: 14, fontWeight: 700, color: "var(--wizard-primary)", marginBottom: 10,
+          }}>
             Enviados ({sent.length})
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -162,12 +233,16 @@ export default function PortalDocs() {
               return (
                 <div key={doc.id} style={{
                   background: "#fff", borderRadius: 12, padding: "14px 16px",
-                  border: "1px solid #E5E7EB", display: "flex", alignItems: "center", justifyContent: "space-between",
+                  border: "1px solid #E5E7EB",
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
                 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, flex: 1 }}>
                     <FileText size={18} color="#6B7280" />
                     <div style={{ minWidth: 0 }}>
-                      <p style={{ fontSize: 14, color: "var(--wizard-primary)", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <p style={{
+                        fontSize: 14, color: "var(--wizard-primary)", fontWeight: 500,
+                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                      }}>
                         {doc.name}
                       </p>
                       <p style={{ fontSize: 12, color: "#9CA3AF", marginTop: 2 }}>
