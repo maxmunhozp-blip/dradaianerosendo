@@ -331,12 +331,15 @@ function SignatureSettings({ value, onChange }: { value: string; onChange: (v: s
             </Button>
           </div>
         </div>
-        <p className="text-[11px] text-muted-foreground">
-          Encontre em <span className="font-medium">app.zapsign.com.br → Configurações → Integrações → API</span>
-        </p>
-        <p className="text-[11px] text-muted-foreground">
-          No ZapSign, normalmente basta usar o token da conta/workspace correto — não há etapa extra de “ativar integração”.
-        </p>
+        <div className="bg-amber-50 border border-amber-200 rounded-md p-2.5 space-y-1">
+          <p className="text-[11px] font-medium text-amber-800">⚠️ Use o Token da API, NÃO o token do Webhook!</p>
+          <p className="text-[11px] text-amber-700">
+            No ZapSign: <span className="font-medium">Configurações → Integrações → ZapSign API → Access Token</span>
+          </p>
+          <p className="text-[10px] text-amber-600">
+            O token do Webhook (em Integrações → Webhooks) serve apenas para receber notificações e não funciona aqui.
+          </p>
+        </div>
       </div>
 
       <div className="flex items-center gap-2">
