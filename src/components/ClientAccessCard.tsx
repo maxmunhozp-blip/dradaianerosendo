@@ -54,10 +54,11 @@ export function ClientAccessCard({
           const { data: newSession, error } = await supabase
             .from("client_sessions")
             .insert({ client_id: clientId })
-            .select("token")
+            .select("token, expires_at")
             .single();
           if (error) throw error;
           setToken(newSession.token);
+          setExpiresAt(newSession.expires_at);
           onTokenCreated?.(newSession.token);
           toast.success("Link do portal gerado!");
         }
