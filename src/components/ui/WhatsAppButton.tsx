@@ -15,6 +15,7 @@ export const WhatsAppButton = ({
   message,
   children,
   className,
+  style,
   disabled,
   onMissingPhone,
 }: WhatsAppButtonProps) => {
