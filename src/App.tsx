@@ -9,8 +9,9 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { PortalProtectedRoute } from "@/components/PortalProtectedRoute";
 import AdminLayout from "@/components/AdminLayout";
-import PortalLayout from "@/components/PortalLayout";
 import ClientPortalLayout from "@/components/ClientPortalLayout";
+import LandingPage from "@/pages/LandingPage";
+import Register from "@/pages/Register";
 import Dashboard from "@/pages/Dashboard";
 import Clients from "@/pages/Clients";
 import ClientDetail from "@/pages/ClientDetail";
@@ -90,14 +91,16 @@ const App = () => {
         <BrowserRouter>
           <Routes>
             {/* Public */}
+            <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
             <Route path="/portal/login" element={<PortalLogin />} />
             <Route path="/dados/:token" element={<PublicDataRequest />} />
 
-            {/* Protected admin routes */}
+            {/* Protected admin/advogado routes */}
             <Route element={<ProtectedRoute />}>
               <Route element={<AdminLayout />}>
-                <Route path="/" element={<Dashboard />} />
+                <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/clients" element={<Clients />} />
                 <Route path="/clients/:id" element={<ClientDetail />} />
                 <Route path="/cases/:id" element={<CaseDetail />} />
@@ -114,7 +117,7 @@ const App = () => {
               </Route>
             </Route>
 
-            {/* Client portal — magic link (no auth) */}
+            {/* Client portal */}
             <Route element={<ClientPortalLayout />}>
               <Route path="/portal" element={<PortalHome />} />
               <Route path="/portal/docs" element={<PortalDocs />} />
