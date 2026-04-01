@@ -31,7 +31,7 @@ export async function streamLaraChat({
         "Content-Type": "application/json",
         Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
       },
-      body: JSON.stringify({ messages, caseId: caseId || null }),
+      body: JSON.stringify({ messages, caseId: caseId || null, ...(isPortalMode ? { isPortalMode: true } : {}) }),
     });
 
     if (!resp.ok) {
