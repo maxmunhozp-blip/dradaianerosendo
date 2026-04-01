@@ -86,6 +86,9 @@ export default function ClientDetail() {
   const [showRequestData, setShowRequestData] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [scanProgress, setScanProgress] = useState("");
+  const [scanCurrentIndex, setScanCurrentIndex] = useState(0);
+  const [scanResults, setScanResults] = useState<Record<string, { confidence: string; fieldsFound: number }>>({});
+  const [scanDocList, setScanDocList] = useState<{ id: string; name: string }[]>([]);
   const queryClient = useQueryClient();
 
   // Fetch all documents for this client's cases
