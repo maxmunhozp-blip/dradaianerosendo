@@ -199,6 +199,8 @@ export default function UsersManagement() {
     switch (role) {
       case "admin":
         return <Badge className="bg-amber-500/15 text-amber-600 border-amber-500/30">Admin</Badge>;
+      case "advogado":
+        return <Badge className="bg-blue-500/15 text-blue-600 border-blue-500/30">Advogado</Badge>;
       case "client":
         return <Badge variant="secondary">Cliente</Badge>;
       default:
