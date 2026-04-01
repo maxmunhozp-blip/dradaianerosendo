@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Textarea } from "@/components/ui/textarea";
 import { Loader2, MessageSquare, ClipboardList, ExternalLink, FileText, Bell, ScanSearch, CheckCircle2, XCircle, Download, PenLine, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -72,6 +73,11 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
   const [pdfPreviewBlob, setPdfPreviewBlob] = useState<Blob | null>(null);
   const [pdfPreviewMeta, setPdfPreviewMeta] = useState<{ docName: string; caseId: string; action: LaraAction; actionIndex: number } | null>(null);
   const [savingPdf, setSavingPdf] = useState(false);
+
+  // Text editor state (before PDF generation)
+  const [editingText, setEditingText] = useState(false);
+  const [editableText, setEditableText] = useState("");
+  const [editMeta, setEditMeta] = useState<{ docName: string; caseId: string; action: LaraAction; actionIndex: number } | null>(null);
 
   // All actions including dynamically added ones
   const [dynamicActions, setDynamicActions] = useState<LaraAction[]>([]);
@@ -222,14 +228,6 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
           if (!docText.trim()) { toast.error("Conteúdo do documento não encontrado"); break; }
           if (!caseId) { toast.error("Caso não identificado"); break; }
 
-          // Generate PDF with jsPDF
-          const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-          const margin = 25;
-          const pageWidth = pdf.internal.pageSize.getWidth();
-          const maxWidth = pageWidth - margin * 2;
-          pdf.setFont("helvetica", "normal");
-          pdf.setFontSize(12);
-
           const cleanText = docText
             .replace(/#{1,6}\s/g, "")
             .replace(/\*\*(.*?)\*\*/g, "$1")
@@ -238,27 +236,10 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
             .replace(/```[\s\S]*?```/g, "")
             .trim();
 
-          const lines = pdf.splitTextToSize(cleanText, maxWidth);
-          let y = margin;
-          const lineHeight = 6;
-
-          for (const line of lines) {
-            if (y + lineHeight > pdf.internal.pageSize.getHeight() - margin) {
-              pdf.addPage();
-              y = margin;
-            }
-            pdf.text(line, margin, y);
-            y += lineHeight;
-          }
-
-          const pdfBlob = pdf.output("blob");
-          const previewUrl = URL.createObjectURL(pdfBlob);
-
-          // Show preview instead of saving immediately
           const idx = allActions.indexOf(confirmAction);
-          setPdfPreviewBlob(pdfBlob);
-          setPdfPreviewUrl(previewUrl);
-          setPdfPreviewMeta({ docName, caseId, action: confirmAction, actionIndex: idx });
+          setEditableText(cleanText);
+          setEditMeta({ docName, caseId, action: confirmAction, actionIndex: idx });
+          setEditingText(true);
           setConfirmAction(null);
           break;
         }
@@ -438,6 +419,74 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
             >
               {executing && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
               {confirmAction?.type === "send_for_signature" ? "Enviar para assinatura" : "Confirmar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Text Editor Dialog */}
+      <Dialog open={editingText} onOpenChange={(open) => {
+        if (!open) {
+          setEditingText(false);
+          setEditableText("");
+          setEditMeta(null);
+        }
+      }}>
+        <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="w-4 h-4" />
+              Editar — {editMeta?.docName}
+            </DialogTitle>
+            <DialogDescription>Edite o texto antes de gerar o PDF.</DialogDescription>
+          </DialogHeader>
+          <Textarea
+            value={editableText}
+            onChange={(e) => setEditableText(e.target.value)}
+            className="flex-1 min-h-[50vh] font-mono text-sm resize-none"
+          />
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => {
+              setEditingText(false);
+              setEditableText("");
+              setEditMeta(null);
+            }}>
+              Cancelar
+            </Button>
+            <Button onClick={() => {
+              if (!editMeta || !editableText.trim()) return;
+              // Generate PDF from edited text
+              const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+              const margin = 25;
+              const pageWidth = pdf.internal.pageSize.getWidth();
+              const maxWidth = pageWidth - margin * 2;
+              pdf.setFont("helvetica", "normal");
+              pdf.setFontSize(12);
+
+              const lines = pdf.splitTextToSize(editableText, maxWidth);
+              let y = margin;
+              const lineHeight = 6;
+
+              for (const line of lines) {
+                if (y + lineHeight > pdf.internal.pageSize.getHeight() - margin) {
+                  pdf.addPage();
+                  y = margin;
+                }
+                pdf.text(line, margin, y);
+                y += lineHeight;
+              }
+
+              const pdfBlob = pdf.output("blob");
+              const previewUrl = URL.createObjectURL(pdfBlob);
+
+              setPdfPreviewBlob(pdfBlob);
+              setPdfPreviewUrl(previewUrl);
+              setPdfPreviewMeta(editMeta);
+              setEditingText(false);
+              setEditableText("");
+              setEditMeta(null);
+            }}>
+              <FileText className="w-4 h-4 mr-1" /> Gerar PDF
             </Button>
           </DialogFooter>
         </DialogContent>
