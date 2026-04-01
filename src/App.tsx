@@ -18,7 +18,7 @@ import Documents from "@/pages/Documents";
 import Agenda from "@/pages/Agenda";
 import PortalHome from "@/pages/PortalHome";
 import PortalDocs from "@/pages/PortalDocs";
-import PortalLara from "@/pages/PortalLara";
+import PortalChat from "@/pages/PortalChat";
 import PortalProfile from "@/pages/PortalProfile";
 import PortalLogin from "@/pages/PortalLogin";
 import Login from "@/pages/Login";
@@ -67,7 +67,7 @@ const App = () => (
             <Route element={<ClientPortalLayout />}>
               <Route path="/portal" element={<PortalHome />} />
               <Route path="/portal/docs" element={<PortalDocs />} />
-              <Route path="/portal/lara" element={<PortalLara />} />
+              <Route path="/portal/chat" element={<PortalChat />} />
               <Route path="/portal/perfil" element={<PortalProfile />} />
             </Route>
 
