@@ -62,6 +62,8 @@ export default function LaraPage() {
     },
   });
 
+  const selectedCase = allCases.find((c: any) => c.id === activeCaseId);
+
   const { data: dbMessages = [] } = useQuery({
     queryKey: ["messages", caseContext],
     queryFn: async () => {
