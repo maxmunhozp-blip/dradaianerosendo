@@ -11,6 +11,7 @@ import {
   FileStack,
   Bell,
   Mail,
+  Palette,
 } from "lucide-react";
 import { useIntimacaoCount } from "@/hooks/use-intimacoes";
 import { NavLink } from "@/components/NavLink";
