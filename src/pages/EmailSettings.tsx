@@ -98,31 +98,37 @@ export default function EmailSettings() {
               maxWidth: 600,
               margin: "0 auto",
               backgroundColor: "#ffffff",
+              borderRadius: 8,
+              overflow: "hidden",
+              border: "1px solid #e2e8f0",
             }}
           >
             {/* Header */}
             <div
               style={{
                 backgroundColor: primaryColor,
-                padding: "24px 32px",
+                padding: "28px 32px",
                 textAlign: "center" as const,
               }}
             >
               {logoUrl ? (
-                <img src={logoUrl} alt="Logo" style={{ maxHeight: 48, margin: "0 auto" }} />
+                <img src={logoUrl} alt="Logo" style={{ maxHeight: 56, margin: "0 auto", display: "block" }} />
               ) : (
-                <span style={{ color: "#ffffff", fontSize: 20, fontWeight: 700 }}>
+                <span style={{ color: "#ffffff", fontSize: 22, fontWeight: 700, letterSpacing: 0.5 }}>
                   {officeName}
                 </span>
               )}
             </div>
 
+            {/* Accent bar */}
+            <div style={{ height: 4, background: `linear-gradient(90deg, #D97706, ${primaryColor})` }} />
+
             {/* Body */}
-            <div style={{ padding: "32px" }}>
-              <h2 style={{ color: primaryColor, fontSize: 20, fontWeight: 600, marginBottom: 16 }}>
+            <div style={{ padding: "36px 32px 28px" }}>
+              <h2 style={{ color: primaryColor, fontSize: 22, fontWeight: 700, margin: "0 0 20px", lineHeight: 1.3 }}>
                 {subject}
               </h2>
-              <div style={{ color: "#334155", fontSize: 14, lineHeight: 1.7, whiteSpace: "pre-line" }}>
+              <div style={{ color: "#334155", fontSize: 14, lineHeight: 1.8, whiteSpace: "pre-line" }}>
                 {previewBody}
               </div>
             </div>
@@ -130,18 +136,19 @@ export default function EmailSettings() {
             {/* Footer */}
             <div
               style={{
+                backgroundColor: "#f8fafc",
                 borderTop: "1px solid #e2e8f0",
-                padding: "16px 32px",
+                padding: "20px 32px",
                 textAlign: "center" as const,
               }}
             >
-              <p style={{ color: "#94a3b8", fontSize: 11, margin: 0 }}>{footerText}</p>
               {val("email_signature_html") && (
                 <div
-                  className="mt-3 text-xs text-muted-foreground"
+                  className="mb-3 text-xs text-muted-foreground"
                   dangerouslySetInnerHTML={{ __html: val("email_signature_html") }}
                 />
               )}
+              <p style={{ color: "#94a3b8", fontSize: 11, margin: 0 }}>{footerText}</p>
             </div>
           </div>
         </div>

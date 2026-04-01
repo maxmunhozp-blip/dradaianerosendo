@@ -117,21 +117,28 @@ Deno.serve(async (req) => {
             .replace(/{escritorio}/g, officeName);
 
           const logoHtml = logoUrl
-            ? `<img src="${logoUrl}" alt="Logo" style="max-height:48px;margin:0 auto;" />`
-            : `<span style="color:#ffffff;font-size:20px;font-weight:700;">${officeName}</span>`;
+            ? `<img src="${logoUrl}" alt="Logo" style="max-height:56px;margin:0 auto;display:block;" />`
+            : `<span style="color:#ffffff;font-size:22px;font-weight:700;letter-spacing:0.5px;">${officeName}</span>`;
+
+          const accentColor = "#D97706"; // amber-600
 
           const htmlBody = `
-            <div style="font-family:${fontFamily};max-width:600px;margin:0 auto;background:#ffffff;">
-              <div style="background:${primaryColor};padding:24px 32px;text-align:center;">
+            <div style="font-family:${fontFamily};max-width:600px;margin:0 auto;background:#ffffff;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0;">
+              <!-- Header with brand color -->
+              <div style="background:${primaryColor};padding:28px 32px;text-align:center;">
                 ${logoHtml}
               </div>
-              <div style="padding:32px;">
-                <h2 style="color:${primaryColor};font-size:20px;font-weight:600;margin-bottom:16px;">${subject}</h2>
-                <div style="color:#334155;font-size:14px;line-height:1.7;white-space:pre-line;">${bodyText}</div>
+              <!-- Accent bar -->
+              <div style="height:4px;background:linear-gradient(90deg, ${accentColor}, ${primaryColor});"></div>
+              <!-- Body -->
+              <div style="padding:36px 32px 28px;">
+                <h2 style="color:${primaryColor};font-size:22px;font-weight:700;margin:0 0 20px;line-height:1.3;">${subject}</h2>
+                <div style="color:#334155;font-size:14px;line-height:1.8;white-space:pre-line;">${bodyText}</div>
               </div>
-              <div style="border-top:1px solid #e2e8f0;padding:16px 32px;text-align:center;">
+              <!-- Footer -->
+              <div style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:20px 32px;text-align:center;">
+                ${signatureHtml ? `<div style="margin-bottom:12px;">${signatureHtml}</div>` : ""}
                 <p style="color:#94a3b8;font-size:11px;margin:0;">${footerText}</p>
-                ${signatureHtml ? `<div style="margin-top:12px;">${signatureHtml}</div>` : ""}
               </div>
             </div>
           `;
