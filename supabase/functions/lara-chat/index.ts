@@ -459,7 +459,14 @@ async function fetchOfficeContext(supabase: any, hasCaseId: boolean): Promise<st
       ctx += `\n- Aberto em: ${cs.created_at}`;
       ctx += `\n- Parte contrária: ${cs.opposing_party_name || "Não cadastrada"}${cs.opposing_party_cpf ? ` (CPF: ${cs.opposing_party_cpf})` : ""}`;
       ctx += `\n- Filhos: ${Array.isArray(children) && children.length > 0 ? children.map((c: any) => `${c.name} (${c.birth_date || c.birthdate || "N/I"})`).join(", ") : "Nenhum cadastrado"}`;
-      ctx += `\n- Documentos no sistema (${docs.length}): ${docs.length > 0 ? docs.map((d: any) => `${d.name} [${d.category}] (${d.status})`).join(", ") : "Nenhum"}`;
+      const docsEnviados = docs.filter((d: any) => d.status !== "solicitado" && d.status !== "aprovado");
+      const docsAprovados = docs.filter((d: any) => d.status === "aprovado");
+      const docsSolicitados = docs.filter((d: any) => d.status === "solicitado");
+      ctx += `\n- Documentos no sistema (${docs.length}):`;
+      if (docsEnviados.length > 0) ctx += `\n  Enviados/Recebidos: ${docsEnviados.map((d: any) => d.name).join(", ")}`;
+      if (docsAprovados.length > 0) ctx += `\n  Aprovados: ${docsAprovados.map((d: any) => d.name).join(", ")}`;
+      if (docsSolicitados.length > 0) ctx += `\n  Pendentes (solicitados): ${docsSolicitados.map((d: any) => d.name).join(", ")}`;
+      if (docs.length === 0) ctx += " Nenhum";
       ctx += `\n- Checklist (${checklist.length}): ${checklist.length > 0 ? checklist.map((c: any) => `${c.label} (${c.done ? "concluído" : "PENDENTE"})`).join(", ") : "Nenhum"}`;
       ctx += `\n- Audiências (${hearings.length}): ${hearings.length > 0 ? hearings.map((h: any) => `${h.title} em ${h.date} (${h.status})`).join(", ") : "Nenhuma"}`;
       ctx += `\n- Dados faltantes no cadastro: ${missingFields.length > 0 ? missingFields.join(", ") : "Nenhum — cadastro completo"}`;
@@ -471,9 +478,11 @@ async function fetchOfficeContext(supabase: any, hasCaseId: boolean): Promise<st
   const statusCounts: Record<string, number> = {};
   for (const c of cases || []) { statusCounts[c.status] = (statusCounts[c.status] || 0) + 1; }
   const pendingDocs = allDocs.filter((d: any) => d.status === "solicitado");
+  const receivedDocs = allDocs.filter((d: any) => d.status !== "solicitado" && d.status !== "aprovado");
+  const approvedDocs = allDocs.filter((d: any) => d.status === "aprovado");
   const pendingChecklist = allChecklist.filter((c: any) => !c.done);
 
-  ctx += `\nRESUMO: ${clients.length} clientes, ${(cases || []).length} casos, ${pendingDocs.length} documentos pendentes (solicitados), ${pendingChecklist.length} itens de checklist pendentes.`;
+  ctx += `\nRESUMO: ${clients.length} clientes, ${(cases || []).length} casos | Documentos: ${approvedDocs.length} aprovados, ${receivedDocs.length} enviados, ${pendingDocs.length} pendentes | ${pendingChecklist.length} itens de checklist pendentes.`;
   ctx += `\nCasos por status: ${Object.entries(statusCounts).map(([s, n]) => `${s}: ${n}`).join(", ") || "N/A"}`;
   ctx += "\n=== FIM DOS DADOS ===";
 
