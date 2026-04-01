@@ -1,8 +1,9 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { RequestDataModal } from "@/components/RequestDataModal";
 import { ExtractionSuggestions } from "@/components/ExtractionSuggestions";
+import ExtractionProgress from "@/components/ExtractionProgress";
 import { useClient, useUpdateClient, useDeleteClient } from "@/hooks/use-clients";
 import { useCasesByClient, useCreateCase, useUpdateCase } from "@/hooks/use-cases";
 import { useCaseTypes } from "@/hooks/use-case-types";
@@ -85,6 +86,9 @@ export default function ClientDetail() {
   const [showRequestData, setShowRequestData] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [scanProgress, setScanProgress] = useState("");
+  const [scanCurrentIndex, setScanCurrentIndex] = useState(0);
+  const [scanResults, setScanResults] = useState<Record<string, { confidence: string; fieldsFound: number }>>({});
+  const [scanDocList, setScanDocList] = useState<{ id: string; name: string }[]>([]);
   const queryClient = useQueryClient();
 
   // Fetch all documents for this client's cases
@@ -193,10 +197,14 @@ export default function ClientDetail() {
       toast.info("Nenhum documento pendente para escanear");
       return;
     }
+    setScanDocList(docsToScan.map(d => ({ id: d.id, name: d.name })));
+    setScanResults({});
+    setScanCurrentIndex(0);
     setScanning(true);
     let success = 0;
     for (let i = 0; i < docsToScan.length; i++) {
       const doc = docsToScan[i];
+      setScanCurrentIndex(i);
       setScanProgress(`Escaneando documento ${i + 1} de ${docsToScan.length}...`);
       try {
         const result = await Promise.race([
@@ -213,17 +221,22 @@ export default function ClientDetail() {
         ]) as any;
         if (result?.error || !result?.data?.success) {
           await supabase.from("documents").update({ extraction_status: "failed" }).eq("id", doc.id);
+          setScanResults(prev => ({ ...prev, [doc.id]: { confidence: "low", fieldsFound: 0 } }));
         } else {
           success++;
+          const fieldsFound = result?.data?.suggestions_created || result?.data?.fields_found || 0;
+          const confidence = fieldsFound > 2 ? "high" : "low";
+          setScanResults(prev => ({ ...prev, [doc.id]: { confidence, fieldsFound } }));
         }
       } catch (e) {
         console.error(`Erro ao escanear ${doc.name}:`, e);
         await supabase.from("documents").update({ extraction_status: "failed" }).eq("id", doc.id);
+        setScanResults(prev => ({ ...prev, [doc.id]: { confidence: "low", fieldsFound: 0 } }));
       }
     }
+    setScanCurrentIndex(docsToScan.length);
     setScanProgress("");
     setScanning(false);
-    // Invalidate all related queries to refresh UI
     queryClient.invalidateQueries({ queryKey: ["extraction-suggestions", id] });
     queryClient.invalidateQueries({ queryKey: ["client-all-docs", id] });
     queryClient.invalidateQueries({ queryKey: ["clients", id] });
@@ -578,32 +591,40 @@ export default function ClientDetail() {
               </Button>
             )}
           </div>
-          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-            {uploadedDocs.map((doc: any) => {
-              const isDone = doc.extraction_status === "done" && hasExtractedData(doc);
-              const isFailed = doc.extraction_status === "failed" || (doc.extraction_status === "done" && !hasExtractedData(doc));
-              return (
-                <button
-                  key={doc.id}
-                  onClick={() => !scanning && handleRescanSingle(doc)}
-                  disabled={scanning}
-                  className="flex items-center gap-1 hover:underline cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
-                  title={isDone ? "Clique para reescanear" : isFailed ? "Clique para tentar novamente" : "Aguardando escaneamento"}
-                >
-                  {isDone ? (
-                    <CheckCircle2 className="w-3 h-3 text-green-600" />
-                  ) : isFailed ? (
-                    <XCircle className="w-3 h-3 text-destructive" />
-                  ) : (
-                    <Clock className="w-3 h-3 text-muted-foreground" />
-                  )}
-                  <span className={isDone ? "text-green-700" : isFailed ? "text-destructive" : ""}>
-                    {doc.name.length > 25 ? doc.name.slice(0, 22) + "..." : doc.name}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+          {scanning && scanDocList.length > 0 && (
+            <ExtractionProgress
+              documents={scanDocList}
+              currentIndex={scanCurrentIndex}
+              results={scanResults}
+            />
+          )}
+          {!scanning && (
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+              {uploadedDocs.map((doc: any) => {
+                const isDone = doc.extraction_status === "done" && hasExtractedData(doc);
+                const isFailed = doc.extraction_status === "failed" || (doc.extraction_status === "done" && !hasExtractedData(doc));
+                return (
+                  <button
+                    key={doc.id}
+                    onClick={() => handleRescanSingle(doc)}
+                    className="flex items-center gap-1 hover:underline cursor-pointer"
+                    title={isDone ? "Clique para reescanear" : isFailed ? "Clique para tentar novamente" : "Aguardando escaneamento"}
+                  >
+                    {isDone ? (
+                      <CheckCircle2 className="w-3 h-3 text-green-600" />
+                    ) : isFailed ? (
+                      <XCircle className="w-3 h-3 text-destructive" />
+                    ) : (
+                      <Clock className="w-3 h-3 text-muted-foreground" />
+                    )}
+                    <span className={isDone ? "text-green-700" : isFailed ? "text-destructive" : ""}>
+                      {doc.name.length > 25 ? doc.name.slice(0, 22) + "..." : doc.name}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
       <ExtractionSuggestions clientId={client.id} />
