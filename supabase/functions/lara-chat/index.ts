@@ -440,7 +440,7 @@ async function fetchOfficeContext(supabase: any, hasCaseId: boolean): Promise<st
   // 3. Fetch ALL documents, ALL checklist items, ALL hearings (not filtered by status)
   const [docsResult, checklistResult, hearingsResult] = await Promise.all([
     caseIds.length > 0
-      ? supabase.from("documents").select("id, name, category, status, case_id, created_at, extraction_status, extracted_data").in("case_id", caseIds)
+      ? supabase.from("documents").select("id, name, category, status, case_id, created_at, extraction_status, extracted_data, signature_status, signature_requested_at, signature_completed_at, signers, file_url").in("case_id", caseIds)
       : { data: [] },
     caseIds.length > 0
       ? supabase.from("checklist_items").select("id, label, done, case_id, required_by").in("case_id", caseIds)
