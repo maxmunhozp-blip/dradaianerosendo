@@ -266,7 +266,18 @@ export function LaraActionButtons({ actions, onScanComplete }: { actions: LaraAc
           return (
             <button
               key={i}
-              onClick={() => !isDone && !scanning && setConfirmAction(action)}
+              onClick={() => {
+                if (!isDone && !scanning) {
+                  // Pre-fill signer data for signature actions
+                  if (action.type === "send_for_signature") {
+                    const signer = action.data.signers?.[0];
+                    setSignerName(signer?.name || action.data.client_name || "");
+                    setSignerEmail(signer?.email || "");
+                    setSignerCpf(signer?.cpf || "");
+                  }
+                  setConfirmAction(action);
+                }
+              }}
               disabled={isDone || scanning}
               className="flex items-center gap-1.5 px-4 h-10 rounded-full text-sm font-semibold transition-colors"
               style={{
