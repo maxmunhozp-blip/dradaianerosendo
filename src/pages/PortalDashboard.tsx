@@ -377,7 +377,7 @@ export default function PortalDashboard() {
             Atualizações
           </h3>
           <div className="space-y-3">
-            {timeline.map((item, i) => (
+            {visibleTimeline.map((item, i) => (
               <div
                 key={i}
                 className="flex items-start gap-3 py-1.5"
@@ -393,7 +393,18 @@ export default function PortalDashboard() {
               </div>
             ))}
           </div>
-        </div>
+          {hasMoreTimeline && (
+            <div className="pt-3 text-center border-t border-border mt-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs text-muted-foreground"
+                onClick={() => setTimelineVisible(prev => prev + 10)}
+              >
+                Carregar mais ({timeline.length - timelineVisible} restantes)
+              </Button>
+            </div>
+          )}
       )}
     </div>
   );
