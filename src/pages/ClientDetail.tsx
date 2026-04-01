@@ -264,6 +264,45 @@ export default function ClientDetail() {
     } finally { setInviting(false); }
   };
 
+  const handleSendPortalLink = async () => {
+    if (!client) return;
+    const phone = (cl.phone || "").replace(/\D/g, "");
+    if (!phone) { toast.error("Cliente sem telefone cadastrado"); return; }
+    setSendingPortal(true);
+    try {
+      // Check for existing valid session
+      const { data: existing } = await supabase
+        .from("client_sessions")
+        .select("token, expires_at")
+        .eq("client_id", client.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      let token = existing?.token;
+      if (!existing || new Date(existing.expires_at) < new Date()) {
+        // Create new session
+        const { data: newSession, error } = await supabase
+          .from("client_sessions")
+          .insert({ client_id: client.id })
+          .select("token")
+          .single();
+        if (error) throw error;
+        token = newSession.token;
+      }
+
+      const portalUrl = `${window.location.origin}/portal?token=${token}`;
+      const firstName = client.name.split(" ")[0];
+      const message = `Olá ${firstName}! Acesse sua área do cliente pelo link abaixo para acompanhar seu processo:\n\n${portalUrl}`;
+      const waUrl = `https://wa.me/55${phone}?text=${encodeURIComponent(message)}`;
+      window.open(waUrl, "_blank");
+      toast.success("Link do portal gerado!");
+    } catch (err: any) {
+      toast.error("Erro ao gerar link do portal");
+      console.error(err);
+    } finally { setSendingPortal(false); }
+  };
+
   const handleSaveNotes = async () => {
     if (!client) return;
     try {
