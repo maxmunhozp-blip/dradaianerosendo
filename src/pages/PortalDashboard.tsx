@@ -242,7 +242,6 @@ export default function PortalDashboard() {
         <EmptyState
           icon={FolderOpen}
           title="Nenhum caso encontrado"
-          description="Não encontramos nenhum processo vinculado à sua conta."
         />
       )}
 

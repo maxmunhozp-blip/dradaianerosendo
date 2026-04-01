@@ -193,8 +193,6 @@ export default function Agenda() {
         Object.keys(weekGroups).length === 0 ? (
           <EmptyState
             icon={CalendarIcon}
-            title="Nenhuma data neste mês"
-            description="Adicione audiências e prazos para este período."
             actionLabel="Nova data"
             onAction={() => setShowModal(true)}
           />

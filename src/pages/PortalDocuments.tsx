@@ -177,12 +177,6 @@ export default function PortalDocuments() {
       ) : filtered.length === 0 ? (
         <EmptyState
           icon={FolderOpen}
-          title="Nenhum documento"
-          description={
-            statusFilter === "all"
-              ? "Documentos aparecerão aqui quando forem adicionados ao seu caso."
-              : "Nenhum documento com esse status."
-          }
         />
       ) : (
         <div className="border border-border rounded-lg divide-y divide-border bg-background">

@@ -278,8 +278,6 @@ export function ProcessTimeline({ caseId }: ProcessTimelineProps) {
         {filtered.length === 0 ? (
           <EmptyState
             icon={Clock}
-            title="Nenhuma movimentação"
-            description={entries.length > 0 ? "Nenhum resultado para os filtros selecionados." : "Registre a primeira movimentação deste processo."}
             actionLabel={entries.length === 0 ? "Nova movimentação" : undefined}
             onAction={entries.length === 0 ? openNewModal : undefined}
           />
