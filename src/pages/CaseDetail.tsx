@@ -562,6 +562,8 @@ export default function CaseDetail() {
             messages={chatMessages}
             onSend={sendMessage}
             isLoading={chatLoading}
+            clientId={(caseData as any)?.client_id}
+            caseId={id}
           />
         </div>
       )}

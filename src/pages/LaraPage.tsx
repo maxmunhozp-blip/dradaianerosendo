@@ -62,6 +62,8 @@ export default function LaraPage() {
     },
   });
 
+  const selectedCase = allCases.find((c: any) => c.id === activeCaseId);
+
   const { data: dbMessages = [] } = useQuery({
     queryKey: ["messages", caseContext],
     queryFn: async () => {
@@ -119,6 +121,8 @@ export default function LaraPage() {
               isLoading={isLoading}
               pendingCommand={pendingCommand}
               onCommandConsumed={() => setPendingCommand(null)}
+              clientId={selectedCase?.client_id}
+              caseId={activeCaseId}
             />
           </div>
 
