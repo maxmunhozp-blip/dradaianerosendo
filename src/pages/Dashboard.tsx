@@ -78,6 +78,9 @@ export default function Dashboard() {
         </Link>
       </div>
 
+      {/* Integration status */}
+      <ZapSignStatus />
+
       {/* Signature status */}
       <SignaturePanel ownerFilter={ownerFilter} />
 
