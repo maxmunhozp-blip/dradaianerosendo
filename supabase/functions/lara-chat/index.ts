@@ -271,7 +271,7 @@ async function fetchIntimacoesContext(supabase: any): Promise<string> {
 async function fetchCaseContext(supabase: any, caseId: string): Promise<string> {
   const { data: caseData } = await supabase
     .from("cases")
-    .select("*, clients(name, cpf, email, phone, status)")
+    .select("*, clients(name, cpf, email, phone, status, rg, nationality, marital_status, profession, address_street, address_number, address_complement, address_neighborhood, address_city, address_state, address_zip)")
     .eq("id", caseId)
     .single();
 
@@ -299,18 +299,54 @@ async function fetchCaseContext(supabase: any, caseId: string): Promise<string> 
   const checklist = checklistResult.data || [];
   const hearings = hearingsResult.data || [];
 
+  // Format address
+  let addressStr = "[PREENCHER: endereço completo]";
+  if (client?.address_street) {
+    addressStr = `${client.address_street}, ${client.address_number || "S/N"}`;
+    if (client.address_complement) addressStr += `, ${client.address_complement}`;
+    addressStr += ` — ${client.address_neighborhood || ""}, ${client.address_city || ""}/${client.address_state || ""} — CEP ${client.address_zip || ""}`;
+  }
+
+  // Format children
+  const children = caseData.children || [];
+  let childrenStr = "Nenhum filho/menor cadastrado.";
+  if (Array.isArray(children) && children.length > 0) {
+    childrenStr = children.map((c: any) =>
+      `- ${c.name}, nascido em ${c.birth_date || "N/I"}${c.cpf ? `, CPF ${c.cpf}` : ""}`
+    ).join("\n");
+  }
+
+  // Format opposing party
+  let opposingStr = "Não cadastrada.";
+  if (caseData.opposing_party_name) {
+    opposingStr = `${caseData.opposing_party_name}`;
+    if (caseData.opposing_party_cpf) opposingStr += `, CPF ${caseData.opposing_party_cpf}`;
+    if (caseData.opposing_party_address) opposingStr += `, residente em ${caseData.opposing_party_address}`;
+  }
+
   return `
 ## Contexto do caso selecionado (DADOS REAIS DO BANCO — USE PARA PREENCHER DOCUMENTOS AUTOMATICAMENTE)
 - **Nome completo do cliente**: ${client?.name || "[PREENCHER: nome completo]"}
 - **CPF**: ${client?.cpf || "[PREENCHER: CPF]"}
+- **RG**: ${client?.rg || "[PREENCHER: RG]"}
+- **Nacionalidade**: ${client?.nationality || "[PREENCHER: nacionalidade]"}
+- **Estado civil**: ${client?.marital_status || "[PREENCHER: estado civil]"}
+- **Profissão**: ${client?.profession || "[PREENCHER: profissão]"}
 - **E-mail**: ${client?.email || "[PREENCHER: e-mail]"}
 - **Telefone**: ${client?.phone || "[PREENCHER: telefone]"}
+- **Endereço**: ${addressStr}
 - **Status do cliente**: ${client?.status || "N/A"}
 - **Tipo de ação**: ${caseData.case_type}
 - **Status do caso**: ${caseData.status}
 - **Número do processo (CNJ)**: ${caseData.cnj_number || "[PREENCHER: número CNJ]"}
 - **Vara/Comarca**: ${caseData.court || "[PREENCHER: vara e comarca]"}
 - **Descrição do caso**: ${caseData.description || "Sem descrição"}
+
+### Parte contrária
+${opposingStr}
+
+### Filhos/Menores
+${childrenStr}
 
 ### Todos os documentos do caso (${docs.length})
 ${docs.length > 0
