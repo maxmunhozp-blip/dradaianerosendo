@@ -69,6 +69,7 @@ function formatDate(dateStr: string) {
 }
 
 export function ClientUnifiedTimeline({ caseIds }: { caseIds: string[] }) {
+  const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const { data: events = [], isLoading } = useQuery({
     queryKey: ["client-unified-timeline", caseIds],
     queryFn: async () => {
