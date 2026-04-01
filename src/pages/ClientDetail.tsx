@@ -332,7 +332,7 @@ export default function ClientDetail() {
   };
 
   // Section states
-  const [personalOpen, setPersonalOpen] = useState(true);
+  const [personalOpen, setPersonalOpen] = useState(false);
   const [addressOpen, setAddressOpen] = useState(false);
   const [childrenOpen, setChildrenOpen] = useState(false);
   const [opposingOpen, setOpposingOpen] = useState(false);
