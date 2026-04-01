@@ -151,6 +151,7 @@ export default function UsersManagement() {
   } | null>(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [editingProfile, setEditingProfile] = useState<DBProfile | null>(null);
+  const [showAddUser, setShowAddUser] = useState(false);
 
   const toggleUser = (id: string) =>
     setOpenUsers((p) => ({ ...p, [id]: !p[id] }));
