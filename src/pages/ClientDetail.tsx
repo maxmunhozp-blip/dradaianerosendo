@@ -542,34 +542,54 @@ export default function ClientDetail() {
       {/* Scan + Extraction Suggestions */}
       {uploadedDocs.length > 0 && (
         <div className="mb-3 space-y-2">
-          <Button
-            variant={allScanned ? "outline" : failedDocs.length > 0 ? "outline" : "outline"}
-            size="sm"
-            onClick={handleScanAll}
-            disabled={!canScan}
-            className={`gap-2 ${allScanned ? "border-green-500 text-green-700" : failedDocs.length > 0 ? "border-amber-500 text-amber-700" : ""}`}
-          >
-            {scanning ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            ) : allScanned ? (
-              <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
-            ) : (
-              <ScanSearch className="w-3.5 h-3.5" />
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleScanAll}
+              disabled={!canScan}
+              className={`gap-2 ${allScanned ? "border-green-500 text-green-700" : failedDocs.length > 0 ? "border-amber-500 text-amber-700" : ""}`}
+            >
+              {scanning ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : allScanned ? (
+                <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
+              ) : (
+                <ScanSearch className="w-3.5 h-3.5" />
+              )}
+              {scanning
+                ? scanProgress
+                : allScanned
+                ? "Escaneamento concluído"
+                : failedDocs.length > 0
+                ? `Reescanear documentos com falha (${failedDocs.length})`
+                : `Escanear documentos com IA (${docsToScan.length})`}
+            </Button>
+            {allScanned && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleRescanAll}
+                disabled={scanning}
+                className="gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+              >
+                <ScanSearch className="w-3 h-3" />
+                Reescanear todos
+              </Button>
             )}
-            {scanning
-              ? scanProgress
-              : allScanned
-              ? "Escaneamento concluído"
-              : failedDocs.length > 0
-              ? `Reescanear documentos com falha (${failedDocs.length})`
-              : `Escanear documentos com IA (${docsToScan.length})`}
-          </Button>
+          </div>
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
             {uploadedDocs.map((doc: any) => {
               const isDone = doc.extraction_status === "done" && hasExtractedData(doc);
               const isFailed = doc.extraction_status === "failed" || (doc.extraction_status === "done" && !hasExtractedData(doc));
               return (
-                <span key={doc.id} className="flex items-center gap-1">
+                <button
+                  key={doc.id}
+                  onClick={() => !scanning && handleRescanSingle(doc)}
+                  disabled={scanning}
+                  className="flex items-center gap-1 hover:underline cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                  title={isDone ? "Clique para reescanear" : isFailed ? "Clique para tentar novamente" : "Aguardando escaneamento"}
+                >
                   {isDone ? (
                     <CheckCircle2 className="w-3 h-3 text-green-600" />
                   ) : isFailed ? (
@@ -580,7 +600,7 @@ export default function ClientDetail() {
                   <span className={isDone ? "text-green-700" : isFailed ? "text-destructive" : ""}>
                     {doc.name.length > 25 ? doc.name.slice(0, 22) + "..." : doc.name}
                   </span>
-                </span>
+                </button>
               );
             })}
           </div>
