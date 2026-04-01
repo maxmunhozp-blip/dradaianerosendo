@@ -692,7 +692,46 @@ export default function ClientDetail() {
           )}
         </div>
       )}
+      {/* Scan summary banner with button to open review */}
+      {scanSummary && scanSummary.review > 0 && !showReviewPanel && (
+        <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between">
+          <p className="text-sm text-amber-800">
+            Terminei de analisar os documentos. Encontrei{" "}
+            <strong>{scanSummary.total} informações</strong> —{" "}
+            {scanSummary.auto} aplicadas automaticamente e{" "}
+            <strong>{scanSummary.review} precisam da sua confirmação</strong>.
+          </p>
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-amber-400 text-amber-700 hover:bg-amber-100 ml-3 flex-shrink-0"
+            onClick={() => setShowReviewPanel(true)}
+          >
+            Revisar dados
+          </Button>
+        </div>
+      )}
       <ExtractionSuggestions clientId={client.id} />
+
+      {/* Review Panel Modal */}
+      {showReviewPanel && reviewSuggestions.length > 0 && (
+        <ExtractionReviewPanel
+          suggestions={reviewSuggestions}
+          clientName={client.name}
+          opposingName={(cases[0] as any)?.opposing_party_name || "Parte contrária"}
+          onClose={() => setShowReviewPanel(false)}
+          onComplete={() => {
+            setShowReviewPanel(false);
+            setScanSummary(null);
+            setReviewSuggestions([]);
+            queryClient.invalidateQueries({ queryKey: ["extraction-suggestions", id] });
+            queryClient.invalidateQueries({ queryKey: ["clients", id] });
+            queryClient.invalidateQueries({ queryKey: ["clients"] });
+            queryClient.invalidateQueries({ queryKey: ["cases"] });
+            toast.success("Revisão concluída — dados atualizados!");
+          }}
+        />
+      )}
 
       {/* Collapsible Sections */}
       <div className="space-y-3 mb-6">
