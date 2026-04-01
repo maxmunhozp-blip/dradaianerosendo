@@ -31,7 +31,6 @@ export default function LaraPage() {
   const [caseContext, setCaseContext] = useState<string>("none");
   const activeCaseId = caseContext !== "none" ? caseContext : undefined;
   const { messages, isLoading, sendMessage, loadHistory } = useLaraChat(activeCaseId);
-  const selectedCase = allCases.find((c: any) => c.id === activeCaseId);
   const [historyLoaded, setHistoryLoaded] = useState<string | null>(null);
   const [pendingCommand, setPendingCommand] = useState<string | null>(null);
   const autoTriggered = useRef(false);
