@@ -74,26 +74,44 @@ function AssignmentCard({
   onAssign: (id: string, destination: string) => void;
   onReject: (id: string) => void;
 }) {
+  const options = suggestion.assignOptions || [
+    { label: "Cliente", value: "client" },
+    { label: "Parte contrária", value: "opposing" },
+    { label: "Ignorar", value: "skip" },
+  ];
+
   return (
-    <div className="p-4 bg-accent/30 rounded-lg border border-border">
-      <div className="flex items-start gap-3">
-        <ArrowRight size={16} className="text-amber-600 flex-shrink-0 mt-0.5" />
-        <div className="flex-1 min-w-0">
-          <span className="text-xs text-amber-700 font-semibold">{suggestion.fieldLabel}</span>
-          <p className="text-sm text-foreground truncate mt-0.5">{suggestion.value}</p>
-          <p className="text-xs text-muted-foreground mt-1">Fonte: {suggestion.documentName}</p>
+    <div className="p-4 bg-background rounded-xl border-2 border-border hover:border-accent transition-colors">
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <div>
+          <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+            {suggestion.fieldLabel}
+          </span>
+          <p className="text-foreground font-semibold text-base mt-0.5">{suggestion.value}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Extraído de: {suggestion.documentName}
+          </p>
         </div>
-        <div className="flex gap-1.5 flex-shrink-0">
-          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => onAssign(suggestion.id, "client")}>
-            Cliente
+        <button
+          onClick={() => onReject(suggestion.id)}
+          className="text-muted-foreground hover:text-destructive transition-colors flex-shrink-0 mt-0.5"
+        >
+          <X size={16} />
+        </button>
+      </div>
+      <p className="text-sm text-muted-foreground mb-2">Este dado pertence a:</p>
+      <div className="flex flex-wrap gap-2">
+        {options.map((opt) => (
+          <Button
+            key={opt.value}
+            variant="outline"
+            size="sm"
+            className="font-semibold hover:border-primary hover:bg-primary/5 hover:text-primary transition-all"
+            onClick={() => onAssign(suggestion.id, opt.value)}
+          >
+            {opt.label}
           </Button>
-          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => onAssign(suggestion.id, "opposing")}>
-            Parte contrária
-          </Button>
-          <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground" onClick={() => onReject(suggestion.id)}>
-            <X size={14} />
-          </Button>
-        </div>
+        ))}
       </div>
     </div>
   );
