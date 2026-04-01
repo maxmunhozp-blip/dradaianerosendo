@@ -737,6 +737,59 @@ Deno.serve(async (req: Request) => {
     // Detect if this is a case audit request
     const lastMsg = messages[messages.length - 1];
     const isCaseAudit = lastMsg?.role === "user" && lastMsg.content.trim() === "__CASE_AUDIT__";
+    const isPortalInit = lastMsg?.role === "user" && lastMsg.content.trim() === "__PORTAL_INIT__";
+
+    // Handle portal init: replace the raw marker with a greeting prompt
+    if (isPortalInit && caseId) {
+      // Fetch case + client data for a personalised greeting
+      const { data: caseRow } = await supabase
+        .from("cases")
+        .select("case_type, status, cnj_number, client_id, clients(name)")
+        .eq("id", caseId)
+        .single();
+
+      const clientName = (caseRow as any)?.clients?.name?.split(" ")[0] || "Cliente";
+      const caseType = caseRow?.case_type || "processo";
+      const caseStatus = caseRow?.status || "em andamento";
+      const cnj = caseRow?.cnj_number || null;
+
+      // Fetch pending docs & next hearing in parallel
+      const [docsResult, hearingResult, checklistResult] = await Promise.all([
+        supabase.from("documents").select("id, name, status").eq("case_id", caseId),
+        supabase.from("hearings").select("title, date, location").eq("case_id", caseId).eq("status", "agendado").gte("date", new Date().toISOString()).order("date", { ascending: true }).limit(1),
+        supabase.from("checklist_items").select("id, label, done").eq("case_id", caseId),
+      ]);
+
+      const docs = docsResult.data || [];
+      const pendingDocs = docs.filter((d: any) => d.status === "solicitado");
+      const hearing = hearingResult.data?.[0] || null;
+      const checklist = checklistResult.data || [];
+      const pendingChecklist = checklist.filter((c: any) => !c.done);
+
+      // Replace the __PORTAL_INIT__ message with a contextual greeting prompt
+      messages[messages.length - 1] = {
+        ...lastMsg,
+        content: `Gere uma saudação personalizada e calorosa para o cliente ${clientName} que acabou de acessar o portal.
+
+DADOS DO CASO:
+- Tipo: ${caseType}
+- Status: ${caseStatus}
+${cnj ? `- CNJ: ${cnj}` : "- CNJ: ainda não atribuído"}
+- Documentos cadastrados: ${docs.length} (${pendingDocs.length} pendentes de envio)
+- Checklist pendente: ${pendingChecklist.length} itens
+${hearing ? `- Próxima audiência: ${hearing.title} em ${new Date(hearing.date).toLocaleDateString("pt-BR")} às ${new Date(hearing.date).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}${hearing.location ? ` — ${hearing.location}` : ""}` : "- Sem audiências agendadas"}
+
+REGRAS DA SAUDAÇÃO:
+1. Comece com "Olá, ${clientName}!" seguido de uma frase acolhedora
+2. Resuma brevemente o status do caso de forma simples (sem termos jurídicos complexos)
+3. Se houver documentos pendentes, mencione de forma gentil
+4. Se houver audiência próxima, avise com a data
+5. Termine perguntando como pode ajudar
+6. Máximo 5 frases. Tom acolhedor e seguro.
+7. NÃO use blocos ACTIONS_START/END
+8. NÃO mencione outros clientes`,
+      };
+    }
 
     // Detect if last user message needs LexML grounding
     const legalQuery = (!isCaseAudit && lastMsg?.role === "user") ? detectLegalQuery(lastMsg.content) : null;
