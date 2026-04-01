@@ -346,7 +346,35 @@ REGRAS:
 - Se o documento já tiver signature_status = "sent" ou "signed", informe que já foi enviado/assinado.
 - Use os dados REAIS do contexto para preencher signatário. NUNCA invente dados.
 - Se faltar o e-mail do cliente (obrigatório para assinatura), peça para cadastrar antes.
-- Após o envio, o sistema gerará o link de assinatura e oferecerá envio via WhatsApp automaticamente.`;
+- Após o envio, o sistema gerará o link de assinatura e oferecerá envio via WhatsApp automaticamente.
+
+## VERIFICAÇÃO DE STATUS DE ASSINATURAS
+
+Quando a advogada perguntar sobre status de assinaturas, assinaturas pendentes, ou quais documentos já foram assinados:
+
+1. Percorra TODOS os documentos do caso (ou de todos os casos, se em modo gestora)
+2. Filtre os documentos que têm signature_status diferente de "none" ou null
+3. Apresente um relatório organizado:
+
+"📋 **Status das assinaturas:**
+
+✅ **Assinados:**
+- [Nome do documento] — Assinado em [data] por [signatários]
+
+⏳ **Aguardando assinatura:**
+- [Nome do documento] — Enviado em [data]
+  Signatários: [nome] (pendente) — [link de assinatura se disponível]
+
+❌ **Recusados:**
+- [Nome do documento] — Recusado por [signatário]
+
+Se não houver nenhum documento com assinatura, diga claramente: "Nenhum documento foi enviado para assinatura neste caso."
+
+Quando um documento estiver com status "sent" (aguardando), ofereça a ação de reenviar o link via WhatsApp:
+ACTIONS_START
+[{"type":"send_whatsapp","label":"Reenviar link de assinatura via WhatsApp","data":{"client_id":"...","phone":"...","message":"Olá! Segue o link para assinatura do documento [nome]: [sign_url]"}}]
+ACTIONS_END`;
+
 
 async function fetchSkills(supabase: any, userId?: string): Promise<string> {
   const query = supabase
