@@ -32,11 +32,24 @@ interface SaveDataAction {
   case_fields?: Record<string, any>;
 }
 
+interface LaraAction {
+  type: "send_whatsapp" | "create_task" | "open_client" | "generate_document" | "schedule_reminder";
+  label: string;
+  data: Record<string, any>;
+}
+
 function parseActionBlocks(content: string) {
   let cleanContent = content;
   let whatsappActions: WhatsAppAction[] = [];
   let wizardChoice: WizardChoice | null = null;
   let saveDataAction: SaveDataAction | null = null;
+  let laraActions: LaraAction[] = [];
+
+  // LARA structured actions (ACTIONS_START/END)
+  cleanContent = cleanContent.replace(/ACTIONS_START\s*\n?([\s\S]*?)\n?ACTIONS_END/g, (_, json) => {
+    try { const parsed = JSON.parse(json.trim()); if (Array.isArray(parsed)) laraActions = parsed; } catch {}
+    return "";
+  });
 
   // WhatsApp actions
   cleanContent = cleanContent.replace(/```whatsapp-action\s*\n([\s\S]*?)```/g, (_, json) => {
@@ -56,7 +69,7 @@ function parseActionBlocks(content: string) {
     return "";
   });
 
-  return { cleanContent: cleanContent.trim(), whatsappActions, wizardChoice, saveDataAction };
+  return { cleanContent: cleanContent.trim(), whatsappActions, wizardChoice, saveDataAction, laraActions };
 }
 
 function WhatsAppActionBlock({ actions }: { actions: WhatsAppAction[] }) {
