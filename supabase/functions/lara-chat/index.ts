@@ -557,7 +557,7 @@ async function fetchCaseContext(supabase: any, caseId: string): Promise<string> 
   const [docsResult, checklistResult, hearingsResult] = await Promise.all([
     supabase
       .from("documents")
-      .select("id, name, category, status, uploaded_by, created_at, extraction_status, extraction_confidence, extracted_data, signature_status, file_url")
+      .select("id, name, category, status, uploaded_by, created_at, extraction_status, extraction_confidence, extracted_data, signature_status, signature_requested_at, signature_completed_at, signers, file_url")
       .eq("case_id", caseId),
     supabase
       .from("checklist_items")
