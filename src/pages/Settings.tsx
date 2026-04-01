@@ -768,6 +768,21 @@ export default function Settings() {
         </div>
       </CollapsibleSection>
 
+      {/* Assinatura Digital */}
+      <CollapsibleSection
+        open={openSections.signature}
+        onOpenChange={() => toggle("signature")}
+        icon={PenLine}
+        iconBg="bg-primary/10 text-primary"
+        title="Assinatura Digital"
+        description="Configure a integração com ZapSign para assinaturas eletrônicas"
+      >
+        <SignatureSettings
+          value={val("signature_api_token")}
+          onChange={(v) => set("signature_api_token", v)}
+        />
+      </CollapsibleSection>
+
       {/* Monitoramento de Intimações */}
       <CollapsibleSection
         open={openSections.intimacoes}
