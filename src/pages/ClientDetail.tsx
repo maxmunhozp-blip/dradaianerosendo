@@ -77,6 +77,7 @@ export default function ClientDetail() {
   const [caseDialogOpen, setCaseDialogOpen] = useState(false);
   const [inviting, setInviting] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [showRequestData, setShowRequestData] = useState(false);
 
   // Section states
   const [personalOpen, setPersonalOpen] = useState(true);
