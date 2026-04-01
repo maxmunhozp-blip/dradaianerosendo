@@ -172,14 +172,33 @@ async function applySuggestionToDB(s: ReviewSuggestion, targetOverride?: string)
   await supabase.from("extraction_suggestions").update({ status: "accepted" }).eq("id", s.id);
 }
 
+const normalize = (v: string | null | undefined): string =>
+  (v || "").replace(/[.\-\/\s]/g, "").toLowerCase().trim();
+
 const ExtractionReviewPanel = ({
-  suggestions: initialSuggestions,
+  suggestions: rawSuggestions,
   clientName,
   opposingName,
   onClose,
   onComplete,
 }: ExtractionReviewPanelProps) => {
-  const [suggestions, setSuggestions] = useState(initialSuggestions);
+  // Deduplicate and filter out normalized-equal values
+  const deduped = (() => {
+    const seen = new Set<string>();
+    return rawSuggestions.filter((s) => {
+      // If normalized values match, silently accept
+      if (s.currentValue && normalize(s.value) === normalize(s.currentValue)) {
+        supabase.from("extraction_suggestions").update({ status: "accepted" }).eq("id", s.id);
+        return false;
+      }
+      const key = s.field_path + "|" + normalize(s.value);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  })();
+
+  const [suggestions, setSuggestions] = useState(deduped);
   const [applying, setApplying] = useState(false);
 
   const auto = suggestions.filter((s) => s.confidence === "high" && !s.conflict);
@@ -265,9 +284,9 @@ const ExtractionReviewPanel = ({
             </Button>
           </div>
           <p className="text-muted-foreground text-sm mt-1">
-            Encontrei <strong className="text-foreground">{initialSuggestions.length} informações</strong> em{" "}
+            Encontrei <strong className="text-foreground">{rawSuggestions.length} informações</strong> em{" "}
             <strong className="text-foreground">
-              {new Set(initialSuggestions.map((s) => s.documentId)).size} documentos
+              {new Set(rawSuggestions.map((s) => s.documentId)).size} documentos
             </strong>
           </p>
           <div className="flex gap-3 mt-4">

@@ -90,6 +90,11 @@ Retorne APENAS um JSON. Omita campos não encontrados.`;
   }
 }
 
+// Normalize values for comparison (strip punctuation from CPF, RG, etc.)
+function normalize(v: string | null | undefined): string {
+  return (v || "").replace(/[.\-\/\s]/g, "").toLowerCase().trim();
+}
+
 // Classify each suggestion
 type SuggestionConfidence = "high" | "medium" | "conflict";
 
@@ -120,11 +125,11 @@ function classifySuggestions(
     const hasValue = cur && cur.trim() !== "" && cur !== "—";
 
     let confidence: SuggestionConfidence;
-    if (hasValue && cur!.trim().toLowerCase() !== trimmed.toLowerCase()) {
-      confidence = "conflict";
-    } else if (hasValue && cur!.trim().toLowerCase() === trimmed.toLowerCase()) {
-      // Same value already exists — treat as high, already correct
+    if (hasValue && normalize(cur) === normalize(trimmed)) {
+      // Same value after normalization — already correct
       confidence = "high";
+    } else if (hasValue && normalize(cur) !== normalize(trimmed)) {
+      confidence = "conflict";
     } else if (!hasValue && ownerClear) {
       confidence = "high";
     } else {
@@ -340,7 +345,9 @@ REGRAS CRÍTICAS:
     }));
 
     if (suggestionsToInsert.length > 0) {
-      await sb.from("extraction_suggestions").insert(suggestionsToInsert);
+      for (const s of suggestionsToInsert) {
+        await sb.from("extraction_suggestions").upsert(s, { onConflict: "field_path,case_id", ignoreDuplicates: false });
+      }
     }
 
     // Auto-apply ONLY high_confidence
