@@ -447,24 +447,7 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
               .replace(/```[\s\S]*?```/g, "")
               .trim();
 
-            const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-            const pdfMargin = 25;
-            const pdfPageWidth = pdf.internal.pageSize.getWidth();
-            const pdfMaxWidth = pdfPageWidth - pdfMargin * 2;
-            pdf.setFont("helvetica", "normal");
-            pdf.setFontSize(12);
-            const pdfLines = pdf.splitTextToSize(cleanText, pdfMaxWidth);
-            let pdfY = pdfMargin;
-            const pdfLineHeight = 6;
-            for (const line of pdfLines) {
-              if (pdfY + pdfLineHeight > pdf.internal.pageSize.getHeight() - pdfMargin) {
-                pdf.addPage();
-                pdfY = pdfMargin;
-              }
-              pdf.text(line, pdfMargin, pdfY);
-              pdfY += pdfLineHeight;
-            }
-            const pdfBlob = pdf.output("blob");
+            const pdfBlob = generatePdfFromHtml(`<p>${cleanText.replace(/\n\n/g, "</p><p>").replace(/\n/g, "<br/>")}</p>`);
 
             const fileName = `${caseId}/${Date.now()}_${docName.replace(/\s+/g, "_")}.pdf`;
             const { error: uploadError } = await supabase.storage
