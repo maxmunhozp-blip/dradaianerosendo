@@ -620,17 +620,26 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent, all
             const caseId = confirmAction.data.case_id || "";
             const docName = confirmAction.data.document_name || "Documento";
 
-            // Search previous messages if current doesn't have the document
             const hasDoc = extractLegalDocumentContent(rawText).length > 100;
             if (!hasDoc && allMessages && allMessages.length > 0) {
+              let found = false;
               for (let i = allMessages.length - 1; i >= 0; i--) {
                 const msg = allMessages[i];
                 if (msg.role === "assistant") {
                   const extracted = extractLegalDocumentContent(msg.content);
                   if (extracted.length > 100) {
                     rawText = msg.content;
+                    found = true;
                     break;
                   }
+                }
+              }
+              if (!found) {
+                const confirmPattern = /acionando|gerando|compreendido|vou gerar|entendido|certo!/i;
+                const candidates = (allMessages || [])
+                  .filter(m => m.role === "assistant" && m.content.trim().length > 200 && !confirmPattern.test(m.content.substring(0, 80)));
+                if (candidates.length > 0) {
+                  rawText = candidates.reduce((a, b) => a.content.length > b.content.length ? a : b).content;
                 }
               }
             }
