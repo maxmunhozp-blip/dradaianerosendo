@@ -244,7 +244,6 @@ function UrgentIntimacoes() {
         ) : intimacoes.length === 0 ? (
           <div className="px-4 py-6 text-center">
             <AlertTriangle className="w-5 h-5 text-muted-foreground mx-auto mb-2" />
-            <p className="text-sm text-muted-foreground">Nenhuma intimação com prazo urgente</p>
           </div>
         ) : (
           intimacoes.map((item: any) => {
