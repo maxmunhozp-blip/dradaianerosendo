@@ -390,6 +390,9 @@ export default function ClientDetail() {
         />
       )}
 
+      {/* Extraction Suggestions */}
+      <ExtractionSuggestions clientId={client.id} />
+
       {/* Collapsible Sections */}
       <div className="space-y-3 mb-6">
         {/* Section 1: Dados Pessoais */}
