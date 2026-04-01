@@ -446,7 +446,25 @@ export default function ClientDetail() {
         />
       )}
 
-      {/* Extraction Suggestions */}
+      {/* Scan + Extraction Suggestions */}
+      {allDocs.length > 0 && (
+        <div className="flex items-center gap-3 mb-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleScanAll}
+            disabled={scanning || pendingDocs.length === 0}
+            className="gap-2"
+          >
+            {scanning ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <ScanSearch className="w-3.5 h-3.5" />
+            )}
+            {scanning ? scanProgress : `Escanear documentos com IA (${pendingDocs.length})`}
+          </Button>
+        </div>
+      )}
       <ExtractionSuggestions clientId={client.id} />
 
       {/* Collapsible Sections */}
