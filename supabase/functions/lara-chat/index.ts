@@ -707,13 +707,13 @@ async function fetchLexMLContext(query: string, supabaseUrl: string): Promise<st
   }
 }
 
-async function fetchPortalClientContext(clientUserId: string, supabaseClient: any) {
-  if (!clientUserId) return null;
+async function fetchPortalClientContext(clientId: string, supabaseClient: any) {
+  if (!clientId) return null;
 
   const { data: client } = await supabaseClient
     .from("clients")
     .select("id, name, phone, status")
-    .eq("user_id", clientUserId)
+    .eq("id", clientId)
     .maybeSingle();
 
   if (!client) return null;
