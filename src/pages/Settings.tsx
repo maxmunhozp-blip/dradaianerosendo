@@ -291,10 +291,12 @@ function SignatureSettings({ value, onChange }: { value: string; onChange: (v: s
     }
     setTesting(true);
     try {
-      const res = await fetch("https://api.zapsign.com.br/api/v1/users/me/", {
-        headers: { Authorization: `Bearer ${value}` },
+      const { data, error } = await supabase.functions.invoke("test-zapsign", {
+        body: { token: value },
       });
-      if (res.ok) {
+      if (error) {
+        toast.error("Erro ao conectar com ZapSign.");
+      } else if (data?.success) {
         toast.success("Conexão OK! Token válido.");
       } else {
         toast.error("Token inválido. Verifique e tente novamente.");
