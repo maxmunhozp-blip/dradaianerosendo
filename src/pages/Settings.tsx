@@ -361,6 +361,10 @@ function SignatureSettings({ value, onChange, onSave }: { value: string; onChang
       </div>
 
       <div className="flex items-center gap-2">
+        <Button variant="outline" size="sm" className="text-xs gap-1.5" onClick={saveToken} disabled={savingToken}>
+          {savingToken ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+          Salvar token
+        </Button>
         <Button variant="outline" size="sm" className="text-xs gap-1.5" onClick={testConnection} disabled={testing}>
           {testing ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
           Testar conexão
