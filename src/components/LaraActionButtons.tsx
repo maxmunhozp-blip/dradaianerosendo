@@ -811,15 +811,16 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
               setEditingText(false);
               setEditableText("");
               setEditMeta(null);
+              setSignatureFlowMeta(null);
             }}>
               Cancelar
             </Button>
-            <Button onClick={() => {
+            <Button onClick={async () => {
               if (!editMeta) return;
               const html = editorRef.current?.getHTML() || "";
               if (!html.trim()) return;
 
-              // Validate placeholders only at PDF generation time
+              // Validate placeholders
               const textContent = html.replace(/<[^>]*>/g, "");
               const placeholderPatterns = [
                 /\[PREENCHER[^\]]*\]/i,
@@ -834,15 +835,84 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
               }
 
               const pdfBlob = generatePdfFromHtml(html);
-              const previewUrl = URL.createObjectURL(pdfBlob);
-              setPdfPreviewBlob(pdfBlob);
-              setPdfPreviewUrl(previewUrl);
-              setPdfPreviewMeta(editMeta);
-              setEditingText(false);
-              setEditableText("");
-              setEditMeta(null);
+
+              if (signatureFlowMeta) {
+                // Signature flow: save PDF, then open signature dialog
+                const { docName, caseId, action, actionIndex } = editMeta;
+                const fileName = `${caseId}/${Date.now()}_${sanitizeFileName(docName)}.pdf`;
+
+                toast.info("Salvando PDF e preparando envio para assinatura...");
+
+                const { error: uploadError } = await supabase.storage
+                  .from("case-documents")
+                  .upload(fileName, pdfBlob, { contentType: "application/pdf" });
+
+                if (uploadError) {
+                  toast.error("Erro ao fazer upload: " + uploadError.message);
+                  return;
+                }
+
+                const { data: urlData } = supabase.storage
+                  .from("case-documents")
+                  .getPublicUrl(fileName);
+
+                const { data: newDoc, error: docError } = await supabase
+                  .from("documents")
+                  .insert({
+                    case_id: caseId,
+                    name: docName,
+                    file_url: urlData.publicUrl,
+                    status: "aprovado",
+                    category: "peticao",
+                    uploaded_by: "lara",
+                    signature_status: "none",
+                  })
+                  .select("id, name")
+                  .single();
+
+                if (docError || !newDoc) {
+                  toast.error("Erro ao criar documento: " + (docError?.message || "erro desconhecido"));
+                  return;
+                }
+
+                toast.success(`PDF "${docName}" salvo! Preencha os dados do signatário.`);
+
+                // Close editor and open signature confirmation dialog
+                setEditingText(false);
+                setEditableText("");
+                setEditMeta(null);
+
+                // Set up the signature action with the new document
+                const sigAction: LaraAction = {
+                  type: "send_for_signature",
+                  label: `Enviar "${newDoc.name}" para assinatura`,
+                  data: {
+                    document_id: newDoc.id,
+                    document_name: newDoc.name,
+                    client_phone: signatureFlowMeta.clientPhone,
+                    client_name: signatureFlowMeta.clientName,
+                  },
+                };
+                setSignatureFlowMeta(null);
+
+                // Pre-fill signer info from original action data
+                const signer = action.data.signers?.[0];
+                setSignerName(signer?.name || action.data.client_name || signatureFlowMeta.clientName || "");
+                setSignerEmail(signer?.email || "");
+                setSignerCpf(signer?.cpf || "");
+                setConfirmAction(sigAction);
+              } else {
+                // Normal PDF flow: open preview
+                const previewUrl = URL.createObjectURL(pdfBlob);
+                setPdfPreviewBlob(pdfBlob);
+                setPdfPreviewUrl(previewUrl);
+                setPdfPreviewMeta(editMeta);
+                setEditingText(false);
+                setEditableText("");
+                setEditMeta(null);
+              }
             }}>
-              <FileText className="w-4 h-4 mr-1" /> Gerar PDF
+              <FileText className="w-4 h-4 mr-1" /> {signatureFlowMeta ? "Gerar PDF e enviar para assinatura" : "Gerar PDF"}
             </Button>
           </DialogFooter>
         </DialogContent>
