@@ -84,6 +84,7 @@ export default function CaseDetail() {
   });
   const [showHearingModal, setShowHearingModal] = useState(false);
   const { data: hearings = [] } = useHearingsByCase(id!);
+  const [showRequestData, setShowRequestData] = useState(false);
   const [showEditCase, setShowEditCase] = useState(false);
   const [editCaseType, setEditCaseType] = useState("");
   const [editDescription, setEditDescription] = useState("");
