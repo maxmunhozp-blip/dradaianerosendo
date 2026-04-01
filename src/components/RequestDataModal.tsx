@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Send, Copy, Check, Loader2 } from "lucide-react";
+import { whatsappLink } from "@/lib/utils";
 
 interface FieldOption {
   key: string;
@@ -90,7 +91,7 @@ export function RequestDataModal({ open, onOpenChange, caseId, clientId, clientD
 
   const handleWhatsApp = () => {
     if (!phone) { toast.error("Cliente sem telefone cadastrado"); return; }
-    const url = `https://wa.me/55${phone}?text=${encodeURIComponent(whatsappMessage)}`;
+    const url = whatsappLink(phone, whatsappMessage);
     window.open(url, "_blank");
   };
 

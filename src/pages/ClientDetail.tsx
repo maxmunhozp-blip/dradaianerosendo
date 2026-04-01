@@ -31,6 +31,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { whatsappLink } from "@/lib/utils";
 
 interface Child {
   name: string;
@@ -294,7 +295,7 @@ export default function ClientDetail() {
       const portalUrl = `${window.location.origin}/portal?token=${token}`;
       const firstName = client.name.split(" ")[0];
       const message = `Olá ${firstName}! Acesse sua área do cliente pelo link abaixo para acompanhar seu processo:\n\n${portalUrl}`;
-      const waUrl = `https://wa.me/55${phone}?text=${encodeURIComponent(message)}`;
+      const waUrl = whatsappLink(phone, message);
       window.open(waUrl, "_blank");
       toast.success("Link do portal gerado!");
     } catch (err: any) {

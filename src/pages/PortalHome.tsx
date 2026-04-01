@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AlertCircle, FileText, MessageSquare, Clock, Download, ChevronDown, ChevronUp } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
+import { whatsappLink } from "@/lib/utils";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -204,7 +205,7 @@ export default function PortalHome() {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
         {[
           { icon: FileText, label: "Enviar documento", action: () => navigate("/portal/docs") },
-          { icon: MessageSquare, label: "Falar com escritório", action: () => window.open(`https://wa.me/${whatsappSetting || "5500000000000"}`, "_blank") },
+          { icon: MessageSquare, label: "Falar com escritório", action: () => window.open(whatsappLink(whatsappSetting || "5500000000000"), "_blank") },
           { icon: Clock, label: "Ver meu processo", action: () => document.getElementById("portal-timeline")?.scrollIntoView({ behavior: "smooth" }) },
           { icon: Download, label: "Minha procuração", action: () => {
             if (procuracaoDoc?.file_url) window.open(procuracaoDoc.file_url, "_blank");
