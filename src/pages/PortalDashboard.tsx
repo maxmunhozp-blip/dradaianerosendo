@@ -404,7 +404,7 @@ export default function PortalDashboard() {
                 Carregar mais ({timeline.length - timelineVisible} restantes)
               </Button>
             </div>
-          )}
+        </div>
       )}
     </div>
   );
