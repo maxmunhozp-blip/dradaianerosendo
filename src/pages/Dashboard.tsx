@@ -31,26 +31,6 @@ function SyncEmailsButton() {
 export default function Dashboard() {
   const { ownerFilter } = useOwnerFilter();
   const { data: clients = [], isLoading: clientsLoading } = useClients();
-  const { data: cases = [], isLoading: casesLoading } = useQuery({
-    queryKey: ["cases-all", ownerFilter],
-    queryFn: async () => {
-      let q = supabase.from("cases").select("*, clients(name)").order("created_at", { ascending: false });
-      if (ownerFilter) q = q.eq("owner_id", ownerFilter);
-      const { data, error } = await q;
-      if (error) throw error;
-      return data;
-    },
-  });
-  const { data: docs = [], isLoading: docsLoading } = useQuery({
-    queryKey: ["documents-all-dashboard", ownerFilter],
-    queryFn: async () => {
-      let q = supabase.from("documents").select("*").eq("status", "solicitado");
-      if (ownerFilter) q = q.eq("owner_id", ownerFilter);
-      const { data, error } = await q;
-      if (error) throw error;
-      return data;
-    },
-  });
 
   const isLoading = clientsLoading;
 
