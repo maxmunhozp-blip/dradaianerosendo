@@ -55,6 +55,11 @@ export function LaraActionButtons({ actions, onScanComplete }: { actions: LaraAc
   const [executing, setExecuting] = useState(false);
   const [executed, setExecuted] = useState<Set<number>>(new Set());
 
+  // Signature form state
+  const [signerName, setSignerName] = useState("");
+  const [signerEmail, setSignerEmail] = useState("");
+  const [signerCpf, setSignerCpf] = useState("");
+
   // Scan state
   const [scanning, setScanning] = useState(false);
   const [scanResults, setScanResults] = useState<ScanResult[]>([]);
