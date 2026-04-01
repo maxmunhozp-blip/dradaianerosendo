@@ -131,17 +131,19 @@ export default function ClientDetail() {
       const doc = docsToScan[i];
       setScanProgress(`Escaneando documento ${i + 1} de ${docsToScan.length}...`);
       try {
-        const { data, error } = await supabase.functions.invoke("process-document", {
-          body: {
-            document_id: doc.id,
-            case_id: doc.case_id,
-            client_id: id,
-            file_url: doc.file_url,
-            file_name: doc.name,
-          },
-        });
-        if (error || !data?.success) {
-          // Mark as failed
+        const result = await Promise.race([
+          supabase.functions.invoke("process-document", {
+            body: {
+              document_id: doc.id,
+              case_id: doc.case_id,
+              client_id: id,
+              file_url: doc.file_url,
+              file_name: doc.name,
+            },
+          }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 45000)),
+        ]) as any;
+        if (result?.error || !result?.data?.success) {
           await supabase.from("documents").update({ extraction_status: "failed" }).eq("id", doc.id);
         } else {
           success++;
