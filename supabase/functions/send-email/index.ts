@@ -120,11 +120,29 @@ Deno.serve(async (req: Request) => {
       throw new Error("MAIL FROM failed: " + resp);
     }
 
-    // RCPT TO
+    // RCPT TO (main recipient)
     resp = await smtpWrite(conn, `RCPT TO:<${to}>`);
     if (!resp.includes("250")) {
       conn.close();
       throw new Error("RCPT TO failed: " + resp);
+    }
+
+    // RCPT TO for CC
+    if (cc) {
+      resp = await smtpWrite(conn, `RCPT TO:<${cc}>`);
+      if (!resp.includes("250")) {
+        conn.close();
+        throw new Error("RCPT TO (CC) failed: " + resp);
+      }
+    }
+
+    // RCPT TO for BCC
+    if (bcc) {
+      resp = await smtpWrite(conn, `RCPT TO:<${bcc}>`);
+      if (!resp.includes("250")) {
+        conn.close();
+        throw new Error("RCPT TO (BCC) failed: " + resp);
+      }
     }
 
     // DATA
