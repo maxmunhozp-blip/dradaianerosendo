@@ -76,6 +76,7 @@ export default function ClientDetail() {
   const [notes, setNotes] = useState<string | null>(null);
   const [caseDialogOpen, setCaseDialogOpen] = useState(false);
   const [inviting, setInviting] = useState(false);
+  const [sendingPortal, setSendingPortal] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [showRequestData, setShowRequestData] = useState(false);
 
