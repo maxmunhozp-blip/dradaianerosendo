@@ -566,22 +566,26 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
         case "send_for_signature": {
           let { document_id, client_phone } = confirmAction.data;
           const signers = [{ name: signerName.trim(), email: signerEmail.trim(), cpf: signerCpf.trim() || undefined }];
+
+          // If no document_id or document doesn't have a file yet, open editor
+          let needsEditor = false;
           if (!document_id) {
-            toast.error("Documento não identificado");
-            break;
+            needsEditor = true;
+          } else {
+            const { data: existingDoc } = await supabase
+              .from("documents")
+              .select("id, file_url")
+              .eq("id", document_id)
+              .single();
+            if (!existingDoc || !existingDoc.file_url) {
+              needsEditor = true;
+            }
           }
 
-          // Check if document exists in DB with a file_url
-          const { data: existingDoc } = await supabase
-            .from("documents")
-            .select("id, file_url")
-            .eq("id", document_id)
-            .single();
-
-          if (!existingDoc || !existingDoc.file_url) {
+          if (needsEditor) {
             // Document doesn't exist or has no file — open editor first
             const rawText = messageContent || "";
-            const caseId = confirmAction.data.case_id || document_id;
+            const caseId = confirmAction.data.case_id || caseIdProp || "";
             const docName = confirmAction.data.document_name || "Documento";
 
             if (!rawText.trim()) {
