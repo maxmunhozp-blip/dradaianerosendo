@@ -579,7 +579,7 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
             .single();
 
           if (!existingDoc || !existingDoc.file_url) {
-            // Document doesn't exist or has no file — need to generate PDF first
+            // Document doesn't exist or has no file — open editor first
             const rawText = messageContent || "";
             const caseId = confirmAction.data.case_id || document_id;
             const docName = confirmAction.data.document_name || "Documento";
@@ -589,51 +589,22 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
               break;
             }
 
-            toast.info("Gerando PDF e salvando antes de enviar para assinatura...");
-
             const cleanText = extractLegalDocumentContent(rawText)
               .replace(/#{1,6}\s/g, "")
               .replace(/\*\*(.*?)\*\*/g, "$1")
               .replace(/\*(.*?)\*/g, "$1")
               .trim();
 
-            const pdfBlob = generatePdfFromHtml(`<p>${cleanText.replace(/\n\n/g, "</p><p>").replace(/\n/g, "<br/>")}</p>`);
-
-            const fileName = `${caseId}/${Date.now()}_${sanitizeFileName(docName)}.pdf`;
-            const { error: uploadError } = await supabase.storage
-              .from("case-documents")
-              .upload(fileName, pdfBlob, { contentType: "application/pdf" });
-
-            if (uploadError) {
-              toast.error("Erro ao fazer upload do PDF: " + uploadError.message);
-              break;
-            }
-
-            const { data: urlData } = supabase.storage
-              .from("case-documents")
-              .getPublicUrl(fileName);
-
-            const { data: newDoc, error: docError } = await supabase
-              .from("documents")
-              .insert({
-                case_id: caseId,
-                name: docName,
-                file_url: urlData.publicUrl,
-                status: "aprovado",
-                category: "peticao",
-                uploaded_by: "lara",
-                signature_status: "none",
-              })
-              .select("id")
-              .single();
-
-            if (docError || !newDoc) {
-              toast.error("Erro ao criar documento: " + (docError?.message || "erro desconhecido"));
-              break;
-            }
-
-            document_id = newDoc.id;
-            toast.success("PDF salvo! Enviando para assinatura...");
+            const idx = allActions.indexOf(confirmAction);
+            setEditableText(cleanText);
+            setEditMeta({ docName, caseId, action: confirmAction, actionIndex: idx });
+            setSignatureFlowMeta({
+              clientPhone: client_phone,
+              clientName: confirmAction.data.client_name,
+            });
+            setEditingText(true);
+            setConfirmAction(null);
+            break;
           }
 
           const { data: sigResult, error: sigError } = await supabase.functions.invoke("send-for-signature", {
