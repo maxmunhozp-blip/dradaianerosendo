@@ -171,7 +171,7 @@ export default function UsersManagement() {
     }
   };
 
-  const handleSetRole = (userId: string, email: string, role: "admin" | "client") => {
+  const handleSetRole = (userId: string, email: string, role: "admin" | "advogado" | "client") => {
     setConfirmAction({ userId, email, action: "set", role });
   };
 
