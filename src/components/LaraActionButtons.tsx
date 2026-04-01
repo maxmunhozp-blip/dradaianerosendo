@@ -793,8 +793,8 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
             </Button>
             <Button variant="outline" size="sm" onClick={() => {
               if (!pdfPreviewBlob || !pdfPreviewMeta) return;
-              const phone = pdfPreviewMeta.action?.data?.client_phone || "";
-              const clientNameShort = (pdfPreviewMeta.action?.data?.client_name || "").split(" ")[0];
+              const phone = clientInfo?.phone || pdfPreviewMeta.action?.data?.client_phone || "";
+              const clientNameShort = (clientInfo?.name || pdfPreviewMeta.action?.data?.client_name || "").split(" ")[0];
               const docName = pdfPreviewMeta.docName || "documento";
               if (!phone) {
                 toast.error("Telefone do cliente não encontrado");
