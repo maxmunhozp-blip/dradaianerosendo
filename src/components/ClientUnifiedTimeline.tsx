@@ -28,6 +28,18 @@ const TYPE_ICONS: Record<string, React.ElementType> = {
   timeline: Bell,
 };
 
+const TYPE_LABELS: Record<string, string> = {
+  documento: "Documentos",
+  assinatura: "Assinaturas",
+  audiencia: "Audiências",
+  intimacao: "Intimações",
+  manual: "Manual",
+  peticao: "Petições",
+  checklist: "Checklist",
+  timeline: "Timeline",
+  mensagem: "Mensagens",
+};
+
 const STATUS_COLORS: Record<string, string> = {
   concluído: "text-green-600",
   assinado: "text-green-600",
