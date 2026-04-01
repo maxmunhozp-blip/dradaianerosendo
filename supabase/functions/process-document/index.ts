@@ -90,6 +90,11 @@ Retorne APENAS um JSON. Omita campos não encontrados.`;
   }
 }
 
+// Normalize values for comparison (strip punctuation from CPF, RG, etc.)
+function normalize(v: string | null | undefined): string {
+  return (v || "").replace(/[.\-\/\s]/g, "").toLowerCase().trim();
+}
+
 // Classify each suggestion
 type SuggestionConfidence = "high" | "medium" | "conflict";
 
