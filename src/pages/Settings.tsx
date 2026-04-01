@@ -280,9 +280,26 @@ function SyncLogSection({ open, onOpenChange }: { open: boolean; onOpenChange: (
     </CollapsibleSection>
   );
 }
-function SignatureSettings({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+function SignatureSettings({ value, onChange, onSave }: { value: string; onChange: (v: string) => void; onSave: () => Promise<void> }) {
   const [showToken, setShowToken] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [savingToken, setSavingToken] = useState(false);
+
+  const saveToken = async () => {
+    if (!value.trim()) {
+      toast.error("Insira o token antes de salvar.");
+      return;
+    }
+    setSavingToken(true);
+    try {
+      await onSave();
+      toast.success("Token ZapSign salvo com sucesso!");
+    } catch (err: any) {
+      toast.error(err?.message || "Erro ao salvar token ZapSign.");
+    } finally {
+      setSavingToken(false);
+    }
+  };
 
   const testConnection = async () => {
     if (!value) {
@@ -297,7 +314,8 @@ function SignatureSettings({ value, onChange }: { value: string; onChange: (v: s
       if (error) {
         toast.error(error.message || "Erro ao conectar com ZapSign.");
       } else if (data?.success) {
-        toast.success("Conexão OK! Token válido.");
+        await onSave();
+        toast.success("Conexão OK! Token válido e salvo.");
       } else {
         toast.error(data?.error || "Token inválido. Verifique e tente novamente.");
       }
@@ -343,6 +361,10 @@ function SignatureSettings({ value, onChange }: { value: string; onChange: (v: s
       </div>
 
       <div className="flex items-center gap-2">
+        <Button variant="outline" size="sm" className="text-xs gap-1.5" onClick={saveToken} disabled={savingToken}>
+          {savingToken ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+          Salvar token
+        </Button>
         <Button variant="outline" size="sm" className="text-xs gap-1.5" onClick={testConnection} disabled={testing}>
           {testing ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
           Testar conexão
@@ -494,6 +516,18 @@ export default function Settings() {
       setValues(map);
     }
     setLoading(false);
+  };
+
+  const saveSetting = async (key: string) => {
+    const value = val(key).trim();
+    if (!value) throw new Error("Valor vazio");
+
+    const { error } = await (supabase.from("settings" as any) as any).upsert(
+      { key, value, updated_at: new Date().toISOString() },
+      { onConflict: "key" }
+    );
+
+    if (error) throw error;
   };
 
   const saveAll = async () => {
@@ -874,6 +908,7 @@ export default function Settings() {
         <SignatureSettings
           value={val("signature_api_token")}
           onChange={(v) => set("signature_api_token", v)}
+          onSave={() => saveSetting("signature_api_token")}
         />
       </CollapsibleSection>
 
