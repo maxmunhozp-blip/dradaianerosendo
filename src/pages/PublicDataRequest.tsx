@@ -577,7 +577,21 @@ export default function PublicDataRequest() {
                     key={String(opt.val)}
                     onClick={() => {
                       setHasChildren(opt.val);
-                      setTimeout(() => goNext(), 800);
+                      setTimeout(() => {
+                        // Navigate directly based on selection, don't rely on goNext skip logic
+                        if (opt.val === true) {
+                          // Go to children_data step
+                          const childrenDataIdx = steps.indexOf("children_data");
+                          if (childrenDataIdx >= 0) {
+                            setCurrentStep(childrenDataIdx + 1);
+                          } else {
+                            goNext();
+                          }
+                        } else {
+                          // Skip children_data, go to next non-children step
+                          goNext();
+                        }
+                      }, 800);
                     }}
                     style={{
                       minHeight: 80, border: `2px solid ${hasChildren === opt.val ? "#1E3A5F" : "#E5E7EB"}`,

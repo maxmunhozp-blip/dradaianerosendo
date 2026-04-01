@@ -29,7 +29,7 @@ Deno.serve(async (req) => {
       .from("data_requests")
       .select("*")
       .eq("token", token)
-      .eq("status", "pending")
+      .in("status", ["pending", "partial"])
       .gt("expires_at", new Date().toISOString())
       .single();
 
