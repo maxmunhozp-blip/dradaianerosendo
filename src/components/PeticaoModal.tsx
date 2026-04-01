@@ -26,6 +26,156 @@ import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import jsPDF from "jspdf";
 
+// ─── PDF formatting helpers ───
+
+interface PdfSection {
+  type: "main-heading" | "section-heading" | "sub-heading" | "body" | "item" | "signature" | "spacer";
+  text: string;
+}
+
+function parsePeticaoSections(raw: string): PdfSection[] {
+  const lines = raw.split("\n");
+  const sections: PdfSection[] = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) { sections.push({ type: "spacer", text: "" }); continue; }
+
+    const clean = line.replace(/\*\*/g, "").replace(/^#+\s*/, "");
+
+    if (/^EXCELENT[ÍI]SSIM/.test(clean) || /^PROCURAÇÃO/.test(clean)) {
+      sections.push({ type: "main-heading", text: clean }); continue;
+    }
+    if (/^(I{1,3}|IV|V|VI{0,3}|IX|X)\s*[—–-]\s/.test(clean) || /^(AÇÃO DE|AÇÃO DECLARATÓRIA)/.test(clean)) {
+      sections.push({ type: "section-heading", text: clean }); continue;
+    }
+    if (/^[A-ZÁÉÍÓÚÂÊÔÃÕÇ\s]{4,}:?\s*$/.test(clean) && clean.length < 80) {
+      sections.push({ type: "sub-heading", text: clean }); continue;
+    }
+    if (/^[a-z]\)/.test(clean) || /^\d+\)/.test(clean) || /^[•\-–]\s/.test(clean)) {
+      sections.push({ type: "item", text: clean }); continue;
+    }
+    if (/^_{3,}/.test(clean) || /^Nestes termos/.test(clean) || /^Dra?\.\s/.test(clean) || /^OAB\//.test(clean)) {
+      sections.push({ type: "signature", text: clean }); continue;
+    }
+    sections.push({ type: "body", text: clean });
+  }
+  return sections;
+}
+
+function generateFormattedPdf(
+  text: string,
+  officeSettings: Record<string, string> | undefined,
+  caseData: any,
+  clientData: any,
+  docType: string = "Petição Inicial"
+): { blob: Blob; fileName: string } {
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const ml = 30, mr = 25, mt = 32, mb = 28;
+  const pw = doc.internal.pageSize.getWidth();
+  const ph = doc.internal.pageSize.getHeight();
+  const cw = pw - ml - mr;
+
+  const oName = officeSettings?.office_name || "Escritório de Advocacia";
+  const oOab = officeSettings?.office_oab || "";
+  const oAddr = officeSettings?.office_address || "";
+  const oPhone = officeSettings?.office_phone || "";
+  const oEmail = officeSettings?.office_email || "";
+
+  let curPage = 1, totalPages = 0;
+
+  const drawHeader = () => {
+    doc.setDrawColor(180, 130, 30); doc.setLineWidth(0.6);
+    doc.line(ml, 14, pw - mr, 14);
+    doc.setFont("times", "bold"); doc.setFontSize(13); doc.setTextColor(20, 20, 40);
+    doc.text(oName.toUpperCase(), ml, 21);
+    doc.setFont("times", "normal"); doc.setFontSize(8); doc.setTextColor(100, 100, 120);
+    const info = [oOab, oPhone, oEmail].filter(Boolean).join("  |  ");
+    if (info) doc.text(info, ml, 25.5);
+    if (oAddr) doc.text(oAddr, ml, 29);
+    doc.setDrawColor(180, 180, 195); doc.setLineWidth(0.2);
+    doc.line(ml, mt, pw - mr, mt);
+  };
+
+  const drawFooter = (pn: number, tp: number) => {
+    doc.setDrawColor(180, 180, 195); doc.setLineWidth(0.2);
+    doc.line(ml, ph - 18, pw - mr, ph - 18);
+    doc.setFont("times", "normal"); doc.setFontSize(7.5); doc.setTextColor(130, 130, 150);
+    doc.text(oName, ml, ph - 13);
+    doc.text(`Página ${pn} de ${tp}`, pw - mr, ph - 13, { align: "right" });
+  };
+
+  const sections = parsePeticaoSections(text);
+
+  const getMetrics = (type: string) => {
+    switch (type) {
+      case "main-heading": return { fs: 13, lh: 6, eb: 8, ea: 6 };
+      case "section-heading": return { fs: 12, lh: 5.5, eb: 8, ea: 4 };
+      case "sub-heading": return { fs: 11, lh: 5, eb: 6, ea: 3 };
+      case "item": return { fs: 11, lh: 5, eb: 1.5, ea: 0 };
+      case "signature": return { fs: 11, lh: 5, eb: 3, ea: 0 };
+      default: return { fs: 11, lh: 5, eb: 0, ea: 0 };
+    }
+  };
+
+  // Pass 1: count pages
+  let y = mt + 6; totalPages = 1;
+  for (const s of sections) {
+    if (s.type === "spacer") { y += 4; continue; }
+    const m = getMetrics(s.type);
+    doc.setFontSize(m.fs);
+    const w = doc.splitTextToSize(s.text, s.type === "item" ? cw - 10 : cw);
+    const bh = m.eb + w.length * m.lh + m.ea;
+    if (y + bh > ph - mb) { totalPages++; y = mt + 6; }
+    y += bh;
+  }
+
+  // Pass 2: render
+  drawHeader(); y = mt + 6; curPage = 1;
+  const np = () => { drawFooter(curPage, totalPages); doc.addPage(); curPage++; drawHeader(); y = mt + 6; };
+
+  for (const s of sections) {
+    if (s.type === "spacer") { y += 4; continue; }
+    const m = getMetrics(s.type);
+    const bold = ["main-heading", "section-heading", "sub-heading"].includes(s.type);
+    const center = s.type === "main-heading" || s.type === "signature";
+    const xOff = s.type === "item" ? 10 : 0;
+    const tc: [number, number, number] = bold ? [15, 15, 35] : [40, 40, 60];
+
+    doc.setFont("times", bold ? "bold" : "normal");
+    doc.setFontSize(m.fs);
+    const wrapped = doc.splitTextToSize(s.text, cw - xOff);
+    const bh = m.eb + wrapped.length * m.lh + m.ea;
+    if (y + bh > ph - mb) np();
+
+    y += m.eb;
+    doc.setTextColor(...tc);
+    for (const wl of wrapped) {
+      if (y > ph - mb) np();
+      if (center) doc.text(wl, pw / 2, y, { align: "center" });
+      else doc.text(wl, ml + xOff, y);
+      y += m.lh;
+    }
+    y += m.ea;
+  }
+  drawFooter(curPage, totalPages);
+
+  const cn = (clientData.name || "cliente").split(" ").slice(0, 2).join("-").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const dt = docType.toLowerCase().replace(/\s+/g, "-").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const ds = new Date().toISOString().slice(0, 10);
+  const fileName = `${dt}_${cn}_${ds}.pdf`;
+  return { blob: doc.output("blob"), fileName };
+}
+
+const REVIEW_CHECKLIST = [
+  { id: "qualificacao", label: "Qualificação das partes completa (nome, CPF, RG, endereço)" },
+  { id: "fundamentacao", label: "Fundamentação jurídica com leis corretas e verificadas" },
+  { id: "pedidos", label: "Pedidos claros e objetivos" },
+  { id: "valor", label: "Valor da causa informado" },
+  { id: "ortografia", label: "Revisão ortográfica e gramatical" },
+  { id: "dados", label: "Dados sensíveis corretos (números, datas, valores)" },
+];
+
 interface PeticaoModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -52,12 +202,14 @@ export function PeticaoModal({
   documents,
   checklist,
 }: PeticaoModalProps) {
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [selectedDocs, setSelectedDocs] = useState<Set<string>>(new Set());
   const [additionalContext, setAdditionalContext] = useState("");
   const [generatedText, setGeneratedText] = useState("");
   const [genStep, setGenStep] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [reviewChecks, setReviewChecks] = useState<Set<string>>(new Set());
+  const [docType, setDocType] = useState("Petição Inicial");
   const editorRef = useRef<HTMLDivElement>(null);
   const createDoc = useCreateDocument();
   const uploadDoc = useUploadDocument();
@@ -86,6 +238,8 @@ export function PeticaoModal({
       setGeneratedText("");
       setAdditionalContext("");
       setGenStep(0);
+      setReviewChecks(new Set());
+      setDocType("Petição Inicial");
     }
   }, [open, documents]);
 
@@ -200,6 +354,15 @@ export function PeticaoModal({
       }
 
       setStep(3);
+
+      // Detect document type from generated text
+      const firstLine = fullText.split("\n").find((l: string) => l.trim().length > 5)?.trim() || "";
+      if (/PROCURAÇÃO/i.test(firstLine)) setDocType("Procuração");
+      else if (/CONTESTAÇÃO/i.test(firstLine)) setDocType("Contestação");
+      else if (/RECURSO/i.test(firstLine)) setDocType("Recurso");
+      else if (/ACORDO/i.test(firstLine)) setDocType("Acordo");
+      else setDocType("Petição Inicial");
+
     } catch (err: any) {
       clearInterval(stepInterval);
       toast.error("Erro ao gerar petição: " + err.message);
@@ -209,115 +372,45 @@ export function PeticaoModal({
 
   const handleDownloadPdf = () => {
     const text = editorRef.current?.innerText || generatedText;
-    const doc = new jsPDF();
-    const margin = 25;
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-    const contentWidth = pageWidth - margin * 2;
-
-    const officeName = officeSettings?.office_name || "Escritório de Advocacia";
-    const officeOab = officeSettings?.office_oab || "";
-    const officeAddress = officeSettings?.office_address || "";
-    const officePhone = officeSettings?.office_phone || "";
-    const officeEmail = officeSettings?.office_email || "";
-
-    const drawHeader = (pageNum: number) => {
-      // Top line accent
-      doc.setDrawColor(245, 158, 11); // amber-500
-      doc.setLineWidth(0.8);
-      doc.line(margin, 12, pageWidth - margin, 12);
-
-      // Office name
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(14);
-      doc.setTextColor(15, 23, 42); // navy
-      doc.text(officeName, margin, 22);
-
-      // OAB + contact info line
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(8);
-      doc.setTextColor(100, 116, 139); // slate-500
-      const infoLine = [officeOab, officePhone, officeEmail].filter(Boolean).join("  •  ");
-      if (infoLine) doc.text(infoLine, margin, 28);
-      if (officeAddress) doc.text(officeAddress, margin, 33);
-
-      // Separator line
-      doc.setDrawColor(226, 232, 240); // slate-200
-      doc.setLineWidth(0.3);
-      const sepY = officeAddress ? 37 : 32;
-      doc.line(margin, sepY, pageWidth - margin, sepY);
-
-      return sepY + 8; // return start Y for content
-    };
-
-    const drawFooter = (pageNum: number, totalPages: number) => {
-      doc.setDrawColor(226, 232, 240);
-      doc.setLineWidth(0.3);
-      doc.line(margin, pageHeight - 18, pageWidth - margin, pageHeight - 18);
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(7);
-      doc.setTextColor(148, 163, 184);
-      doc.text(`${officeName}`, margin, pageHeight - 12);
-      doc.text(`Página ${pageNum} de ${totalPages}`, pageWidth - margin, pageHeight - 12, { align: "right" });
-    };
-
-    // Split text into lines
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(11);
-    const lines = doc.splitTextToSize(text, contentWidth);
-    const lineHeight = 5.5;
-
-    // Calculate total pages first
-    let tempY = drawHeader(1);
-    let totalPages = 1;
-    for (const line of lines) {
-      if (tempY + lineHeight > pageHeight - 25) {
-        totalPages++;
-        tempY = 45; // subsequent page header space
-      }
-      tempY += lineHeight;
-    }
-
-    // Now render
-    let y = drawHeader(1);
-    let currentPage = 1;
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(11);
-    doc.setTextColor(30, 41, 59); // slate-800
-
-    for (const line of lines) {
-      if (y + lineHeight > pageHeight - 25) {
-        drawFooter(currentPage, totalPages);
-        doc.addPage();
-        currentPage++;
-        y = drawHeader(currentPage);
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(11);
-        doc.setTextColor(30, 41, 59);
-      }
-      doc.text(line, margin, y);
-      y += lineHeight;
-    }
-
-    drawFooter(currentPage, totalPages);
-
-    const clientFirstName = clientData.name?.split(" ")[0] || "cliente";
-    doc.save(`peticao-inicial-${clientFirstName}.pdf`);
-    toast.success("PDF baixado com sucesso");
+    const { blob, fileName } = generateFormattedPdf(text, officeSettings, caseData, clientData, docType);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`PDF "${fileName}" baixado com sucesso`);
   };
+
+  const handleOpenPdfNewTab = () => {
+    const text = editorRef.current?.innerText || generatedText;
+    const { blob } = generateFormattedPdf(text, officeSettings, caseData, clientData, docType);
+    const url = URL.createObjectURL(blob);
+    window.open(url, "_blank");
+  };
+
+  const toggleReviewCheck = (id: string) => {
+    setReviewChecks((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const allReviewsDone = reviewChecks.size === REVIEW_CHECKLIST.length;
 
   const handleSaveToCase = async () => {
     setSaving(true);
     try {
       const text = editorRef.current?.innerText || generatedText;
-      const blob = new Blob([text], { type: "text/plain" });
-      const file = new File([blob], `peticao-inicial-${Date.now()}.txt`, { type: "text/plain" });
+      const { blob, fileName } = generateFormattedPdf(text, officeSettings, caseData, clientData, docType);
+      const file = new File([blob], fileName, { type: "application/pdf" });
 
       const fileUrl = await uploadDoc.mutateAsync({ file, caseId });
       await createDoc.mutateAsync({
         case_id: caseId,
-        name: "Petição Inicial",
+        name: `${docType} — ${clientData.name}`,
         file_url: fileUrl,
         category: "processo",
         status: "usado",
@@ -350,7 +443,7 @@ export function PeticaoModal({
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {[1, 2, 3].map((s) => (
+            {[1, 2, 3, 4].map((s) => (
               <div
                 key={s}
                 className={`w-2 h-2 rounded-full ${
@@ -499,6 +592,10 @@ export function PeticaoModal({
           {/* STEP 3 — Result */}
           {step === 3 && (
             <div className="p-6">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-medium text-foreground">Texto gerado — edite antes de finalizar</h3>
+                <Badge variant="secondary" className="text-xs">{docType}</Badge>
+              </div>
               <div
                 ref={editorRef}
                 contentEditable
@@ -506,6 +603,43 @@ export function PeticaoModal({
                 className="min-h-[400px] max-h-[60vh] overflow-y-auto border border-border rounded-md p-6 text-sm text-foreground whitespace-pre-wrap leading-relaxed focus:outline-none focus:ring-2 focus:ring-ring"
                 dangerouslySetInnerHTML={{ __html: generatedText.replace(/\n/g, "<br>") }}
               />
+            </div>
+          )}
+
+          {/* STEP 4 — Review */}
+          {step === 4 && (
+            <div className="p-6 space-y-6">
+              <div>
+                <h3 className="text-sm font-semibold text-foreground mb-1">Revisão antes de gerar o PDF final</h3>
+                <p className="text-xs text-muted-foreground mb-4">
+                  Marque cada item conforme for verificando. O download só será liberado quando todos os itens estiverem revisados.
+                </p>
+                <div className="border border-border rounded-lg divide-y divide-border">
+                  {REVIEW_CHECKLIST.map((item) => (
+                    <label key={item.id} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/30 cursor-pointer">
+                      <Checkbox checked={reviewChecks.has(item.id)} onCheckedChange={() => toggleReviewCheck(item.id)} />
+                      <span className={`text-sm ${reviewChecks.has(item.id) ? "text-muted-foreground line-through" : "text-foreground"}`}>
+                        {item.label}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+              {allReviewsDone && (
+                <div className="bg-accent/10 border border-accent/30 rounded-lg p-4 flex items-start gap-3">
+                  <CheckCircle2 className="w-5 h-5 text-accent shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Revisão concluída!</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">O documento está pronto para download ou para ser salvo no caso.</p>
+                  </div>
+                </div>
+              )}
+              <div className="flex justify-center">
+                <Button variant="outline" size="sm" onClick={handleOpenPdfNewTab}>
+                  <FileText className="w-4 h-4 mr-1.5" />
+                  Pré-visualizar PDF
+                </Button>
+              </div>
             </div>
           )}
         </div>
@@ -539,16 +673,27 @@ export function PeticaoModal({
                 Regenerar
               </Button>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={handleDownloadPdf}>
+                <Button size="sm" onClick={() => { setReviewChecks(new Set()); setStep(4); }}>
+                  Revisar e Finalizar
+                  <ArrowRight className="w-4 h-4 ml-1.5" />
+                </Button>
+              </div>
+            </>
+          )}
+
+          {step === 4 && (
+            <>
+              <Button variant="ghost" size="sm" onClick={() => setStep(3)}>
+                <ArrowLeft className="w-4 h-4 mr-1.5" />
+                Voltar ao editor
+              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={handleDownloadPdf} disabled={!allReviewsDone}>
                   <Download className="w-4 h-4 mr-1.5" />
                   Baixar PDF
                 </Button>
-                <Button size="sm" onClick={handleSaveToCase} disabled={saving}>
-                  {saving ? (
-                    <Loader2 className="w-4 h-4 animate-spin mr-1.5" />
-                  ) : (
-                    <Save className="w-4 h-4 mr-1.5" />
-                  )}
+                <Button size="sm" onClick={handleSaveToCase} disabled={saving || !allReviewsDone}>
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : <Save className="w-4 h-4 mr-1.5" />}
                   {saving ? "Salvando..." : "Salvar no caso"}
                 </Button>
               </div>
