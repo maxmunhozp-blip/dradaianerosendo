@@ -841,7 +841,7 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
               setSavingPdf(true);
               try {
                 const { docName, caseId, action, actionIndex } = pdfPreviewMeta;
-                const fileName = `${caseId}/${Date.now()}_${docName.replace(/\s+/g, "_")}.pdf`;
+                const fileName = `${caseId}/${Date.now()}_${sanitizeFileName(docName)}.pdf`;
 
                 const { error: uploadError } = await supabase.storage
                   .from("case-documents")
