@@ -8,6 +8,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { PortalProtectedRoute } from "@/components/PortalProtectedRoute";
 import AdminLayout from "@/components/AdminLayout";
 import PortalLayout from "@/components/PortalLayout";
+import ClientPortalLayout from "@/components/ClientPortalLayout";
 import Dashboard from "@/pages/Dashboard";
 import Clients from "@/pages/Clients";
 import ClientDetail from "@/pages/ClientDetail";
@@ -15,8 +16,10 @@ import CaseDetail from "@/pages/CaseDetail";
 import LaraPage from "@/pages/LaraPage";
 import Documents from "@/pages/Documents";
 import Agenda from "@/pages/Agenda";
-import PortalDashboard from "@/pages/PortalDashboard";
-import PortalDocuments from "@/pages/PortalDocuments";
+import PortalHome from "@/pages/PortalHome";
+import PortalDocs from "@/pages/PortalDocs";
+import PortalLara from "@/pages/PortalLara";
+import PortalProfile from "@/pages/PortalProfile";
 import PortalLogin from "@/pages/PortalLogin";
 import Login from "@/pages/Login";
 import SettingsPage from "@/pages/Settings";
@@ -60,13 +63,12 @@ const App = () => (
               </Route>
             </Route>
 
-            {/* Client portal */}
-            <Route element={<PortalProtectedRoute />}>
-              <Route element={<PortalLayout />}>
-                <Route path="/portal" element={<PortalDashboard />} />
-                <Route path="/portal/dashboard" element={<PortalDashboard />} />
-                <Route path="/portal/documents" element={<PortalDocuments />} />
-              </Route>
+            {/* Client portal — magic link (no auth) */}
+            <Route element={<ClientPortalLayout />}>
+              <Route path="/portal" element={<PortalHome />} />
+              <Route path="/portal/docs" element={<PortalDocs />} />
+              <Route path="/portal/lara" element={<PortalLara />} />
+              <Route path="/portal/perfil" element={<PortalProfile />} />
             </Route>
 
             <Route path="*" element={<NotFound />} />
