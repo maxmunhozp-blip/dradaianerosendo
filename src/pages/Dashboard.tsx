@@ -1,9 +1,6 @@
-import { Users, FolderOpen, FileText, TrendingUp, Plus, Bot, MessageSquare, CalendarDays, Clock, MapPin, Bell, AlertTriangle, RefreshCw, PenLine, CheckCircle2, Clock4 } from "lucide-react";
+import { Users, Plus, Bot, CalendarDays, Clock, MapPin, Bell, AlertTriangle, RefreshCw, PenLine, CheckCircle2, Clock4 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { StatusBadge } from "@/components/StatusBadge";
 import { AnimatedCounter } from "@/components/AnimatedCounter";
-import { EmptyState } from "@/components/EmptyState";
-import { StatCardSkeleton } from "@/components/Skeletons";
 import { Link } from "react-router-dom";
 import { useClients } from "@/hooks/use-clients";
 import { useOwnerFilter } from "@/hooks/use-owner-filter";
@@ -12,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { useUpcomingHearings } from "@/hooks/use-hearings";
-import { useIntimacaoCount, useUrgentIntimacoes } from "@/hooks/use-intimacoes";
+import { useUrgentIntimacoes } from "@/hooks/use-intimacoes";
 import { useSyncGmail } from "@/components/EmailAccountsSection";
 import { format, differenceInHours, differenceInDays } from "date-fns";
 
