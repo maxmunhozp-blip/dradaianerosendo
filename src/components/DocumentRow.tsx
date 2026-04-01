@@ -40,7 +40,13 @@ interface DocumentRowProps {
     case_id: string;
     extraction_status?: string | null;
     extraction_confidence?: string | null;
+    signature_status?: string | null;
+    signers?: any[] | null;
   };
+  clientName?: string;
+  clientEmail?: string;
+  clientCpf?: string;
+  clientPhone?: string;
 }
 
 const statusOptions = [
