@@ -152,6 +152,30 @@ export default function ClientDetail() {
 
   const docsToScan = [...pendingDocs, ...failedDocs];
 
+  // Docs pending (solicitado status = not uploaded yet)
+  const solicitadoDocsCount = allDocs.filter((d: any) => !d.file_url).length;
+  const pendingDocsCount = pendingDocs.length;
+
+  // Next hearing for this client
+  const { data: nextHearing } = useQuery({
+    queryKey: ["client-next-hearing", id, caseIds],
+    queryFn: async () => {
+      if (caseIds.length === 0) return null;
+      const { data, error } = await supabase
+        .from("hearings")
+        .select("id, title, date")
+        .in("case_id", caseIds)
+        .eq("status", "agendado")
+        .gte("date", new Date().toISOString())
+        .order("date", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: caseIds.length > 0,
+  });
+
   const handleRescanAll = async () => {
     // Reset all docs to pending, then scan all
     for (const doc of uploadedDocs) {
@@ -609,7 +633,7 @@ export default function ClientDetail() {
               </SelectContent>
             </Select>
           </div>
-          {/* Data completeness summary */}
+           {/* Data completeness summary */}
           <div className="flex flex-wrap gap-x-3 gap-y-1">
             {(() => {
               const cl = client as any;
@@ -633,6 +657,23 @@ export default function ClientDetail() {
               ));
             })()}
           </div>
+          {/* Quick summary: pending docs + next hearing */}
+          {(pendingDocsCount > 0 || solicitadoDocsCount > 0 || nextHearing) && (
+            <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1">
+              {(pendingDocsCount + solicitadoDocsCount) > 0 && (
+                <span className="inline-flex items-center gap-1 text-[11px] text-amber-600">
+                  <Clock className="w-3 h-3" />
+                  {pendingDocsCount + solicitadoDocsCount} doc{(pendingDocsCount + solicitadoDocsCount) !== 1 ? 's' : ''} pendente{(pendingDocsCount + solicitadoDocsCount) !== 1 ? 's' : ''}
+                </span>
+              )}
+              {nextHearing && (
+                <span className="inline-flex items-center gap-1 text-[11px] text-primary">
+                  <Clock className="w-3 h-3" />
+                  Próx. audiência: {new Date(nextHearing.date).toLocaleDateString("pt-BR")} — {nextHearing.title}
+                </span>
+              )}
+            </div>
+          )}
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
