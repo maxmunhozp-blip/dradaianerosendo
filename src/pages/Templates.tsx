@@ -517,6 +517,29 @@ export default function Templates() {
               />
             </div>
 
+            {/* Letterhead toggle */}
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <div className="flex items-center gap-2">
+                <Stamp className="w-4 h-4 text-muted-foreground" />
+                <Label className="text-sm cursor-pointer" htmlFor="letterhead-toggle">
+                  Papel timbrado
+                </Label>
+              </div>
+              <Switch
+                id="letterhead-toggle"
+                checked={useLetterhead}
+                onCheckedChange={setUseLetterhead}
+              />
+            </div>
+            {useLetterhead && !branding && (
+              <p className="text-xs text-amber-600 bg-amber-50 rounded p-2">
+                Nenhuma configuração de timbrado encontrada.{" "}
+                <a href="/settings/document-branding" className="underline font-medium">
+                  Configurar agora
+                </a>
+              </p>
+            )}
+
             {/* Generate button */}
             <Button
               onClick={handleGenerate}
