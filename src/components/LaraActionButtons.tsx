@@ -863,8 +863,8 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
               const pdfBlob = generatePdfFromHtml(html);
               const previewUrl = URL.createObjectURL(pdfBlob);
 
-              // Auto-open in new tab as fallback
-              window.open(previewUrl, "_blank", "noopener,noreferrer");
+
+
 
               // Also store for save flow
               setPdfPreviewBlob(pdfBlob);
