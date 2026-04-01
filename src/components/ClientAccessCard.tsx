@@ -1,6 +1,7 @@
-import { useState } from "react";
-import { Copy, Check, MessageCircle, Send, ExternalLink, ChevronDown, ChevronUp } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Copy, Check, MessageCircle, Send, ExternalLink, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ClientAccessCardProps {
   clientId: string;
@@ -8,20 +9,67 @@ interface ClientAccessCardProps {
   clientPhone?: string;
   portalToken?: string;
   onSolicitarDados: () => void;
+  onTokenCreated?: (token: string) => void;
 }
 
 export function ClientAccessCard({
   clientId,
   clientName,
   clientPhone,
-  portalToken,
+  portalToken: initialToken,
   onSolicitarDados,
+  onTokenCreated,
 }: ClientAccessCardProps) {
   const [copied, setCopied] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [token, setToken] = useState(initialToken);
+  const [generating, setGenerating] = useState(false);
 
-  const portalUrl = portalToken
-    ? `${window.location.origin}/portal?token=${portalToken}`
+  // Sync prop changes
+  useEffect(() => { setToken(initialToken); }, [initialToken]);
+
+  // Auto-generate token when expanded and no token exists
+  useEffect(() => {
+    if (!expanded || token || generating) return;
+
+    const generate = async () => {
+      setGenerating(true);
+      try {
+        // Check for existing valid session first
+        const { data: existing } = await supabase
+          .from("client_sessions")
+          .select("token, expires_at")
+          .eq("client_id", clientId)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (existing && new Date(existing.expires_at) > new Date()) {
+          setToken(existing.token);
+          onTokenCreated?.(existing.token);
+        } else {
+          const { data: newSession, error } = await supabase
+            .from("client_sessions")
+            .insert({ client_id: clientId })
+            .select("token")
+            .single();
+          if (error) throw error;
+          setToken(newSession.token);
+          onTokenCreated?.(newSession.token);
+          toast.success("Link do portal gerado!");
+        }
+      } catch {
+        toast.error("Erro ao gerar link do portal");
+      } finally {
+        setGenerating(false);
+      }
+    };
+
+    generate();
+  }, [expanded, token, clientId]);
+
+  const portalUrl = token
+    ? `${window.location.origin}/portal?token=${token}`
     : null;
 
   const firstName = clientName.split(" ")[0];
@@ -48,7 +96,6 @@ export function ClientAccessCard({
 
   return (
     <div className="border border-border rounded-lg bg-background mb-6">
-      {/* Header colapsável */}
       <button
         onClick={() => setExpanded(!expanded)}
         className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-muted/40 transition-colors rounded-lg"
@@ -58,12 +105,11 @@ export function ClientAccessCard({
           <span className="text-sm font-medium text-foreground">
             Acesso do cliente
           </span>
-          {portalToken && (
+          {token ? (
             <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 font-medium">
               Portal ativo
             </span>
-          )}
-          {!portalToken && (
+          ) : (
             <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">
               Sem acesso
             </span>
@@ -78,8 +124,12 @@ export function ClientAccessCard({
 
       {expanded && (
         <div className="px-4 pb-4 border-t border-border pt-3 space-y-4">
-          {/* Link do portal */}
-          {portalUrl ? (
+          {generating ? (
+            <div className="flex items-center gap-2 py-2">
+              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">Gerando link do portal...</span>
+            </div>
+          ) : portalUrl ? (
             <div>
               <p className="text-xs text-muted-foreground mb-1.5 font-medium">
                 Link do portal
@@ -115,15 +165,13 @@ export function ClientAccessCard({
           ) : (
             <div className="rounded-md bg-muted/50 border border-dashed border-border px-4 py-3">
               <p className="text-xs text-muted-foreground">
-                Este cliente ainda não tem link de acesso ao portal.
+                Erro ao gerar link. Tente fechar e abrir novamente.
               </p>
             </div>
           )}
 
-          {/* Divisor */}
           <div className="border-t border-border" />
 
-          {/* Solicitar dados faltantes */}
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <p className="text-xs font-medium text-foreground">
