@@ -42,6 +42,7 @@ import AdminPage from "./pages/AdminPage";
 const queryClient = new QueryClient();
 
 const App = () => {
+  console.log("[App] rendering App component");
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
