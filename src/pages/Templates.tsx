@@ -419,9 +419,10 @@ export default function Templates() {
         }
       }
 
+      addFooter();
       const fileName = `${templateLabel.replace(/\s+/g, "_")}_${clientName.replace(/\s+/g, "_")}.pdf`;
       pdf.save(fileName);
-      toast.success("PDF exportado com sucesso");
+      toast.success("PDF exportado com papel timbrado!");
     } catch (e) {
       console.error("Erro ao exportar PDF:", e);
       toast.error("Erro ao exportar PDF");
