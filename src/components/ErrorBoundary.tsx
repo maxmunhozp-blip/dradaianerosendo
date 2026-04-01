@@ -35,6 +35,11 @@ export class ErrorBoundary extends Component<Props, State> {
             <p className="text-sm text-muted-foreground">
               Ocorreu um erro inesperado. Tente recarregar a página.
             </p>
+            {this.state.error && (
+              <p className="text-xs text-destructive font-mono bg-destructive/10 rounded p-2 text-left break-all">
+                {this.state.error.message}
+              </p>
+            )}
             <div className="flex gap-2 justify-center">
               <Button
                 onClick={() => {
