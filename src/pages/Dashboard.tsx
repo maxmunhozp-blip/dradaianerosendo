@@ -60,7 +60,10 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 mb-8">
+      {/* Upcoming hearings */}
+      <UpcomingHearings />
+
+      <div className="grid grid-cols-1 gap-4 mt-8 mb-8">
         <div className="border border-border rounded-lg p-4 hover:border-t-amber-500 hover:border-t-2 transition-all">
           <div className="flex items-center justify-between mb-3">
             <Users className="w-4 h-4 text-muted-foreground" />
@@ -74,9 +77,6 @@ export default function Dashboard() {
 
       {/* Signature status */}
       <SignaturePanel ownerFilter={ownerFilter} />
-
-      {/* Upcoming hearings */}
-      <UpcomingHearings />
 
       {/* Urgent intimacoes */}
       <UrgentIntimacoes />
