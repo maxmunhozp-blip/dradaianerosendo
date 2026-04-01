@@ -291,18 +291,55 @@ export default function Templates() {
     if (!generatedContent) return;
 
     try {
+      const b = branding;
       const templateLabel = TEMPLATE_TYPES.find((t) => t.value === selectedTemplate)?.label || "Documento";
       const clientName = (selectedCaseData as any)?.clients?.name || "Cliente";
 
       const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
-      const marginLeft = 30;
-      const marginRight = 20;
-      const marginTop = 30;
-      const marginBottom = 25;
+      const marginLeft = b?.margin_left || 30;
+      const marginRight = b?.margin_right || 20;
+      const marginTop = b?.margin_top || 30;
+      const marginBottom = b?.margin_bottom || 25;
       const contentWidth = pageWidth - marginLeft - marginRight;
       let y = marginTop;
+
+      const addHeader = () => {
+        if (useLetterhead && b?.header_text) {
+          const headerLines = (b.header_text as string).split("\n");
+          pdf.setFont("helvetica", "bold");
+          pdf.setFontSize(b.font_size_body || 12);
+          for (let i = 0; i < headerLines.length; i++) {
+            if (i > 0) pdf.setFont("helvetica", "normal");
+            pdf.setFontSize(i === 0 ? (b.font_size_body || 12) : (b.font_size_body || 12) - 1);
+            pdf.text(headerLines[i], marginLeft, y);
+            y += 5;
+          }
+          // Separator line
+          const secColor = (b.secondary_color || "#2B9E8F").replace("#", "");
+          const r = parseInt(secColor.substring(0, 2), 16);
+          const g = parseInt(secColor.substring(2, 4), 16);
+          const bl = parseInt(secColor.substring(4, 6), 16);
+          pdf.setDrawColor(r, g, bl);
+          pdf.setLineWidth(0.5);
+          pdf.line(marginLeft, y, pageWidth - marginRight, y);
+          y += 6;
+        }
+      };
+
+      const addFooter = () => {
+        if (useLetterhead && b?.footer_text) {
+          pdf.setFont("helvetica", "normal");
+          pdf.setFontSize((b.font_size_body || 12) - 2);
+          pdf.setTextColor(113, 128, 150);
+          const footerY = pageHeight - 10;
+          pdf.text(b.footer_text as string, pageWidth / 2, footerY, { align: "center" });
+          pdf.setTextColor(0, 0, 0);
+        }
+      };
+
+      addHeader();
 
       const addPageIfNeeded = (lineHeight: number) => {
         if (y + lineHeight > pageHeight - marginBottom) {
