@@ -36,6 +36,7 @@ const ACTION_DESCRIPTIONS: Record<string, (data: Record<string, any>) => string>
   generate_document: () => `Abrir gerador de documentos para este caso`,
   schedule_reminder: (d) => `Agendar lembrete: "${d.title || ""}" para ${d.date || "data a definir"}`,
   scan_documents: () => `Escanear documentos pendentes com IA para extrair dados automaticamente`,
+  download_document: (d) => `Baixar documento "${d.template || ""}" em ${d.format || "DOCX"}`,
 };
 
 interface ScanResult {
