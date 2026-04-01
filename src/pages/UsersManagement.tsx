@@ -568,6 +568,7 @@ function ProfileModal({ open, onOpenChange, editing }: { open: boolean; onOpenCh
         const { error } = await (supabase.from("permission_profiles" as any).update({
           name: name.trim(),
           description: description.trim() || null,
+          icon: selectedIcon,
           permissions,
         }).eq("id", editing.id)) as any;
         if (error) throw error;
