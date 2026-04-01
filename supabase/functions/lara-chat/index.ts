@@ -709,7 +709,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const { messages, caseId, attachments } = await req.json();
+    const { messages, caseId, attachments, isPortalMode } = await req.json();
 
     if (!messages || !Array.isArray(messages)) {
       return new Response(
