@@ -240,7 +240,7 @@ export default function PublicDataRequest() {
     let nextStep = currentStep + 1;
     while (nextStep - 1 < steps.length) {
       const stepName = steps[nextStep - 1];
-      if (stepName === "children_data" && hasChildren !== true) { nextStep++; continue; }
+      if (stepName === "children_data" && hasChildrenRef.current !== true) { nextStep++; continue; }
       if (stepName === "address_confirm" && !addressConfirmed && !showManualAddress) { nextStep++; continue; }
       break;
     }
