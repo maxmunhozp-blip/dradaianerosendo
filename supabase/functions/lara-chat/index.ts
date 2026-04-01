@@ -346,7 +346,35 @@ REGRAS:
 - Se o documento já tiver signature_status = "sent" ou "signed", informe que já foi enviado/assinado.
 - Use os dados REAIS do contexto para preencher signatário. NUNCA invente dados.
 - Se faltar o e-mail do cliente (obrigatório para assinatura), peça para cadastrar antes.
-- Após o envio, o sistema gerará o link de assinatura e oferecerá envio via WhatsApp automaticamente.`;
+- Após o envio, o sistema gerará o link de assinatura e oferecerá envio via WhatsApp automaticamente.
+
+## VERIFICAÇÃO DE STATUS DE ASSINATURAS
+
+Quando a advogada perguntar sobre status de assinaturas, assinaturas pendentes, ou quais documentos já foram assinados:
+
+1. Percorra TODOS os documentos do caso (ou de todos os casos, se em modo gestora)
+2. Filtre os documentos que têm signature_status diferente de "none" ou null
+3. Apresente um relatório organizado:
+
+"📋 **Status das assinaturas:**
+
+✅ **Assinados:**
+- [Nome do documento] — Assinado em [data] por [signatários]
+
+⏳ **Aguardando assinatura:**
+- [Nome do documento] — Enviado em [data]
+  Signatários: [nome] (pendente) — [link de assinatura se disponível]
+
+❌ **Recusados:**
+- [Nome do documento] — Recusado por [signatário]
+
+Se não houver nenhum documento com assinatura, diga claramente: "Nenhum documento foi enviado para assinatura neste caso."
+
+Quando um documento estiver com status "sent" (aguardando), ofereça a ação de reenviar o link via WhatsApp:
+ACTIONS_START
+[{"type":"send_whatsapp","label":"Reenviar link de assinatura via WhatsApp","data":{"client_id":"...","phone":"...","message":"Olá! Segue o link para assinatura do documento [nome]: [sign_url]"}}]
+ACTIONS_END`;
+
 
 async function fetchSkills(supabase: any, userId?: string): Promise<string> {
   const query = supabase
@@ -412,7 +440,7 @@ async function fetchOfficeContext(supabase: any, hasCaseId: boolean): Promise<st
   // 3. Fetch ALL documents, ALL checklist items, ALL hearings (not filtered by status)
   const [docsResult, checklistResult, hearingsResult] = await Promise.all([
     caseIds.length > 0
-      ? supabase.from("documents").select("id, name, category, status, case_id, created_at, extraction_status, extracted_data").in("case_id", caseIds)
+      ? supabase.from("documents").select("id, name, category, status, case_id, created_at, extraction_status, extracted_data, signature_status, signature_requested_at, signature_completed_at, signers, file_url").in("case_id", caseIds)
       : { data: [] },
     caseIds.length > 0
       ? supabase.from("checklist_items").select("id, label, done, case_id, required_by").in("case_id", caseIds)
@@ -497,6 +525,19 @@ async function fetchOfficeContext(supabase: any, hasCaseId: boolean): Promise<st
           if (fields) ctx += `\n  ${d.name}: ${fields}`;
         }
       }
+      // Include signature status info
+      const docsWithSignature = docs.filter((d: any) => d.signature_status && d.signature_status !== "none");
+      if (docsWithSignature.length > 0) {
+        ctx += `\n- Assinaturas digitais:`;
+        for (const d of docsWithSignature) {
+          ctx += `\n  ${d.name}: ${d.signature_status === "signed" ? "✅ Assinado" : d.signature_status === "sent" ? "⏳ Aguardando" : d.signature_status === "rejected" ? "❌ Recusado" : d.signature_status}`;
+          if (d.signature_requested_at) ctx += ` (enviado em ${d.signature_requested_at})`;
+          if (d.signature_completed_at) ctx += ` (concluído em ${d.signature_completed_at})`;
+          if (d.signers && Array.isArray(d.signers) && d.signers.length > 0) {
+            ctx += ` — Signatários: ${d.signers.map((s: any) => `${s.name || "?"} (${s.status || "pending"})${s.sign_url ? " link:" + s.sign_url : ""}`).join("; ")}`;
+          }
+        }
+      }
       ctx += `\n- Checklist (${checklist.length}): ${checklist.length > 0 ? checklist.map((c: any) => `${c.label} (${c.done ? "concluído" : "PENDENTE"})`).join(", ") : "Nenhum"}`;
       ctx += `\n- Audiências (${hearings.length}): ${hearings.length > 0 ? hearings.map((h: any) => `${h.title} em ${h.date} (${h.status})`).join(", ") : "Nenhuma"}`;
       ctx += `\n- Dados faltantes no cadastro: ${missingFields.length > 0 ? missingFields.join(", ") : "Nenhum — cadastro completo"}`;
@@ -557,7 +598,7 @@ async function fetchCaseContext(supabase: any, caseId: string): Promise<string> 
   const [docsResult, checklistResult, hearingsResult] = await Promise.all([
     supabase
       .from("documents")
-      .select("id, name, category, status, uploaded_by, created_at, extraction_status, extraction_confidence, extracted_data, signature_status, file_url")
+      .select("id, name, category, status, uploaded_by, created_at, extraction_status, extraction_confidence, extracted_data, signature_status, signature_requested_at, signature_completed_at, signers, file_url")
       .eq("case_id", caseId),
     supabase
       .from("checklist_items")
@@ -635,6 +676,13 @@ ${childrenStr}
 ${docs.length > 0
     ? docs.map((d: any) => {
         let line = `- ${d.name} (ID: ${d.id}) [${d.category}] — Status: ${d.status} (enviado por: ${d.uploaded_by}) | Extração: ${d.extraction_status || "pending"} | Assinatura: ${d.signature_status || "nenhuma"} | Arquivo: ${d.file_url ? "sim" : "não"}`;
+        if (d.signature_status && d.signature_status !== "none") {
+          line += `\n  Assinatura enviada em: ${d.signature_requested_at || "N/A"}`;
+          if (d.signature_completed_at) line += ` | Concluída em: ${d.signature_completed_at}`;
+          if (d.signers && Array.isArray(d.signers) && d.signers.length > 0) {
+            line += `\n  Signatários: ${d.signers.map((s: any) => `${s.name || "?"} (${s.status || "pending"}) ${s.sign_url ? "— Link: " + s.sign_url : ""}`).join("; ")}`;
+          }
+        }
         if (d.extraction_status === "done" && d.extracted_data && Object.keys(d.extracted_data).length > 0) {
           line += `\n  Dados extraídos: ${JSON.stringify(d.extracted_data)}`;
         }
