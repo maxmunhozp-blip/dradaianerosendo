@@ -364,6 +364,9 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
   const [editableText, setEditableText] = useState("");
   const [editMeta, setEditMeta] = useState<{ docName: string; caseId: string; action: LaraAction; actionIndex: number } | null>(null);
 
+  // Signature-after-edit flow: when true, generating PDF from editor will save + open signature dialog
+  const [signatureFlowMeta, setSignatureFlowMeta] = useState<{ clientPhone?: string; clientName?: string } | null>(null);
+
   // All actions including dynamically added ones
   const [dynamicActions, setDynamicActions] = useState<LaraAction[]>([]);
 
