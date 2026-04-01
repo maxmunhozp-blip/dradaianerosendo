@@ -23,7 +23,9 @@ export function ClientAccessCard({
   const [copied, setCopied] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [token, setToken] = useState(initialToken);
+  const [expiresAt, setExpiresAt] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [renewing, setRenewing] = useState(false);
 
   // Sync prop changes
   useEffect(() => { setToken(initialToken); }, [initialToken]);
