@@ -157,6 +157,12 @@ export default function PublicDataRequest() {
 
       const fields = data.fields_requested as string[];
       const builtSteps: string[] = [];
+      // Simple fields first
+      if (fields.includes("marital_status")) builtSteps.push("marital_status");
+      if (fields.includes("profession")) builtSteps.push("profession");
+      if (fields.includes("rg")) builtSteps.push("rg");
+      if (fields.includes("nationality")) builtSteps.push("nationality");
+      // Complex fields
       if (fields.includes("address")) builtSteps.push("cep", "address_confirm");
       if (fields.includes("children")) builtSteps.push("children_ask", "children_data");
       if (fields.includes("opposing_party")) builtSteps.push("opposing");
