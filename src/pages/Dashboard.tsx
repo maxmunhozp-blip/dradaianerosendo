@@ -31,10 +31,21 @@ function SyncEmailsButton() {
 export default function Dashboard() {
   const { ownerFilter } = useOwnerFilter();
   const { data: clients = [], isLoading: clientsLoading } = useClients();
+  const { data: casesData = [], isLoading: casesLoading } = useQuery({
+    queryKey: ["cases-summary-dashboard", ownerFilter],
+    queryFn: async () => {
+      let q = supabase.from("cases").select("id, status, case_type, clients(name)").order("created_at", { ascending: false });
+      if (ownerFilter) q = q.eq("owner_id", ownerFilter);
+      const { data, error } = await q;
+      if (error) throw error;
+      return data;
+    },
+  });
 
   const isLoading = clientsLoading;
 
   const activeClients = clients.filter((c) => c.status === "ativo").length;
+  const activeCases = casesData.filter((c: any) => !["arquivado", "encerrado"].includes(c.status));
 
   return (
     <div className="p-6 max-w-6xl">
