@@ -1135,7 +1135,7 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
 
       {/* Email Send Dialog */}
       <Dialog open={emailDialogOpen} onOpenChange={(open) => {
-        if (!open) { setEmailDialogOpen(false); setEmailTo(""); setEmailSubject(""); setEmailBody(""); }
+        if (!open) { setEmailDialogOpen(false); setEmailTo(""); setEmailCc(""); setEmailBcc(""); setShowCcBcc(false); setEmailSubject(""); setEmailBody(""); }
       }}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
