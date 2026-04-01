@@ -603,9 +603,24 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent, all
 
           if (needsEditor) {
             // Document doesn't exist or has no file — open editor first
-            const rawText = messageContent || "";
+            let rawText = messageContent || "";
             const caseId = confirmAction.data.case_id || "";
             const docName = confirmAction.data.document_name || "Documento";
+
+            // Search previous messages if current doesn't have the document
+            const hasDoc = extractLegalDocumentContent(rawText).length > 100;
+            if (!hasDoc && allMessages && allMessages.length > 0) {
+              for (let i = allMessages.length - 1; i >= 0; i--) {
+                const msg = allMessages[i];
+                if (msg.role === "assistant") {
+                  const extracted = extractLegalDocumentContent(msg.content);
+                  if (extracted.length > 100) {
+                    rawText = msg.content;
+                    break;
+                  }
+                }
+              }
+            }
 
             if (!rawText.trim()) {
               toast.error("Conteúdo do documento não encontrado. Gere o PDF primeiro usando 'Gerar PDF'.");
