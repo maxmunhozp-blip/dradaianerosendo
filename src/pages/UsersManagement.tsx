@@ -297,6 +297,24 @@ export default function UsersManagement() {
                   </CollapsibleTrigger>
                   <CollapsibleContent>
                     <CardContent className="pt-0 space-y-5">
+                      {/* Ver Ambiente button */}
+                      {!isSelf && (
+                        <div className="flex items-center gap-3 pb-4 border-b">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 text-xs gap-1.5"
+                            onClick={() => {
+                              startViewAs(u.user_id, u.email);
+                              toast.success(`Visualizando ambiente de ${u.email}`);
+                            }}
+                          >
+                            <MonitorSmartphone className="w-3.5 h-3.5" />
+                            Ver Ambiente do Usuário
+                          </Button>
+                        </div>
+                      )}
+
                       {/* Role selector */}
                       {!isSelf && (
                         <div className="flex items-center gap-3 pb-4 border-b">
