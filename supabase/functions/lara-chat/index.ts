@@ -675,12 +675,13 @@ Deno.serve(async (req: Request) => {
     const isLeiCommand = !isCaseAudit && lastMsg?.role === "user" && /^\/lei\s+/i.test(lastMsg.content.trim());
 
     // Fetch all context in parallel (including LexML if needed)
-    const [officeContext, caseContext, settings, lexmlContext, intimacoesContext] = await Promise.all([
+    const [officeContext, caseContext, settings, lexmlContext, intimacoesContext, skillsContext] = await Promise.all([
       fetchOfficeContext(supabase, !!caseId),
       caseId ? fetchCaseContext(supabase, caseId) : Promise.resolve(""),
       fetchSettings(supabase),
       legalQuery ? fetchLexMLContext(legalQuery, supabaseUrl) : Promise.resolve(""),
       fetchIntimacoesContext(supabase),
+      fetchSkills(supabase),
     ]);
     
     // If /lei command but LexML returned nothing, return error immediately
