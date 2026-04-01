@@ -205,9 +205,10 @@ export function LaraActionButtons({ actions, onScanComplete }: { actions: LaraAc
           break;
 
         case "send_for_signature": {
-          const { document_id, signers, client_phone } = confirmAction.data;
-          if (!document_id || !signers?.length) {
-            toast.error("Dados insuficientes para enviar para assinatura");
+          const { document_id, client_phone } = confirmAction.data;
+          const signers = [{ name: signerName.trim(), email: signerEmail.trim(), cpf: signerCpf.trim() || undefined }];
+          if (!document_id) {
+            toast.error("Documento não identificado");
             break;
           }
           const { data: sigResult, error: sigError } = await supabase.functions.invoke("send-for-signature", {
