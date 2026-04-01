@@ -75,6 +75,16 @@ export function DocumentRow({ doc, clientName, clientEmail, clientCpf, clientPho
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [signatureOpen, setSignatureOpen] = useState(false);
+  const [emailOpen, setEmailOpen] = useState(false);
+  const [emailTo, setEmailTo] = useState(clientEmail || "");
+  const [emailCc, setEmailCc] = useState("");
+  const [emailBcc, setEmailBcc] = useState("");
+  const [showCcBcc, setShowCcBcc] = useState(false);
+  const [emailSubject, setEmailSubject] = useState("");
+  const [emailBody, setEmailBody] = useState("");
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [emailAccounts, setEmailAccounts] = useState<{ id: string; email: string; label: string }[]>([]);
+  const [selectedAccountId, setSelectedAccountId] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const updateDoc = useUpdateDocument();
