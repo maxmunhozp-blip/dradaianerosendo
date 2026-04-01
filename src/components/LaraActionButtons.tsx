@@ -787,11 +787,14 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
         <DialogContent className="sm:max-w-3xl max-h-[85vh] flex flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <FileText className="w-4 h-4" />
-              Editar — {editMeta?.docName}
+              {signatureFlowMeta ? <PenLine className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
+              {signatureFlowMeta ? "Revisar antes de assinar" : "Editar"} — {editMeta?.docName}
             </DialogTitle>
             <DialogDescription>
-              Revise e edite o texto. Campos com <span className="font-semibold text-amber-600">[PREENCHER]</span> precisam ser preenchidos antes de gerar o PDF.
+              {signatureFlowMeta
+                ? "Revise e edite o documento antes de gerar o PDF e enviar para assinatura eletrônica."
+                : <>Revise e edite o texto. Campos com <span className="font-semibold text-amber-600">[PREENCHER]</span> precisam ser preenchidos antes de gerar o PDF.</>
+              }
             </DialogDescription>
           </DialogHeader>
           {/* Placeholder warning banner */}
