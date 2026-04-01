@@ -763,7 +763,7 @@ Use seu conhecimento jurídico para complementar os dados do LexML com explicaç
       settingsContext += `\n### TEMPLATE DE ASSINATURA:\n${settings.template_signing}\n`;
     }
 
-    const fullSystemPrompt = SYSTEM_PROMPT + "\n\n" + officeContext + settingsContext + intimacoesContext + skillsContext + (caseContext ? "\n\n" + caseContext : "") + lexmlContext;
+    const fullSystemPrompt = officeContext + "\n\n" + SYSTEM_PROMPT + "\n\n" + settingsContext + intimacoesContext + skillsContext + (caseContext ? "\n\n" + caseContext : "") + lexmlContext;
 
     // Build messages for the AI API
     const aiMessages: any[] = [
