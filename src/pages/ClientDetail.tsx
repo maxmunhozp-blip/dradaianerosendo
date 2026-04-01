@@ -591,32 +591,40 @@ export default function ClientDetail() {
               </Button>
             )}
           </div>
-          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-            {uploadedDocs.map((doc: any) => {
-              const isDone = doc.extraction_status === "done" && hasExtractedData(doc);
-              const isFailed = doc.extraction_status === "failed" || (doc.extraction_status === "done" && !hasExtractedData(doc));
-              return (
-                <button
-                  key={doc.id}
-                  onClick={() => !scanning && handleRescanSingle(doc)}
-                  disabled={scanning}
-                  className="flex items-center gap-1 hover:underline cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
-                  title={isDone ? "Clique para reescanear" : isFailed ? "Clique para tentar novamente" : "Aguardando escaneamento"}
-                >
-                  {isDone ? (
-                    <CheckCircle2 className="w-3 h-3 text-green-600" />
-                  ) : isFailed ? (
-                    <XCircle className="w-3 h-3 text-destructive" />
-                  ) : (
-                    <Clock className="w-3 h-3 text-muted-foreground" />
-                  )}
-                  <span className={isDone ? "text-green-700" : isFailed ? "text-destructive" : ""}>
-                    {doc.name.length > 25 ? doc.name.slice(0, 22) + "..." : doc.name}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+          {scanning && scanDocList.length > 0 && (
+            <ExtractionProgress
+              documents={scanDocList}
+              currentIndex={scanCurrentIndex}
+              results={scanResults}
+            />
+          )}
+          {!scanning && (
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+              {uploadedDocs.map((doc: any) => {
+                const isDone = doc.extraction_status === "done" && hasExtractedData(doc);
+                const isFailed = doc.extraction_status === "failed" || (doc.extraction_status === "done" && !hasExtractedData(doc));
+                return (
+                  <button
+                    key={doc.id}
+                    onClick={() => handleRescanSingle(doc)}
+                    className="flex items-center gap-1 hover:underline cursor-pointer"
+                    title={isDone ? "Clique para reescanear" : isFailed ? "Clique para tentar novamente" : "Aguardando escaneamento"}
+                  >
+                    {isDone ? (
+                      <CheckCircle2 className="w-3 h-3 text-green-600" />
+                    ) : isFailed ? (
+                      <XCircle className="w-3 h-3 text-destructive" />
+                    ) : (
+                      <Clock className="w-3 h-3 text-muted-foreground" />
+                    )}
+                    <span className={isDone ? "text-green-700" : isFailed ? "text-destructive" : ""}>
+                      {doc.name.length > 25 ? doc.name.slice(0, 22) + "..." : doc.name}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
       <ExtractionSuggestions clientId={client.id} />
