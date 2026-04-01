@@ -313,7 +313,6 @@ function SignaturePanel({ ownerFilter }: { ownerFilter: string | null }) {
         ) : docs.length === 0 ? (
           <div className="px-4 py-6 text-center">
             <PenLine className="w-5 h-5 text-muted-foreground mx-auto mb-2" />
-            <p className="text-sm text-muted-foreground">Nenhum documento enviado para assinatura</p>
           </div>
         ) : (
           docs.map((d: any) => {
