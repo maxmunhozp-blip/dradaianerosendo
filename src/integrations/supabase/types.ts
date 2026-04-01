@@ -83,32 +83,44 @@ export type Database = {
       cases: {
         Row: {
           case_type: string
+          children: Json | null
           client_id: string
           cnj_number: string | null
           court: string | null
           created_at: string
           description: string | null
           id: string
+          opposing_party_address: string | null
+          opposing_party_cpf: string | null
+          opposing_party_name: string | null
           status: string
         }
         Insert: {
           case_type: string
+          children?: Json | null
           client_id: string
           cnj_number?: string | null
           court?: string | null
           created_at?: string
           description?: string | null
           id?: string
+          opposing_party_address?: string | null
+          opposing_party_cpf?: string | null
+          opposing_party_name?: string | null
           status?: string
         }
         Update: {
           case_type?: string
+          children?: Json | null
           client_id?: string
           cnj_number?: string | null
           court?: string | null
           created_at?: string
           description?: string | null
           id?: string
+          opposing_party_address?: string | null
+          opposing_party_cpf?: string | null
+          opposing_party_name?: string | null
           status?: string
         }
         Relationships: [
@@ -158,38 +170,71 @@ export type Database = {
       }
       clients: {
         Row: {
+          address_city: string | null
+          address_complement: string | null
+          address_neighborhood: string | null
+          address_number: string | null
+          address_state: string | null
+          address_street: string | null
+          address_zip: string | null
           cpf: string | null
           created_at: string
           email: string | null
           id: string
+          marital_status: string | null
           name: string
+          nationality: string | null
           notes: string | null
           origin: string | null
           phone: string | null
+          profession: string | null
+          rg: string | null
           status: string
           user_id: string | null
         }
         Insert: {
+          address_city?: string | null
+          address_complement?: string | null
+          address_neighborhood?: string | null
+          address_number?: string | null
+          address_state?: string | null
+          address_street?: string | null
+          address_zip?: string | null
           cpf?: string | null
           created_at?: string
           email?: string | null
           id?: string
+          marital_status?: string | null
           name: string
+          nationality?: string | null
           notes?: string | null
           origin?: string | null
           phone?: string | null
+          profession?: string | null
+          rg?: string | null
           status?: string
           user_id?: string | null
         }
         Update: {
+          address_city?: string | null
+          address_complement?: string | null
+          address_neighborhood?: string | null
+          address_number?: string | null
+          address_state?: string | null
+          address_street?: string | null
+          address_zip?: string | null
           cpf?: string | null
           created_at?: string
           email?: string | null
           id?: string
+          marital_status?: string | null
           name?: string
+          nationality?: string | null
           notes?: string | null
           origin?: string | null
           phone?: string | null
+          profession?: string | null
+          rg?: string | null
           status?: string
           user_id?: string | null
         }
