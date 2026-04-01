@@ -343,8 +343,10 @@ export default function Templates() {
 
       const addPageIfNeeded = (lineHeight: number) => {
         if (y + lineHeight > pageHeight - marginBottom) {
+          addFooter();
           pdf.addPage();
           y = marginTop;
+          addHeader();
         }
       };
 
