@@ -258,7 +258,7 @@ export function LaraChat({
       return <p className="whitespace-pre-wrap">{msg.content}</p>;
     }
 
-    const { cleanContent, whatsappActions, wizardChoice, saveDataAction } = parseActionBlocks(msg.content);
+    const { cleanContent, whatsappActions, wizardChoice, saveDataAction, laraActions } = parseActionBlocks(msg.content);
     const hasLexML = cleanContent.includes("[lexml-verified]");
     const displayContent = cleanContent.replace(/\[lexml-verified\]/g, "").trim();
 
@@ -273,6 +273,7 @@ export function LaraChat({
             <Scale className="w-3 h-3" />Verificado via LexML
           </div>
         )}
+        {laraActions.length > 0 && !msg.isStreaming && <LaraActionButtons actions={laraActions} />}
         {whatsappActions.length > 0 && !msg.isStreaming && <WhatsAppActionBlock actions={whatsappActions} />}
         {wizardChoice && !msg.isStreaming && <WizardChoiceBlock choice={wizardChoice} onSend={handleQuickSend} />}
         {saveDataAction && !msg.isStreaming && <SaveDataBlock action={saveDataAction} clientId={clientId} caseId={caseId} />}

@@ -61,6 +61,7 @@ const App = () => (
                 <Route path="/templates" element={<Templates />} />
                 <Route path="/intimacoes" element={<Intimacoes />} />
                 <Route path="/mail" element={<MailPage />} />
+                <Route path="/settings/lara-skills" element={<LaraSkills />} />
               </Route>
             </Route>
 
