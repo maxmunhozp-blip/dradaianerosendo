@@ -5,6 +5,7 @@ interface WhatsAppButtonProps {
   message: string;
   children: React.ReactNode;
   className?: string;
+  style?: React.CSSProperties;
   disabled?: boolean;
   onMissingPhone?: () => void;
 }
