@@ -34,6 +34,8 @@ interface DocumentRowProps {
     uploaded_by: string;
     notes: string | null;
     case_id: string;
+    extraction_status?: string | null;
+    extraction_confidence?: string | null;
   };
 }
 
