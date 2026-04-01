@@ -621,16 +621,8 @@ export default function ClientDetail() {
               <Trash2 className="w-3.5 h-3.5 mr-2" />Excluir cliente
             </DropdownMenuItem>
           </DropdownMenuContent>
-        </DropdownMenu>
+      </DropdownMenu>
       </div>
-
-      <ClientAccessCard
-        clientId={client.id}
-        clientName={client.name}
-        clientPhone={cl.phone}
-        portalToken={portalToken ?? undefined}
-        onSolicitarDados={() => setShowRequestData(true)}
-      />
 
       {cases.length > 0 && (
         <RequestDataModal
@@ -643,8 +635,294 @@ export default function ClientDetail() {
         />
       )}
 
-      {/* Scan + Extraction Suggestions */}
-      {/* Scan & Extraction — collapsible */}
+      {/* ═══ SECTION 1: CASOS — primary workflow ═══ */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+            <FolderOpen className="w-4 h-4" />
+            Casos ({cases.length})
+          </h2>
+          <Dialog open={caseDialogOpen} onOpenChange={setCaseDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm"><Plus className="w-3.5 h-3.5 mr-1.5" />Novo caso</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Novo caso</DialogTitle></DialogHeader>
+              <div className="space-y-4 mt-2">
+                <div><Label>Tipo</Label>
+                  <Select value={caseForm.case_type} onValueChange={v => setCaseForm(f => ({ ...f, case_type: v }))}>
+                    <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                    <SelectContent>{caseTypesList.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div><Label>Descrição</Label>
+                  <Textarea value={caseForm.description} onChange={e => setCaseForm(f => ({ ...f, description: e.target.value }))} placeholder="Descreva o caso..." className="mt-1.5" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div><Label>Número CNJ (opcional)</Label><Input value={caseForm.cnj_number} onChange={e => setCaseForm(f => ({ ...f, cnj_number: e.target.value }))} placeholder="0000000-00.0000.0.00.0000" className="mt-1.5" /></div>
+                  <div><Label>Vara (opcional)</Label><Input value={caseForm.court} onChange={e => setCaseForm(f => ({ ...f, court: e.target.value }))} placeholder="Ex: 2a Vara de Família" className="mt-1.5" /></div>
+                </div>
+                <Button className="w-full" onClick={handleCreateCase} disabled={createCase.isPending}>{createCase.isPending ? "Criando..." : "Criar caso"}</Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+        {cases.length === 0 ? (
+          <div className="border border-border rounded-lg">
+            <EmptyState icon={FolderOpen} title="Nenhum caso registrado" description="Crie o primeiro caso para este cliente." actionLabel="Novo caso" onAction={() => setCaseDialogOpen(true)} />
+          </div>
+        ) : (
+          <div className="border border-border rounded-lg divide-y divide-border">
+            {cases.map(c => (
+              <Link key={c.id} to={`/cases/${c.id}`} className="flex items-center justify-between px-4 py-3 hover:bg-muted/50 transition-colors">
+                <div>
+                  <p className="text-sm font-medium text-foreground">{c.case_type}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{c.description}</p>
+                  {c.cnj_number && <p className="text-xs text-muted-foreground mt-0.5">CNJ: {c.cnj_number}</p>}
+                </div>
+                <StatusBadge status={c.status} />
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ═══ SECTION 2: DADOS DO CLIENTE — reference data ═══ */}
+      <div className="space-y-3 mb-6">
+        {/* Dados Pessoais */}
+        <Collapsible open={personalOpen} onOpenChange={setPersonalOpen}>
+          <div className="border border-border rounded-lg overflow-hidden">
+            <SectionHeader icon={Users} title="Dados Pessoais" open={personalOpen} editing={editingPersonal}
+              onToggle={() => setPersonalOpen(!personalOpen)} onEdit={startEditPersonal} />
+            <CollapsibleContent>
+              <div className="p-4">
+                {editingPersonal ? (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      <div><Label className="text-xs">Nome completo</Label><Input value={personalForm.name} onChange={e => setPersonalForm(p => ({ ...p, name: e.target.value }))} className="mt-1" /></div>
+                      <div><Label className="text-xs">CPF</Label><Input value={personalForm.cpf} onChange={e => {
+                        const d = e.target.value.replace(/\D/g, "").slice(0, 11);
+                        setPersonalForm(p => ({ ...p, cpf: d.replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d{1,2})$/, "$1-$2") }));
+                      }} placeholder="000.000.000-00" className="mt-1" /></div>
+                      <div><Label className="text-xs">RG</Label><Input value={personalForm.rg} onChange={e => setPersonalForm(p => ({ ...p, rg: e.target.value }))} className="mt-1" /></div>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      <div><Label className="text-xs">Nacionalidade</Label><Input value={personalForm.nationality} onChange={e => setPersonalForm(p => ({ ...p, nationality: e.target.value }))} className="mt-1" /></div>
+                      <div><Label className="text-xs">Estado civil</Label>
+                        <Select value={personalForm.marital_status} onValueChange={v => setPersonalForm(p => ({ ...p, marital_status: v }))}>
+                          <SelectTrigger className="mt-1"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                          <SelectContent>
+                            {["solteiro(a)", "casado(a)", "divorciado(a)", "viúvo(a)", "união estável"].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div><Label className="text-xs">Profissão</Label><Input value={personalForm.profession} onChange={e => setPersonalForm(p => ({ ...p, profession: e.target.value }))} className="mt-1" /></div>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      <div><Label className="text-xs">E-mail</Label><Input value={personalForm.email} onChange={e => setPersonalForm(p => ({ ...p, email: e.target.value }))} className="mt-1" /></div>
+                      <div><Label className="text-xs">Telefone</Label><Input value={personalForm.phone} onChange={e => setPersonalForm(p => ({ ...p, phone: e.target.value }))} className="mt-1" /></div>
+                      <div><Label className="text-xs">Origem</Label>
+                        <Select value={personalForm.origin} onValueChange={v => setPersonalForm(p => ({ ...p, origin: v }))}>
+                          <SelectTrigger className="mt-1"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                          <SelectContent>
+                            {["Google Ads", "Indicação", "Instagram", "Outro"].map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="flex justify-end gap-2 pt-2">
+                      <Button variant="ghost" size="sm" onClick={() => setEditingPersonal(false)}><X className="w-3.5 h-3.5 mr-1" />Cancelar</Button>
+                      <Button size="sm" onClick={savePersonal} disabled={updateClient.isPending}>
+                        {updateClient.isPending ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Save className="w-3.5 h-3.5 mr-1" />}Salvar
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2 text-sm">
+                    <div><span className="text-muted-foreground">Nome:</span> <span className="text-foreground">{cl.name}</span></div>
+                    <div><span className="text-muted-foreground">CPF:</span> <span className="text-foreground">{cl.cpf || "—"}</span></div>
+                    <div><span className="text-muted-foreground">RG:</span> <span className="text-foreground">{cl.rg || "—"}</span></div>
+                    <div><span className="text-muted-foreground">Nacionalidade:</span> <span className="text-foreground">{cl.nationality || "—"}</span></div>
+                    <div><span className="text-muted-foreground">Estado civil:</span> <span className="text-foreground">{cl.marital_status || "—"}</span></div>
+                    <div><span className="text-muted-foreground">Profissão:</span> <span className="text-foreground">{cl.profession || "—"}</span></div>
+                    <div><span className="text-muted-foreground">E-mail:</span> <span className="text-foreground break-all">{cl.email || "—"}</span></div>
+                    <div><span className="text-muted-foreground">Telefone:</span> <span className="text-foreground">{cl.phone || "—"}</span></div>
+                    <div><span className="text-muted-foreground">Origem:</span> <span className="text-foreground">{cl.origin || "—"}</span></div>
+                  </div>
+                )}
+              </div>
+            </CollapsibleContent>
+          </div>
+        </Collapsible>
+
+        {/* Endereço */}
+        <Collapsible open={addressOpen} onOpenChange={setAddressOpen}>
+          <div className="border border-border rounded-lg overflow-hidden">
+            <SectionHeader icon={MapPin} title="Endereço" open={addressOpen} editing={editingAddress}
+              onToggle={() => setAddressOpen(!addressOpen)} onEdit={startEditAddress} />
+            <CollapsibleContent>
+              <div className="p-4">
+                {editingAddress ? (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                      <div><Label className="text-xs">CEP</Label><Input value={addressForm.address_zip} onChange={e => {
+                        const v = e.target.value.replace(/\D/g, "").slice(0, 8);
+                        const masked = v.length > 5 ? v.replace(/(\d{5})(\d)/, "$1-$2") : v;
+                        setAddressForm(p => ({ ...p, address_zip: masked }));
+                        if (v.length === 8) fetchCep(v);
+                      }} placeholder="00000-000" className="mt-1" /></div>
+                      <div className="sm:col-span-1 lg:col-span-2"><Label className="text-xs">Rua</Label><Input value={addressForm.address_street} onChange={e => setAddressForm(p => ({ ...p, address_street: e.target.value }))} className="mt-1" /></div>
+                      <div><Label className="text-xs">Número</Label><Input value={addressForm.address_number} onChange={e => setAddressForm(p => ({ ...p, address_number: e.target.value }))} className="mt-1" /></div>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                      <div><Label className="text-xs">Complemento</Label><Input value={addressForm.address_complement} onChange={e => setAddressForm(p => ({ ...p, address_complement: e.target.value }))} className="mt-1" /></div>
+                      <div><Label className="text-xs">Bairro</Label><Input value={addressForm.address_neighborhood} onChange={e => setAddressForm(p => ({ ...p, address_neighborhood: e.target.value }))} className="mt-1" /></div>
+                      <div><Label className="text-xs">Cidade</Label><Input value={addressForm.address_city} onChange={e => setAddressForm(p => ({ ...p, address_city: e.target.value }))} className="mt-1" /></div>
+                      <div><Label className="text-xs">Estado</Label><Input value={addressForm.address_state} onChange={e => setAddressForm(p => ({ ...p, address_state: e.target.value }))} className="mt-1" /></div>
+                    </div>
+                    <div className="flex justify-end gap-2 pt-2">
+                      <Button variant="ghost" size="sm" onClick={() => setEditingAddress(false)}><X className="w-3.5 h-3.5 mr-1" />Cancelar</Button>
+                      <Button size="sm" onClick={saveAddress} disabled={updateClient.isPending}>
+                        {updateClient.isPending ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Save className="w-3.5 h-3.5 mr-1" />}Salvar
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-sm">
+                    {cl.address_street ? (
+                      <p className="text-foreground">
+                        {cl.address_street}, {cl.address_number || "S/N"}
+                        {cl.address_complement ? `, ${cl.address_complement}` : ""} — {cl.address_neighborhood || ""}, {cl.address_city || ""}/{cl.address_state || ""} — CEP {cl.address_zip || ""}
+                      </p>
+                    ) : (
+                      <p className="text-muted-foreground">Nenhum endereço cadastrado.</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </CollapsibleContent>
+          </div>
+        </Collapsible>
+
+        {/* Filhos / Menores */}
+        {hasChildrenCases && (
+          <Collapsible open={childrenOpen} onOpenChange={setChildrenOpen}>
+            <div className="border border-border rounded-lg overflow-hidden">
+              <SectionHeader icon={Baby} title="Filhos / Menores" open={childrenOpen}
+                onToggle={() => setChildrenOpen(!childrenOpen)} />
+              <CollapsibleContent>
+                <div className="p-4 space-y-4">
+                  {cases.filter(c => CHILDREN_CASE_TYPES.includes(c.case_type)).map(caseItem => {
+                    const ci = caseItem as any;
+                    const children: Child[] = ci.children || [];
+                    const isEditing = editingChildren === caseItem.id;
+                    return (
+                      <div key={caseItem.id} className="border border-border/50 rounded p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs font-medium text-muted-foreground">{caseItem.case_type} — {caseItem.description?.slice(0, 40)}</span>
+                          {!isEditing && (
+                            <Button variant="ghost" size="sm" className="h-6 px-2" onClick={() => startEditChildren(ci)}>
+                              <Pencil className="w-3 h-3" />
+                            </Button>
+                          )}
+                        </div>
+                        {isEditing ? (
+                          <div className="space-y-2">
+                            {childrenList.map((child, idx) => (
+                              <div key={idx} className="grid grid-cols-4 gap-2 items-end">
+                                <div><Label className="text-xs">Nome</Label><Input value={child.name} onChange={e => setChildrenList(prev => prev.map((c, i) => i === idx ? { ...c, name: e.target.value } : c))} className="mt-1 h-8 text-xs" /></div>
+                                <div><Label className="text-xs">Data nasc.</Label><Input type="date" value={child.birth_date} onChange={e => setChildrenList(prev => prev.map((c, i) => i === idx ? { ...c, birth_date: e.target.value } : c))} className="mt-1 h-8 text-xs" /></div>
+                                <div><Label className="text-xs">CPF (opcional)</Label><Input value={child.cpf || ""} onChange={e => setChildrenList(prev => prev.map((c, i) => i === idx ? { ...c, cpf: e.target.value } : c))} className="mt-1 h-8 text-xs" /></div>
+                                <Button variant="ghost" size="sm" className="h-8 text-destructive" onClick={() => removeChild(idx)}><Trash2 className="w-3 h-3" /></Button>
+                              </div>
+                            ))}
+                            <div className="grid grid-cols-4 gap-2 items-end border-t border-border/50 pt-2">
+                              <div><Label className="text-xs">Nome</Label><Input value={newChild.name} onChange={e => setNewChild(p => ({ ...p, name: e.target.value }))} placeholder="Nome do filho" className="mt-1 h-8 text-xs" /></div>
+                              <div><Label className="text-xs">Data nasc.</Label><Input type="date" value={newChild.birth_date} onChange={e => setNewChild(p => ({ ...p, birth_date: e.target.value }))} className="mt-1 h-8 text-xs" /></div>
+                              <div><Label className="text-xs">CPF</Label><Input value={newChild.cpf || ""} onChange={e => setNewChild(p => ({ ...p, cpf: e.target.value }))} className="mt-1 h-8 text-xs" /></div>
+                              <Button variant="outline" size="sm" className="h-8" onClick={addChild}><Plus className="w-3 h-3 mr-1" />Adicionar</Button>
+                            </div>
+                            <div className="flex justify-end gap-2 pt-2">
+                              <Button variant="ghost" size="sm" onClick={() => setEditingChildren(null)}><X className="w-3.5 h-3.5 mr-1" />Cancelar</Button>
+                              <Button size="sm" onClick={saveChildren} disabled={updateCase.isPending}>
+                                {updateCase.isPending ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Save className="w-3.5 h-3.5 mr-1" />}Salvar
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          children.length > 0 ? (
+                            <div className="space-y-1">
+                              {children.map((child, idx) => (
+                                <p key={idx} className="text-sm text-foreground">
+                                  {child.name} — {child.birth_date ? new Date(child.birth_date).toLocaleDateString("pt-BR") : "sem data"}{child.cpf ? ` — CPF: ${child.cpf}` : ""}
+                                </p>
+                              ))}
+                            </div>
+                          ) : <p className="text-sm text-muted-foreground">Nenhum filho cadastrado.</p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </CollapsibleContent>
+            </div>
+          </Collapsible>
+        )}
+
+        {/* Parte Contrária */}
+        {cases.length > 0 && (
+          <Collapsible open={opposingOpen} onOpenChange={setOpposingOpen}>
+            <div className="border border-border rounded-lg overflow-hidden">
+              <SectionHeader icon={UserX} title="Parte Contrária" open={opposingOpen}
+                onToggle={() => setOpposingOpen(!opposingOpen)} />
+              <CollapsibleContent>
+                <div className="p-4 space-y-4">
+                  {cases.map(caseItem => {
+                    const ci = caseItem as any;
+                    const isEditing = editingOpposing === caseItem.id;
+                    return (
+                      <div key={caseItem.id} className="border border-border/50 rounded p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs font-medium text-muted-foreground">{caseItem.case_type} — {caseItem.description?.slice(0, 40)}</span>
+                          {!isEditing && (
+                            <Button variant="ghost" size="sm" className="h-6 px-2" onClick={() => startEditOpposing(ci)}>
+                              <Pencil className="w-3 h-3" />
+                            </Button>
+                          )}
+                        </div>
+                        {isEditing ? (
+                          <div className="space-y-3">
+                            <div className="grid grid-cols-3 gap-3">
+                              <div><Label className="text-xs">Nome</Label><Input value={opposingForm.opposing_party_name} onChange={e => setOpposingForm(p => ({ ...p, opposing_party_name: e.target.value }))} className="mt-1" /></div>
+                              <div><Label className="text-xs">CPF</Label><Input value={opposingForm.opposing_party_cpf} onChange={e => setOpposingForm(p => ({ ...p, opposing_party_cpf: e.target.value }))} className="mt-1" /></div>
+                              <div><Label className="text-xs">Endereço</Label><Input value={opposingForm.opposing_party_address} onChange={e => setOpposingForm(p => ({ ...p, opposing_party_address: e.target.value }))} className="mt-1" /></div>
+                            </div>
+                            <div className="flex justify-end gap-2">
+                              <Button variant="ghost" size="sm" onClick={() => setEditingOpposing(null)}><X className="w-3.5 h-3.5 mr-1" />Cancelar</Button>
+                              <Button size="sm" onClick={saveOpposing} disabled={updateCase.isPending}>
+                                {updateCase.isPending ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Save className="w-3.5 h-3.5 mr-1" />}Salvar
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          ci.opposing_party_name ? (
+                            <p className="text-sm text-foreground">
+                              {ci.opposing_party_name}{ci.opposing_party_cpf ? `, CPF: ${ci.opposing_party_cpf}` : ""}
+                              {ci.opposing_party_address ? ` — ${ci.opposing_party_address}` : ""}
+                            </p>
+                          ) : <p className="text-sm text-muted-foreground">Nenhuma parte contrária cadastrada.</p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </CollapsibleContent>
+            </div>
+          </Collapsible>
+        )}
+      </div>
+
+      {/* ═══ SECTION 3: FERRAMENTAS — scan & extraction ═══ */}
       {uploadedDocs.length > 0 && (
         <Collapsible open={scanOpen || scanning} onOpenChange={setScanOpen}>
           <div className="border border-border rounded-lg overflow-hidden mb-3">
@@ -731,7 +1009,6 @@ export default function ClientDetail() {
           </div>
         </Collapsible>
       )}
-      {/* Scan summary banner with button to open review */}
       {scanSummary && scanSummary.review > 0 && !showReviewPanel && (
         <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between">
           <p className="text-sm text-amber-800">
@@ -751,8 +1028,6 @@ export default function ClientDetail() {
         </div>
       )}
       <ExtractionSuggestions clientId={client.id} />
-
-      {/* Review Panel Modal */}
       {showReviewPanel && reviewSuggestions.length > 0 && (
         <ExtractionReviewPanel
           suggestions={reviewSuggestions}
@@ -772,301 +1047,21 @@ export default function ClientDetail() {
         />
       )}
 
-      {/* Collapsible Sections */}
-      <div className="space-y-3 mb-6">
-        {/* Section 1: Dados Pessoais */}
-        <Collapsible open={personalOpen} onOpenChange={setPersonalOpen}>
-          <div className="border border-border rounded-lg overflow-hidden">
-            <SectionHeader icon={Users} title="Dados Pessoais" open={personalOpen} editing={editingPersonal}
-              onToggle={() => setPersonalOpen(!personalOpen)} onEdit={startEditPersonal} />
-            <CollapsibleContent>
-              <div className="p-4">
-                {editingPersonal ? (
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                      <div><Label className="text-xs">Nome completo</Label><Input value={personalForm.name} onChange={e => setPersonalForm(p => ({ ...p, name: e.target.value }))} className="mt-1" /></div>
-                      <div><Label className="text-xs">CPF</Label><Input value={personalForm.cpf} onChange={e => {
-                        const d = e.target.value.replace(/\D/g, "").slice(0, 11);
-                        setPersonalForm(p => ({ ...p, cpf: d.replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d{1,2})$/, "$1-$2") }));
-                      }} placeholder="000.000.000-00" className="mt-1" /></div>
-                      <div><Label className="text-xs">RG</Label><Input value={personalForm.rg} onChange={e => setPersonalForm(p => ({ ...p, rg: e.target.value }))} className="mt-1" /></div>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                      <div><Label className="text-xs">Nacionalidade</Label><Input value={personalForm.nationality} onChange={e => setPersonalForm(p => ({ ...p, nationality: e.target.value }))} className="mt-1" /></div>
-                      <div><Label className="text-xs">Estado civil</Label>
-                        <Select value={personalForm.marital_status} onValueChange={v => setPersonalForm(p => ({ ...p, marital_status: v }))}>
-                          <SelectTrigger className="mt-1"><SelectValue placeholder="Selecione" /></SelectTrigger>
-                          <SelectContent>
-                            {["solteiro(a)", "casado(a)", "divorciado(a)", "viúvo(a)", "união estável"].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div><Label className="text-xs">Profissão</Label><Input value={personalForm.profession} onChange={e => setPersonalForm(p => ({ ...p, profession: e.target.value }))} className="mt-1" /></div>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                      <div><Label className="text-xs">E-mail</Label><Input value={personalForm.email} onChange={e => setPersonalForm(p => ({ ...p, email: e.target.value }))} className="mt-1" /></div>
-                      <div><Label className="text-xs">Telefone</Label><Input value={personalForm.phone} onChange={e => setPersonalForm(p => ({ ...p, phone: e.target.value }))} className="mt-1" /></div>
-                      <div><Label className="text-xs">Origem</Label>
-                        <Select value={personalForm.origin} onValueChange={v => setPersonalForm(p => ({ ...p, origin: v }))}>
-                          <SelectTrigger className="mt-1"><SelectValue placeholder="Selecione" /></SelectTrigger>
-                          <SelectContent>
-                            {["Google Ads", "Indicação", "Instagram", "Outro"].map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <div className="flex justify-end gap-2 pt-2">
-                      <Button variant="ghost" size="sm" onClick={() => setEditingPersonal(false)}><X className="w-3.5 h-3.5 mr-1" />Cancelar</Button>
-                      <Button size="sm" onClick={savePersonal} disabled={updateClient.isPending}>
-                        {updateClient.isPending ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Save className="w-3.5 h-3.5 mr-1" />}Salvar
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2 text-sm">
-                    <div><span className="text-muted-foreground">Nome:</span> <span className="text-foreground">{cl.name}</span></div>
-                    <div><span className="text-muted-foreground">CPF:</span> <span className="text-foreground">{cl.cpf || "—"}</span></div>
-                    <div><span className="text-muted-foreground">RG:</span> <span className="text-foreground">{cl.rg || "—"}</span></div>
-                    <div><span className="text-muted-foreground">Nacionalidade:</span> <span className="text-foreground">{cl.nationality || "—"}</span></div>
-                    <div><span className="text-muted-foreground">Estado civil:</span> <span className="text-foreground">{cl.marital_status || "—"}</span></div>
-                    <div><span className="text-muted-foreground">Profissão:</span> <span className="text-foreground">{cl.profession || "—"}</span></div>
-                    <div><span className="text-muted-foreground">E-mail:</span> <span className="text-foreground break-all">{cl.email || "—"}</span></div>
-                    <div><span className="text-muted-foreground">Telefone:</span> <span className="text-foreground">{cl.phone || "—"}</span></div>
-                    <div><span className="text-muted-foreground">Origem:</span> <span className="text-foreground">{cl.origin || "—"}</span></div>
-                  </div>
-                )}
-              </div>
-            </CollapsibleContent>
-          </div>
-        </Collapsible>
+      {/* ═══ SECTION 4: ACESSO DO CLIENTE — occasional use ═══ */}
+      <ClientAccessCard
+        clientId={client.id}
+        clientName={client.name}
+        clientPhone={cl.phone}
+        portalToken={portalToken ?? undefined}
+        onSolicitarDados={() => setShowRequestData(true)}
+      />
 
-        {/* Section 2: Endereço */}
-        <Collapsible open={addressOpen} onOpenChange={setAddressOpen}>
-          <div className="border border-border rounded-lg overflow-hidden">
-            <SectionHeader icon={MapPin} title="Endereço" open={addressOpen} editing={editingAddress}
-              onToggle={() => setAddressOpen(!addressOpen)} onEdit={startEditAddress} />
-            <CollapsibleContent>
-              <div className="p-4">
-                {editingAddress ? (
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                      <div><Label className="text-xs">CEP</Label><Input value={addressForm.address_zip} onChange={e => {
-                        const v = e.target.value.replace(/\D/g, "").slice(0, 8);
-                        const masked = v.length > 5 ? v.replace(/(\d{5})(\d)/, "$1-$2") : v;
-                        setAddressForm(p => ({ ...p, address_zip: masked }));
-                        if (v.length === 8) fetchCep(v);
-                      }} placeholder="00000-000" className="mt-1" /></div>
-                      <div className="sm:col-span-1 lg:col-span-2"><Label className="text-xs">Rua</Label><Input value={addressForm.address_street} onChange={e => setAddressForm(p => ({ ...p, address_street: e.target.value }))} className="mt-1" /></div>
-                      <div><Label className="text-xs">Número</Label><Input value={addressForm.address_number} onChange={e => setAddressForm(p => ({ ...p, address_number: e.target.value }))} className="mt-1" /></div>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                      <div><Label className="text-xs">Complemento</Label><Input value={addressForm.address_complement} onChange={e => setAddressForm(p => ({ ...p, address_complement: e.target.value }))} className="mt-1" /></div>
-                      <div><Label className="text-xs">Bairro</Label><Input value={addressForm.address_neighborhood} onChange={e => setAddressForm(p => ({ ...p, address_neighborhood: e.target.value }))} className="mt-1" /></div>
-                      <div><Label className="text-xs">Cidade</Label><Input value={addressForm.address_city} onChange={e => setAddressForm(p => ({ ...p, address_city: e.target.value }))} className="mt-1" /></div>
-                      <div><Label className="text-xs">Estado</Label><Input value={addressForm.address_state} onChange={e => setAddressForm(p => ({ ...p, address_state: e.target.value }))} className="mt-1" /></div>
-                    </div>
-                    <div className="flex justify-end gap-2 pt-2">
-                      <Button variant="ghost" size="sm" onClick={() => setEditingAddress(false)}><X className="w-3.5 h-3.5 mr-1" />Cancelar</Button>
-                      <Button size="sm" onClick={saveAddress} disabled={updateClient.isPending}>
-                        {updateClient.isPending ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Save className="w-3.5 h-3.5 mr-1" />}Salvar
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-sm">
-                    {cl.address_street ? (
-                      <p className="text-foreground">
-                        {cl.address_street}, {cl.address_number || "S/N"}
-                        {cl.address_complement ? `, ${cl.address_complement}` : ""} — {cl.address_neighborhood || ""}, {cl.address_city || ""}/{cl.address_state || ""} — CEP {cl.address_zip || ""}
-                      </p>
-                    ) : (
-                      <p className="text-muted-foreground">Nenhum endereço cadastrado.</p>
-                    )}
-                  </div>
-                )}
-              </div>
-            </CollapsibleContent>
-          </div>
-        </Collapsible>
-
-        {/* Section 3: Filhos / Menores (only for relevant case types) */}
-        {hasChildrenCases && (
-          <Collapsible open={childrenOpen} onOpenChange={setChildrenOpen}>
-            <div className="border border-border rounded-lg overflow-hidden">
-              <SectionHeader icon={Baby} title="Filhos / Menores" open={childrenOpen}
-                onToggle={() => setChildrenOpen(!childrenOpen)} />
-              <CollapsibleContent>
-                <div className="p-4 space-y-4">
-                  {cases.filter(c => CHILDREN_CASE_TYPES.includes(c.case_type)).map(caseItem => {
-                    const ci = caseItem as any;
-                    const children: Child[] = ci.children || [];
-                    const isEditing = editingChildren === caseItem.id;
-                    return (
-                      <div key={caseItem.id} className="border border-border/50 rounded p-3">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-xs font-medium text-muted-foreground">{caseItem.case_type} — {caseItem.description?.slice(0, 40)}</span>
-                          {!isEditing && (
-                            <Button variant="ghost" size="sm" className="h-6 px-2" onClick={() => startEditChildren(ci)}>
-                              <Pencil className="w-3 h-3" />
-                            </Button>
-                          )}
-                        </div>
-                        {isEditing ? (
-                          <div className="space-y-2">
-                            {childrenList.map((child, idx) => (
-                              <div key={idx} className="grid grid-cols-4 gap-2 items-end">
-                                <div><Label className="text-xs">Nome</Label><Input value={child.name} onChange={e => setChildrenList(prev => prev.map((c, i) => i === idx ? { ...c, name: e.target.value } : c))} className="mt-1 h-8 text-xs" /></div>
-                                <div><Label className="text-xs">Data nasc.</Label><Input type="date" value={child.birth_date} onChange={e => setChildrenList(prev => prev.map((c, i) => i === idx ? { ...c, birth_date: e.target.value } : c))} className="mt-1 h-8 text-xs" /></div>
-                                <div><Label className="text-xs">CPF (opcional)</Label><Input value={child.cpf || ""} onChange={e => setChildrenList(prev => prev.map((c, i) => i === idx ? { ...c, cpf: e.target.value } : c))} className="mt-1 h-8 text-xs" /></div>
-                                <Button variant="ghost" size="sm" className="h-8 text-destructive" onClick={() => removeChild(idx)}><Trash2 className="w-3 h-3" /></Button>
-                              </div>
-                            ))}
-                            <div className="grid grid-cols-4 gap-2 items-end border-t border-border/50 pt-2">
-                              <div><Label className="text-xs">Nome</Label><Input value={newChild.name} onChange={e => setNewChild(p => ({ ...p, name: e.target.value }))} placeholder="Nome do filho" className="mt-1 h-8 text-xs" /></div>
-                              <div><Label className="text-xs">Data nasc.</Label><Input type="date" value={newChild.birth_date} onChange={e => setNewChild(p => ({ ...p, birth_date: e.target.value }))} className="mt-1 h-8 text-xs" /></div>
-                              <div><Label className="text-xs">CPF</Label><Input value={newChild.cpf || ""} onChange={e => setNewChild(p => ({ ...p, cpf: e.target.value }))} className="mt-1 h-8 text-xs" /></div>
-                              <Button variant="outline" size="sm" className="h-8" onClick={addChild}><Plus className="w-3 h-3 mr-1" />Adicionar</Button>
-                            </div>
-                            <div className="flex justify-end gap-2 pt-2">
-                              <Button variant="ghost" size="sm" onClick={() => setEditingChildren(null)}><X className="w-3.5 h-3.5 mr-1" />Cancelar</Button>
-                              <Button size="sm" onClick={saveChildren} disabled={updateCase.isPending}>
-                                {updateCase.isPending ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Save className="w-3.5 h-3.5 mr-1" />}Salvar
-                              </Button>
-                            </div>
-                          </div>
-                        ) : (
-                          children.length > 0 ? (
-                            <div className="space-y-1">
-                              {children.map((child, idx) => (
-                                <p key={idx} className="text-sm text-foreground">
-                                  {child.name} — {child.birth_date ? new Date(child.birth_date).toLocaleDateString("pt-BR") : "sem data"}{child.cpf ? ` — CPF: ${child.cpf}` : ""}
-                                </p>
-                              ))}
-                            </div>
-                          ) : <p className="text-sm text-muted-foreground">Nenhum filho cadastrado.</p>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </CollapsibleContent>
-            </div>
-          </Collapsible>
-        )}
-
-        {/* Section 4: Parte Contrária */}
-        {cases.length > 0 && (
-          <Collapsible open={opposingOpen} onOpenChange={setOpposingOpen}>
-            <div className="border border-border rounded-lg overflow-hidden">
-              <SectionHeader icon={UserX} title="Parte Contrária" open={opposingOpen}
-                onToggle={() => setOpposingOpen(!opposingOpen)} />
-              <CollapsibleContent>
-                <div className="p-4 space-y-4">
-                  {cases.map(caseItem => {
-                    const ci = caseItem as any;
-                    const isEditing = editingOpposing === caseItem.id;
-                    return (
-                      <div key={caseItem.id} className="border border-border/50 rounded p-3">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-xs font-medium text-muted-foreground">{caseItem.case_type} — {caseItem.description?.slice(0, 40)}</span>
-                          {!isEditing && (
-                            <Button variant="ghost" size="sm" className="h-6 px-2" onClick={() => startEditOpposing(ci)}>
-                              <Pencil className="w-3 h-3" />
-                            </Button>
-                          )}
-                        </div>
-                        {isEditing ? (
-                          <div className="space-y-3">
-                            <div className="grid grid-cols-3 gap-3">
-                              <div><Label className="text-xs">Nome</Label><Input value={opposingForm.opposing_party_name} onChange={e => setOpposingForm(p => ({ ...p, opposing_party_name: e.target.value }))} className="mt-1" /></div>
-                              <div><Label className="text-xs">CPF</Label><Input value={opposingForm.opposing_party_cpf} onChange={e => setOpposingForm(p => ({ ...p, opposing_party_cpf: e.target.value }))} className="mt-1" /></div>
-                              <div><Label className="text-xs">Endereço</Label><Input value={opposingForm.opposing_party_address} onChange={e => setOpposingForm(p => ({ ...p, opposing_party_address: e.target.value }))} className="mt-1" /></div>
-                            </div>
-                            <div className="flex justify-end gap-2">
-                              <Button variant="ghost" size="sm" onClick={() => setEditingOpposing(null)}><X className="w-3.5 h-3.5 mr-1" />Cancelar</Button>
-                              <Button size="sm" onClick={saveOpposing} disabled={updateCase.isPending}>
-                                {updateCase.isPending ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Save className="w-3.5 h-3.5 mr-1" />}Salvar
-                              </Button>
-                            </div>
-                          </div>
-                        ) : (
-                          ci.opposing_party_name ? (
-                            <p className="text-sm text-foreground">
-                              {ci.opposing_party_name}{ci.opposing_party_cpf ? `, CPF: ${ci.opposing_party_cpf}` : ""}
-                              {ci.opposing_party_address ? ` — ${ci.opposing_party_address}` : ""}
-                            </p>
-                          ) : <p className="text-sm text-muted-foreground">Nenhuma parte contrária cadastrada.</p>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </CollapsibleContent>
-            </div>
-          </Collapsible>
-        )}
+      {/* ═══ SECTION 5: ANOTAÇÕES ═══ */}
+      <div className="mt-6">
+        <h2 className="text-sm font-semibold text-foreground mb-3">Anotações</h2>
+        <Textarea value={notes ?? client.notes ?? ""} onChange={e => setNotes(e.target.value)} placeholder="Anotações sobre o cliente..." className="min-h-[200px]" />
+        <Button size="sm" className="mt-3" onClick={handleSaveNotes} disabled={updateClient.isPending}>Salvar</Button>
       </div>
-
-      {/* Tabs: Cases & Notes */}
-      <Tabs defaultValue="cases">
-        <TabsList>
-          <TabsTrigger value="cases">Casos ({cases.length})</TabsTrigger>
-          <TabsTrigger value="notes">Anotações</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="cases" className="mt-4">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-medium text-foreground">Casos</h2>
-            <Dialog open={caseDialogOpen} onOpenChange={setCaseDialogOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="sm"><Plus className="w-3.5 h-3.5 mr-1.5" />Novo caso</Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader><DialogTitle>Novo caso</DialogTitle></DialogHeader>
-                <div className="space-y-4 mt-2">
-                  <div><Label>Tipo</Label>
-                    <Select value={caseForm.case_type} onValueChange={v => setCaseForm(f => ({ ...f, case_type: v }))}>
-                      <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
-                      <SelectContent>{caseTypesList.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
-                    </Select>
-                  </div>
-                  <div><Label>Descrição</Label>
-                    <Textarea value={caseForm.description} onChange={e => setCaseForm(f => ({ ...f, description: e.target.value }))} placeholder="Descreva o caso..." className="mt-1.5" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div><Label>Número CNJ (opcional)</Label><Input value={caseForm.cnj_number} onChange={e => setCaseForm(f => ({ ...f, cnj_number: e.target.value }))} placeholder="0000000-00.0000.0.00.0000" className="mt-1.5" /></div>
-                    <div><Label>Vara (opcional)</Label><Input value={caseForm.court} onChange={e => setCaseForm(f => ({ ...f, court: e.target.value }))} placeholder="Ex: 2a Vara de Família" className="mt-1.5" /></div>
-                  </div>
-                  <Button className="w-full" onClick={handleCreateCase} disabled={createCase.isPending}>{createCase.isPending ? "Criando..." : "Criar caso"}</Button>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </div>
-          {cases.length === 0 ? (
-            <div className="border border-border rounded-lg">
-              <EmptyState icon={FolderOpen} title="Nenhum caso registrado" description="Crie o primeiro caso para este cliente." actionLabel="Novo caso" onAction={() => setCaseDialogOpen(true)} />
-            </div>
-          ) : (
-            <div className="border border-border rounded-lg divide-y divide-border">
-              {cases.map(c => (
-                <Link key={c.id} to={`/cases/${c.id}`} className="flex items-center justify-between px-4 py-3 hover:bg-muted/50 transition-colors">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{c.case_type}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{c.description}</p>
-                    {c.cnj_number && <p className="text-xs text-muted-foreground mt-0.5">CNJ: {c.cnj_number}</p>}
-                  </div>
-                  <StatusBadge status={c.status} />
-                </Link>
-              ))}
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="notes" className="mt-4">
-          <Textarea value={notes ?? client.notes ?? ""} onChange={e => setNotes(e.target.value)} placeholder="Anotações sobre o cliente..." className="min-h-[200px]" />
-          <Button size="sm" className="mt-3" onClick={handleSaveNotes} disabled={updateClient.isPending}>Salvar</Button>
-        </TabsContent>
-      </Tabs>
 
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>
