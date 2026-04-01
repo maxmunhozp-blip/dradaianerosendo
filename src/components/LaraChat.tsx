@@ -274,7 +274,33 @@ export function LaraChat({
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
-        {messages.length === 0 && (
+        {/* Audit card */}
+        {(auditContent || auditLoading) && (
+          <Collapsible open={auditOpen} onOpenChange={setAuditOpen}>
+            <div className="rounded-lg border border-amber-200 bg-amber-50 overflow-hidden">
+              <CollapsibleTrigger asChild>
+                <button className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-amber-800 hover:bg-amber-100 transition-colors">
+                  <span className="flex items-center gap-1.5">
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    Auditoria do caso
+                    {auditLoading && <Loader2 className="w-3 h-3 animate-spin" />}
+                  </span>
+                  {auditOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="px-3 pb-3 text-sm text-amber-900">
+                  <div className="prose prose-sm max-w-none prose-headings:text-amber-900 prose-p:text-amber-800 prose-li:text-amber-800 prose-strong:text-amber-900">
+                    <ReactMarkdown>{auditContent || ""}</ReactMarkdown>
+                    {auditLoading && <span className="inline-block w-1.5 h-4 bg-amber-600 animate-pulse ml-0.5" />}
+                  </div>
+                </div>
+              </CollapsibleContent>
+            </div>
+          </Collapsible>
+        )}
+
+        {messages.length === 0 && !auditContent && !auditLoading && (
           <div className="text-center py-8">
             <p className="text-sm text-muted-foreground">Inicie uma conversa com a LARA.</p>
             <p className="text-xs text-muted-foreground mt-2">
