@@ -509,10 +509,37 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
             </DialogTitle>
             <DialogDescription>Revise o documento antes de salvar.</DialogDescription>
           </DialogHeader>
-          <div className="flex-1 min-h-0 border rounded-md overflow-hidden bg-muted">
-            {pdfPreviewUrl && (
-              <embed src={pdfPreviewUrl} type="application/pdf" className="w-full h-[60vh]" />
-            )}
+          <div className="flex-1 min-h-0 rounded-md border border-border bg-muted/40 p-6">
+            <div className="flex h-[60vh] flex-col items-center justify-center gap-4 text-center">
+              <FileText className="h-10 w-10 text-muted-foreground" />
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-foreground">Preview pronto para revisão</p>
+                <p className="text-sm text-muted-foreground">Abra o PDF em uma nova aba ou baixe antes de salvar no caso.</p>
+              </div>
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    if (pdfPreviewUrl) window.open(pdfPreviewUrl, "_blank", "noopener,noreferrer");
+                  }}
+                >
+                  <ExternalLink className="w-4 h-4 mr-1" /> Abrir preview
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    if (pdfPreviewUrl) {
+                      const a = document.createElement("a");
+                      a.href = pdfPreviewUrl;
+                      a.download = `${pdfPreviewMeta?.docName || "documento"}.pdf`;
+                      a.click();
+                    }
+                  }}
+                >
+                  <Download className="w-4 h-4 mr-1" /> Baixar PDF
+                </Button>
+              </div>
+            </div>
           </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => {
