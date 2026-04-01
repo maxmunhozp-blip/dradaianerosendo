@@ -293,6 +293,7 @@ export default function Settings() {
     templates: false,
     hours: false,
     intimacoes: false,
+    signature: false,
   });
 
   // Case types management
