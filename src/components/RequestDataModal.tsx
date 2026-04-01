@@ -90,7 +90,7 @@ export function RequestDataModal({ open, onOpenChange, caseId, clientId, clientD
 
   const handleWhatsApp = () => {
     if (!phone) { toast.error("Cliente sem telefone cadastrado"); return; }
-    const url = `https://wa.me/55${phone}?text=${encodeURIComponent(whatsappMessage)}`;
+    const url = whatsappLink(phone, whatsappMessage);
     window.open(url, "_blank");
   };
 
