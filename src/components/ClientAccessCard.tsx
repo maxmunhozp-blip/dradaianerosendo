@@ -79,7 +79,31 @@ export function ClientAccessCard({
 
   const firstName = clientName.split(" ")[0];
 
-  const handleCopy = () => {
+  // Calculate days remaining
+  const daysRemaining = expiresAt
+    ? Math.max(0, Math.ceil((new Date(expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    : null;
+  const isExpiringSoon = daysRemaining !== null && daysRemaining <= 7;
+
+  const handleRenew = async () => {
+    setRenewing(true);
+    try {
+      const { data: newSession, error } = await supabase
+        .from("client_sessions")
+        .insert({ client_id: clientId })
+        .select("token, expires_at")
+        .single();
+      if (error) throw error;
+      setToken(newSession.token);
+      setExpiresAt(newSession.expires_at);
+      onTokenCreated?.(newSession.token);
+      toast.success("Link renovado por mais 30 dias!");
+    } catch {
+      toast.error("Erro ao renovar link");
+    } finally {
+      setRenewing(false);
+    }
+  };
     if (!portalUrl) return;
     navigator.clipboard.writeText(portalUrl);
     setCopied(true);
