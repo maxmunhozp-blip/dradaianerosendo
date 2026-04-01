@@ -95,7 +95,7 @@ export default function ClientDetail() {
       if (caseIds.length === 0) return [];
       const { data, error } = await supabase
         .from("documents")
-        .select("id, name, case_id, file_url, extraction_status")
+        .select("id, name, case_id, file_url, extraction_status, extracted_data")
         .in("case_id", caseIds);
       if (error) throw error;
       return data || [];
@@ -103,22 +103,30 @@ export default function ClientDetail() {
     enabled: caseIds.length > 0,
   });
 
-  const pendingDocs = allDocs.filter(
-    (d: any) => d.file_url && (!d.extraction_status || d.extraction_status === "pending")
-  );
+  const hasExtractedData = (d: any) =>
+    d?.extracted_data && typeof d.extracted_data === "object" && Object.keys(d.extracted_data).length > 0;
+
+  const uploadedDocs = allDocs.filter((d: any) => d.file_url);
+  const doneDocs = uploadedDocs.filter((d: any) => d.extraction_status === "done" && hasExtractedData(d));
+  const failedDocs = uploadedDocs.filter((d: any) => d.extraction_status === "failed" || (d.extraction_status === "done" && !hasExtractedData(d)));
+  const pendingDocs = uploadedDocs.filter((d: any) => !d.extraction_status || d.extraction_status === "pending");
+  const allScanned = uploadedDocs.length > 0 && doneDocs.length === uploadedDocs.length;
+  const canScan = !scanning && (!allScanned || failedDocs.length > 0 || pendingDocs.length > 0);
+
+  const docsToScan = [...pendingDocs, ...failedDocs];
 
   const handleScanAll = async () => {
-    if (pendingDocs.length === 0) {
+    if (docsToScan.length === 0) {
       toast.info("Nenhum documento pendente para escanear");
       return;
     }
     setScanning(true);
     let success = 0;
-    for (let i = 0; i < pendingDocs.length; i++) {
-      const doc = pendingDocs[i];
-      setScanProgress(`Escaneando documento ${i + 1} de ${pendingDocs.length}...`);
+    for (let i = 0; i < docsToScan.length; i++) {
+      const doc = docsToScan[i];
+      setScanProgress(`Escaneando documento ${i + 1} de ${docsToScan.length}...`);
       try {
-        await supabase.functions.invoke("process-document", {
+        const { data, error } = await supabase.functions.invoke("process-document", {
           body: {
             document_id: doc.id,
             case_id: doc.case_id,
@@ -127,16 +135,22 @@ export default function ClientDetail() {
             file_name: doc.name,
           },
         });
-        success++;
+        if (error || !data?.success) {
+          // Mark as failed
+          await supabase.from("documents").update({ extraction_status: "failed" }).eq("id", doc.id);
+        } else {
+          success++;
+        }
       } catch (e) {
         console.error(`Erro ao escanear ${doc.name}:`, e);
+        await supabase.from("documents").update({ extraction_status: "failed" }).eq("id", doc.id);
       }
     }
     setScanProgress("");
     setScanning(false);
     queryClient.invalidateQueries({ queryKey: ["extraction-suggestions", id] });
     queryClient.invalidateQueries({ queryKey: ["client-all-docs", id] });
-    toast.success(`Escaneamento concluído (${success}/${pendingDocs.length}) — verifique as sugestões abaixo.`);
+    toast.success(`Escaneamento concluído (${success}/${docsToScan.length}) — verifique as sugestões abaixo.`);
   };
 
   // Section states
