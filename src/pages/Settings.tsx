@@ -295,14 +295,14 @@ function SignatureSettings({ value, onChange }: { value: string; onChange: (v: s
         body: { token: value },
       });
       if (error) {
-        toast.error("Erro ao conectar com ZapSign.");
+        toast.error(error.message || "Erro ao conectar com ZapSign.");
       } else if (data?.success) {
         toast.success("Conexão OK! Token válido.");
       } else {
-        toast.error("Token inválido. Verifique e tente novamente.");
+        toast.error(data?.error || "Token inválido. Verifique e tente novamente.");
       }
-    } catch {
-      toast.error("Erro ao conectar com ZapSign.");
+    } catch (err: any) {
+      toast.error(err?.message || "Erro ao conectar com ZapSign.");
     } finally {
       setTesting(false);
     }
