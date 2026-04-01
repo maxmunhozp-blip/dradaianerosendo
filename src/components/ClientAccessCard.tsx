@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Copy, Check, MessageCircle, Send, ExternalLink, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
+import { Copy, Check, MessageCircle, Send, ExternalLink, ChevronDown, ChevronUp, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -23,7 +23,9 @@ export function ClientAccessCard({
   const [copied, setCopied] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [token, setToken] = useState(initialToken);
+  const [expiresAt, setExpiresAt] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [renewing, setRenewing] = useState(false);
 
   // Sync prop changes
   useEffect(() => { setToken(initialToken); }, [initialToken]);
@@ -46,15 +48,17 @@ export function ClientAccessCard({
 
         if (existing && new Date(existing.expires_at) > new Date()) {
           setToken(existing.token);
+          setExpiresAt(existing.expires_at);
           onTokenCreated?.(existing.token);
         } else {
           const { data: newSession, error } = await supabase
             .from("client_sessions")
             .insert({ client_id: clientId })
-            .select("token")
+            .select("token, expires_at")
             .single();
           if (error) throw error;
           setToken(newSession.token);
+          setExpiresAt(newSession.expires_at);
           onTokenCreated?.(newSession.token);
           toast.success("Link do portal gerado!");
         }
@@ -75,6 +79,31 @@ export function ClientAccessCard({
 
   const firstName = clientName.split(" ")[0];
 
+  // Calculate days remaining
+  const daysRemaining = expiresAt
+    ? Math.max(0, Math.ceil((new Date(expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    : null;
+  const isExpiringSoon = daysRemaining !== null && daysRemaining <= 7;
+
+  const handleRenew = async () => {
+    setRenewing(true);
+    try {
+      const { data: newSession, error } = await supabase
+        .from("client_sessions")
+        .insert({ client_id: clientId })
+        .select("token, expires_at")
+        .single();
+      if (error) throw error;
+      setToken(newSession.token);
+      setExpiresAt(newSession.expires_at);
+      onTokenCreated?.(newSession.token);
+      toast.success("Link renovado por mais 30 dias!");
+    } catch {
+      toast.error("Erro ao renovar link");
+    } finally {
+      setRenewing(false);
+    }
+  };
   const handleCopy = () => {
     if (!portalUrl) return;
     navigator.clipboard.writeText(portalUrl);
@@ -161,6 +190,24 @@ export function ClientAccessCard({
                     WhatsApp
                   </button>
                 )}
+              </div>
+              {/* Expiration info + Renew */}
+              <div className="flex items-center justify-between mt-2">
+                <p className={`text-[11px] ${isExpiringSoon ? 'text-amber-600 font-medium' : 'text-muted-foreground'}`}>
+                  {daysRemaining !== null
+                    ? daysRemaining === 0
+                      ? "Expira hoje"
+                      : `Expira em ${daysRemaining} dia${daysRemaining > 1 ? "s" : ""}`
+                    : ""}
+                </p>
+                <button
+                  onClick={handleRenew}
+                  disabled={renewing}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-border text-[11px] font-medium hover:bg-muted transition-colors disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-3 h-3 ${renewing ? "animate-spin" : ""}`} />
+                  {renewing ? "Renovando..." : "Renovar link"}
+                </button>
               </div>
             </div>
           ) : (
