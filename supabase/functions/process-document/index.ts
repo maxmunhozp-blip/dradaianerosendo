@@ -7,7 +7,6 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-// ── Document owner detection from file name ──
 type DocOwner = "client" | "opposing" | "child" | "address" | "generic";
 
 function detectDocOwner(fileName: string): DocOwner {
@@ -15,7 +14,7 @@ function detectDocOwner(fileName: string): DocOwner {
   if (lower.includes("comprovante") || lower.includes("resid") || lower.includes("endereco")) return "address";
   if (lower.includes("genitora") || lower.includes("mae") || lower.includes("cliente")) return "client";
   if (lower.includes("genitor") || lower.includes("pai") || lower.includes("alimentante") || lower.includes("conjuge")) return "opposing";
-  if ((lower.includes("certidao") || lower.includes("certidão")) && (lower.includes("nascimento"))) return "child";
+  if ((lower.includes("certidao") || lower.includes("certidão")) && lower.includes("nascimento")) return "child";
   return "generic";
 }
 
@@ -29,7 +28,6 @@ function detectDocType(fileName: string): string {
   return "outro";
 }
 
-// ── Build extraction prompt based on owner + type ──
 function buildPrompt(owner: DocOwner, docType: string): string {
   switch (owner) {
     case "client":
@@ -44,7 +42,6 @@ function buildPrompt(owner: DocOwner, docType: string): string {
 - client_nome_mae
 - client_nome_pai
 Retorne APENAS um JSON com esses campos. Omita campos não encontrados.`;
-
     case "opposing":
       return `Este documento pertence À OUTRA PARTE (pai/genitor/cônjuge/alimentante/réu). Extraia APENAS os dados DELE(A):
 - opposing_nome (nome completo)
@@ -53,7 +50,6 @@ Retorne APENAS um JSON com esses campos. Omita campos não encontrados.`;
 - opposing_data_nascimento (YYYY-MM-DD)
 - opposing_endereco (endereço completo em uma linha)
 Retorne APENAS um JSON com esses campos. Omita campos não encontrados.`;
-
     case "child":
       return `Esta é uma certidão de nascimento de uma CRIANÇA. Extraia:
 - child_nome (nome completo da criança)
@@ -62,7 +58,6 @@ Retorne APENAS um JSON com esses campos. Omita campos não encontrados.`;
 - child_nome_pai (nome do pai)
 - child_cpf (se houver)
 Retorne APENAS um JSON com esses campos. Omita campos não encontrados.`;
-
     case "address":
       return `Este é um comprovante de residência. Extraia APENAS:
 - address_titular (nome do titular da conta)
@@ -74,9 +69,7 @@ Retorne APENAS um JSON com esses campos. Omita campos não encontrados.`;
 - address_cidade
 - address_estado (sigla UF, ex: SP, RJ)
 Retorne APENAS um JSON com esses campos. Omita campos não encontrados.`;
-
     default:
-      // Generic: try to detect from content
       if (docType === "rg_cpf") {
         return `Este é um documento de identificação (RG/CPF). Extraia:
 - client_nome (nome completo)
@@ -86,7 +79,7 @@ Retorne APENAS um JSON com esses campos. Omita campos não encontrados.`;
 - client_nacionalidade
 - client_nome_mae
 - client_nome_pai
-Retorne APENAS um JSON com esses campos. Se o documento tiver dados de apenas uma pessoa, use prefixo client_. Omita campos não encontrados.`;
+Retorne APENAS um JSON com esses campos. Omita campos não encontrados.`;
       }
       return `Analise este documento jurídico brasileiro. Identifique de QUEM são os dados e use o prefixo correto:
 - Dados da cliente/autora: prefixo client_ (client_nome, client_cpf, client_rg)
@@ -97,79 +90,123 @@ Retorne APENAS um JSON. Omita campos não encontrados.`;
   }
 }
 
-// ── Map prefixed extracted fields to DB suggestions ──
-function mapFieldsToSuggestions(
+// Classify each suggestion
+type SuggestionConfidence = "high" | "medium" | "conflict";
+
+interface ClassifiedSuggestion {
+  field_path: string;
+  suggested_value: string;
+  current_value: string | null;
+  confidence: SuggestionConfidence;
+}
+
+function classifySuggestions(
   extracted: Record<string, string>,
   clientData: Record<string, any>,
   caseData: Record<string, any>,
-): Array<{ field_path: string; suggested_value: string; current_value: string | null }> {
-  const suggestions: Array<{ field_path: string; suggested_value: string; current_value: string | null }> = [];
+  docOwner: DocOwner,
+): ClassifiedSuggestion[] {
+  const results: ClassifiedSuggestion[] = [];
 
-  const add = (fieldPath: string, value: string | undefined, current: string | null | undefined) => {
-    if (value && value.trim()) {
-      suggestions.push({
-        field_path: fieldPath,
-        suggested_value: value.trim(),
-        current_value: current ?? null,
-      });
+  const classify = (
+    fieldPath: string,
+    value: string | undefined,
+    current: string | null | undefined,
+    ownerClear: boolean,
+  ) => {
+    if (!value || !value.trim()) return;
+    const trimmed = value.trim();
+    const cur = current ?? null;
+    const hasValue = cur && cur.trim() !== "" && cur !== "—";
+
+    let confidence: SuggestionConfidence;
+    if (hasValue && cur!.trim().toLowerCase() !== trimmed.toLowerCase()) {
+      confidence = "conflict";
+    } else if (hasValue && cur!.trim().toLowerCase() === trimmed.toLowerCase()) {
+      // Same value already exists — treat as high, already correct
+      confidence = "high";
+    } else if (!hasValue && ownerClear) {
+      confidence = "high";
+    } else {
+      confidence = "medium";
     }
+
+    results.push({ field_path: fieldPath, suggested_value: trimmed, current_value: cur, confidence });
   };
 
-  // CLIENT fields → clients table
+  // CLIENT fields
   const clientMap: Record<string, string> = {
-    client_nome: "name",
-    client_cpf: "cpf",
-    client_rg: "rg",
-    client_data_nascimento: "birth_date",
-    client_estado_civil: "marital_status",
-    client_profissao: "profession",
-    client_nacionalidade: "nationality",
+    client_nome: "name", client_cpf: "cpf", client_rg: "rg",
+    client_data_nascimento: "birth_date", client_estado_civil: "marital_status",
+    client_profissao: "profession", client_nacionalidade: "nationality",
   };
   for (const [key, dbField] of Object.entries(clientMap)) {
     if (extracted[key]) {
-      add(`clients.${dbField}`, extracted[key], clientData[dbField]);
+      const ownerClear = docOwner === "client" || (docOwner !== "opposing" && docOwner !== "generic");
+      classify(`clients.${dbField}`, extracted[key], clientData[dbField], ownerClear);
     }
   }
 
-  // OPPOSING fields → cases table
+  // OPPOSING fields
   const opposingMap: Record<string, string> = {
-    opposing_nome: "opposing_party_name",
-    opposing_cpf: "opposing_party_cpf",
+    opposing_nome: "opposing_party_name", opposing_cpf: "opposing_party_cpf",
     opposing_endereco: "opposing_party_address",
   };
   for (const [key, dbField] of Object.entries(opposingMap)) {
     if (extracted[key]) {
-      add(`cases.${dbField}`, extracted[key], caseData[dbField]);
+      const ownerClear = docOwner === "opposing";
+      classify(`cases.${dbField}`, extracted[key], caseData[dbField], ownerClear);
     }
   }
 
-  // CHILD fields → cases.children_add (special)
+  // CHILD
   if (extracted.child_nome && extracted.child_data_nascimento) {
     const childJson = JSON.stringify({
       name: extracted.child_nome,
       birth_date: extracted.child_data_nascimento,
       cpf: extracted.child_cpf || undefined,
     });
-    add("cases.children_add", childJson, null);
-  }
-
-  // ADDRESS fields → clients table (address_*)
-  const addressMap: Record<string, string> = {
-    address_cep: "address_zip",
-    address_logradouro: "address_street",
-    address_numero: "address_number",
-    address_complemento: "address_complement",
-    address_bairro: "address_neighborhood",
-    address_cidade: "address_city",
-    address_estado: "address_state",
-  };
-  for (const [key, dbField] of Object.entries(addressMap)) {
-    if (extracted[key]) {
-      add(`clients.${dbField}`, extracted[key], clientData[dbField]);
+    const currentChildren = (caseData?.children as any[]) || [];
+    const exists = currentChildren.some(
+      (c: any) => (c.name || "").toLowerCase() === (extracted.child_nome || "").toLowerCase()
+    );
+    if (!exists) {
+      const ownerClear = docOwner === "child";
+      results.push({
+        field_path: "cases.children_add",
+        suggested_value: childJson,
+        current_value: null,
+        confidence: ownerClear ? "high" : "medium",
+      });
     }
   }
 
-  return suggestions;
+  // ADDRESS
+  const addressMap: Record<string, string> = {
+    address_cep: "address_zip", address_logradouro: "address_street",
+    address_numero: "address_number", address_complemento: "address_complement",
+    address_bairro: "address_neighborhood", address_cidade: "address_city",
+    address_estado: "address_state",
+  };
+  // Check if titular matches client
+  let addressOwnerClear = docOwner === "address";
+  if (extracted.address_titular && clientData?.name) {
+    const titularFirst = (extracted.address_titular).toLowerCase().split(" ")[0];
+    const clientFirst = (clientData.name).toLowerCase().split(" ")[0];
+    addressOwnerClear = titularFirst === clientFirst ||
+      (clientData.name).toLowerCase().includes(titularFirst) ||
+      (extracted.address_titular).toLowerCase().includes(clientFirst);
+  } else if (docOwner !== "address") {
+    addressOwnerClear = false;
+  }
+
+  for (const [key, dbField] of Object.entries(addressMap)) {
+    if (extracted[key]) {
+      classify(`clients.${dbField}`, extracted[key], clientData[dbField], addressOwnerClear);
+    }
+  }
+
+  return results;
 }
 
 serve(async (req) => {
@@ -194,10 +231,9 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const sb = createClient(supabaseUrl, supabaseKey);
 
-    // Mark as processing
     await sb.from("documents").update({ extraction_status: "processing" }).eq("id", document_id);
 
-    // Step 1: Download file
+    // Download file
     const storagePath = file_url?.split("/case-documents/")[1];
     if (!storagePath) throw new Error("Could not extract storage path from URL");
 
@@ -215,7 +251,6 @@ serve(async (req) => {
     }
     const base64 = btoa(binary);
 
-    // Step 2: Detect type and build prompt
     const lowerName = (file_name || "").toLowerCase();
     const isImage = lowerName.endsWith(".jpg") || lowerName.endsWith(".jpeg") || lowerName.endsWith(".png");
     const mimeType = isImage ? (lowerName.endsWith(".png") ? "image/png" : "image/jpeg") : "application/pdf";
@@ -225,7 +260,6 @@ serve(async (req) => {
     const docType = detectDocType(file_name || "");
     const extractionPrompt = buildPrompt(docOwner, docType);
 
-    // Step 3: Call Lovable AI Gateway
     const systemPrompt = `Você é um extrator de dados de documentos jurídicos brasileiros.
 REGRAS CRÍTICAS:
 1. Retorne APENAS um JSON válido, sem texto adicional, sem markdown.
@@ -270,7 +304,6 @@ REGRAS CRÍTICAS:
     const aiData = await aiRes.json();
     const textContent = aiData.choices?.[0]?.message?.content || "{}";
 
-    // Parse JSON
     let extracted: Record<string, string> = {};
     try {
       const jsonMatch = textContent.match(/```json\s*([\s\S]*?)\s*```/) || textContent.match(/\{[\s\S]*\}/);
@@ -288,62 +321,48 @@ REGRAS CRÍTICAS:
       });
     }
 
-    // Step 4: Get current data for comparison
+    // Get current data for comparison
     const { data: clientData } = await sb.from("clients").select("*").eq("id", client_id).single();
     const { data: caseData } = await sb.from("cases").select("*").eq("id", case_id).single();
 
-    // Validate address titular matches client name before auto-applying
-    let addressTitularMatches = true;
-    if (extracted.address_titular && clientData?.name) {
-      const titularFirst = (extracted.address_titular || "").toLowerCase().split(" ")[0];
-      const clientFirst = (clientData.name || "").toLowerCase().split(" ")[0];
-      addressTitularMatches = titularFirst === clientFirst ||
-        (clientData.name || "").toLowerCase().includes(titularFirst) ||
-        (extracted.address_titular || "").toLowerCase().includes(clientFirst);
-    }
+    // Classify all suggestions
+    const classified = classifySuggestions(extracted, clientData || {}, caseData || {}, docOwner);
 
-    const suggestions = mapFieldsToSuggestions(extracted, clientData || {}, caseData || {});
-
-    // Step 5: Create extraction suggestions
-    const suggestionsToInsert = suggestions.map((s) => ({
+    // Save ALL suggestions to DB with their confidence
+    const suggestionsToInsert = classified.map((s) => ({
       document_id,
       case_id,
       client_id,
       field_path: s.field_path,
       suggested_value: s.suggested_value,
       current_value: s.current_value,
+      status: s.confidence === "high" ? "accepted" : "pending",
     }));
 
     if (suggestionsToInsert.length > 0) {
       await sb.from("extraction_suggestions").insert(suggestionsToInsert);
     }
 
-    // Step 5b: Auto-apply ONLY empty fields + address only if titular matches
+    // Auto-apply ONLY high_confidence
     let autoApplied = 0;
-    for (const s of suggestions) {
-      const hasCurrentValue = s.current_value && s.current_value.trim() !== "" && s.current_value !== "—";
+    const highConfidence = classified.filter((s) => s.confidence === "high");
 
-      // Never auto-apply if field already has a value
-      if (hasCurrentValue) continue;
+    for (const s of highConfidence) {
+      // Skip if same value already exists
+      if (s.current_value && s.current_value.trim().toLowerCase() === s.suggested_value.toLowerCase()) {
+        autoApplied++;
+        continue;
+      }
 
       const [table, field] = s.field_path.split(".");
-
-      // For address fields, only auto-apply if titular matches client
-      if (field.startsWith("address_") && !addressTitularMatches) continue;
 
       if (field === "children_add") {
         const childData = JSON.parse(s.suggested_value);
         const currentChildren = (caseData?.children as any[]) || [];
-        // Check for duplicate child name
-        const alreadyExists = currentChildren.some(
-          (c: any) => (c.name || "").toLowerCase() === (childData.name || "").toLowerCase()
-        );
-        if (!alreadyExists) {
-          await sb.from("cases").update({
-            children: [...currentChildren, childData],
-          }).eq("id", case_id);
-          autoApplied++;
-        }
+        await sb.from("cases").update({
+          children: [...currentChildren, childData],
+        }).eq("id", case_id);
+        autoApplied++;
       } else if (table === "clients") {
         await sb.from("clients").update({ [field]: s.suggested_value }).eq("id", client_id);
         autoApplied++;
@@ -351,15 +370,9 @@ REGRAS CRÍTICAS:
         await sb.from("cases").update({ [field]: s.suggested_value } as any).eq("id", case_id);
         autoApplied++;
       }
-
-      // Mark as accepted
-      await sb.from("extraction_suggestions")
-        .update({ status: "accepted" })
-        .eq("document_id", document_id)
-        .eq("field_path", s.field_path);
     }
 
-    // Step 6: Update document status
+    // Update document status
     const fieldCount = Object.keys(extracted).length;
     const confidence = fieldCount >= 5 ? "high" : fieldCount >= 2 ? "medium" : "low";
 
@@ -370,19 +383,26 @@ REGRAS CRÍTICAS:
       extracted_at: new Date().toISOString(),
     }).eq("id", document_id);
 
-    const fieldNames = Object.keys(extracted).join(", ");
-    const pendingCount = suggestions.length - autoApplied;
+    const pendingReview = classified.filter((s) => s.confidence !== "high");
 
+    // Return classified results for the frontend
     return new Response(
       JSON.stringify({
         success: true,
         doc_type: docType,
         doc_owner: docOwner,
         fields_found: fieldCount,
-        suggestions_created: suggestions.length,
+        suggestions_created: classified.length,
         auto_applied: autoApplied,
-        pending_review: pendingCount,
-        summary: `Extraí ${fieldCount} campos (${fieldNames}). ${autoApplied} aplicados automaticamente, ${pendingCount} aguardando revisão.`,
+        pending_review: pendingReview.length,
+        // Classified suggestions for frontend review panel
+        classified: classified.map((s) => ({
+          field_path: s.field_path,
+          suggested_value: s.suggested_value,
+          current_value: s.current_value,
+          confidence: s.confidence,
+        })),
+        summary: `Extraí ${fieldCount} campos. ${autoApplied} aplicados automaticamente, ${pendingReview.length} aguardando revisão.`,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
