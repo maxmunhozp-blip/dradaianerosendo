@@ -8,6 +8,7 @@ export interface ChatAttachment {
 export interface StreamChatOptions {
   messages: { role: string; content: string; attachments?: ChatAttachment[] }[];
   caseId?: string;
+  isPortalMode?: boolean;
   onDelta: (text: string) => void;
   onDone: () => void;
   onError: (error: string) => void;
