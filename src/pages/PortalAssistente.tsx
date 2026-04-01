@@ -3,7 +3,7 @@ import { usePortalSession } from "@/components/ClientPortalLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { createClient } from "@supabase/supabase-js";
 import { useQuery } from "@tanstack/react-query";
-import LaraChat from "@/components/LaraChat";
+import { LaraChat } from "@/components/LaraChat";
 import type { ChatMessage } from "@/components/LaraChat";
 import type { ChatAttachment } from "@/lib/lara-stream";
 import { Loader2 } from "lucide-react";
