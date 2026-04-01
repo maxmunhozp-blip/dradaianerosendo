@@ -878,7 +878,29 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
               }
               toast.success("PDF baixado — anexe no WhatsApp");
             }}>
-              <Send className="w-4 h-4 mr-1" /> Enviar ao cliente
+              <MessageSquare className="w-4 h-4 mr-1" /> Enviar via WhatsApp
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => {
+              if (!pdfPreviewBlob || !pdfPreviewMeta) return;
+              const clientEmail = clientInfo ? null : null; // fetched separately below
+              const clientNameShort = (clientInfo?.name || pdfPreviewMeta.action?.data?.client_name || "").split(" ")[0];
+              const docName = pdfPreviewMeta.docName || "documento";
+
+              // Download PDF first
+              const a = document.createElement("a");
+              a.href = pdfPreviewUrl!;
+              a.download = `${docName.replace(/\s+/g, "_")}.pdf`;
+              a.click();
+
+              // Build mailto with subject and body
+              const subject = encodeURIComponent(`${docName} - Para sua análise e assinatura`);
+              const body = encodeURIComponent(
+                `Olá ${clientNameShort},\n\nSegue em anexo o documento "${docName}" para sua análise e assinatura.\n\nPor favor, revise e entre em contato caso tenha dúvidas.\n\nAtenciosamente,\nDra. Daiane Rosendo`
+              );
+              window.open(`mailto:?subject=${subject}&body=${body}`, "_self");
+              toast.success("PDF baixado — anexe ao e-mail que será aberto");
+            }}>
+              <Mail className="w-4 h-4 mr-1" /> Enviar por e-mail
             </Button>
             <Button variant="outline" size="sm" onClick={() => {
               if (pdfPreviewUrl) {
