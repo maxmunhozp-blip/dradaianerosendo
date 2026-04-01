@@ -83,47 +83,73 @@ Deno.serve(async (req) => {
         const { data: emailSettings } = await admin
           .from("settings")
           .select("key, value")
-          .in("key", ["office_name", "office_phone"]);
+          .in("key", [
+            "office_name", "email_welcome_enabled", "email_welcome_subject",
+            "email_welcome_body", "email_primary_color", "email_logo_url",
+            "email_footer_text", "email_font_family", "email_signature_html",
+          ]);
 
-        const officeName = emailSettings?.find((s: any) => s.key === "office_name")?.value || "Escritório";
-
-        const roleLabel = role === "client" ? "cliente" : role === "advogado" ? "advogado(a)" : "administrador(a)";
-        const portalUrl = `${supabaseUrl.replace(".supabase.co", "")}`; // placeholder
-
-        const htmlBody = `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <h2 style="color: #0F172A;">Bem-vindo(a) ao ${officeName}!</h2>
-            <p>Olá${name ? `, ${name}` : ""}!</p>
-            <p>Sua conta foi criada com sucesso como <strong>${roleLabel}</strong>.</p>
-            <p>Seus dados de acesso:</p>
-            <ul>
-              <li><strong>E-mail:</strong> ${email}</li>
-              <li><strong>Senha:</strong> a senha definida pelo administrador</li>
-            </ul>
-            <p>Recomendamos que altere sua senha no primeiro acesso.</p>
-            <br/>
-            <p style="color: #64748b; font-size: 12px;">Este é um e-mail automático enviado pelo ${officeName}.</p>
-          </div>
-        `;
-
-        // Try sending via send-email edge function
-        const emailRes = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${serviceRoleKey}`,
-          },
-          body: JSON.stringify({
-            to: email,
-            subject: `Bem-vindo(a) ao ${officeName}`,
-            html: htmlBody,
-          }),
-        });
-
-        if (emailRes.ok) {
-          welcomeEmailSent = true;
+        const getSetting = (key: string) => emailSettings?.find((s: any) => s.key === key)?.value || "";
+        const isEnabled = getSetting("email_welcome_enabled") !== "false";
+        if (!isEnabled) {
+          console.log("Welcome email disabled in settings");
         } else {
-          console.error("Welcome email failed:", await emailRes.text());
+          const officeName = getSetting("office_name") || "Escritório";
+          const primaryColor = getSetting("email_primary_color") || "#0F172A";
+          const fontFamily = getSetting("email_font_family") || "Arial, sans-serif";
+          const logoUrl = getSetting("email_logo_url");
+          const footerText = getSetting("email_footer_text") || `© ${new Date().getFullYear()} ${officeName}. Todos os direitos reservados.`;
+          const signatureHtml = getSetting("email_signature_html");
+
+          const roleLabel = role === "client" ? "cliente" : role === "advogado" ? "advogado(a)" : "administrador(a)";
+
+          // Use custom template or default
+          const defaultBody = `Olá${name ? `, ${name}` : ""}!\n\nSua conta foi criada com sucesso como ${roleLabel}.\n\nSeus dados de acesso:\n• E-mail: ${email}\n• Senha: definida pelo administrador\n\nRecomendamos que altere sua senha no primeiro acesso.\n\nAtenciosamente,\nEquipe ${officeName}`;
+          const customBody = getSetting("email_welcome_body");
+          const bodyText = (customBody || defaultBody)
+            .replace(/{nome}/g, name || "")
+            .replace(/{email}/g, email)
+            .replace(/{papel}/g, roleLabel)
+            .replace(/{escritorio}/g, officeName);
+
+          const subject = (getSetting("email_welcome_subject") || `Bem-vindo(a) ao ${officeName}`)
+            .replace(/{nome}/g, name || "")
+            .replace(/{escritorio}/g, officeName);
+
+          const logoHtml = logoUrl
+            ? `<img src="${logoUrl}" alt="Logo" style="max-height:48px;margin:0 auto;" />`
+            : `<span style="color:#ffffff;font-size:20px;font-weight:700;">${officeName}</span>`;
+
+          const htmlBody = `
+            <div style="font-family:${fontFamily};max-width:600px;margin:0 auto;background:#ffffff;">
+              <div style="background:${primaryColor};padding:24px 32px;text-align:center;">
+                ${logoHtml}
+              </div>
+              <div style="padding:32px;">
+                <h2 style="color:${primaryColor};font-size:20px;font-weight:600;margin-bottom:16px;">${subject}</h2>
+                <div style="color:#334155;font-size:14px;line-height:1.7;white-space:pre-line;">${bodyText}</div>
+              </div>
+              <div style="border-top:1px solid #e2e8f0;padding:16px 32px;text-align:center;">
+                <p style="color:#94a3b8;font-size:11px;margin:0;">${footerText}</p>
+                ${signatureHtml ? `<div style="margin-top:12px;">${signatureHtml}</div>` : ""}
+              </div>
+            </div>
+          `;
+
+          const emailRes = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${serviceRoleKey}`,
+            },
+            body: JSON.stringify({ to: email, subject, html: htmlBody }),
+          });
+
+          if (emailRes.ok) {
+            welcomeEmailSent = true;
+          } else {
+            console.error("Welcome email failed:", await emailRes.text());
+          }
         }
       } catch (emailErr) {
         console.error("Error sending welcome email:", emailErr);
