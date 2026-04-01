@@ -744,7 +744,7 @@ export default function ClientDetail() {
               <div className="p-4">
                 {editingPersonal ? (
                   <div className="space-y-3">
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                       <div><Label className="text-xs">Nome completo</Label><Input value={personalForm.name} onChange={e => setPersonalForm(p => ({ ...p, name: e.target.value }))} className="mt-1" /></div>
                       <div><Label className="text-xs">CPF</Label><Input value={personalForm.cpf} onChange={e => {
                         const d = e.target.value.replace(/\D/g, "").slice(0, 11);
@@ -752,7 +752,7 @@ export default function ClientDetail() {
                       }} placeholder="000.000.000-00" className="mt-1" /></div>
                       <div><Label className="text-xs">RG</Label><Input value={personalForm.rg} onChange={e => setPersonalForm(p => ({ ...p, rg: e.target.value }))} className="mt-1" /></div>
                     </div>
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                       <div><Label className="text-xs">Nacionalidade</Label><Input value={personalForm.nationality} onChange={e => setPersonalForm(p => ({ ...p, nationality: e.target.value }))} className="mt-1" /></div>
                       <div><Label className="text-xs">Estado civil</Label>
                         <Select value={personalForm.marital_status} onValueChange={v => setPersonalForm(p => ({ ...p, marital_status: v }))}>
@@ -764,7 +764,7 @@ export default function ClientDetail() {
                       </div>
                       <div><Label className="text-xs">Profissão</Label><Input value={personalForm.profession} onChange={e => setPersonalForm(p => ({ ...p, profession: e.target.value }))} className="mt-1" /></div>
                     </div>
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                       <div><Label className="text-xs">E-mail</Label><Input value={personalForm.email} onChange={e => setPersonalForm(p => ({ ...p, email: e.target.value }))} className="mt-1" /></div>
                       <div><Label className="text-xs">Telefone</Label><Input value={personalForm.phone} onChange={e => setPersonalForm(p => ({ ...p, phone: e.target.value }))} className="mt-1" /></div>
                       <div><Label className="text-xs">Origem</Label>
@@ -784,14 +784,14 @@ export default function ClientDetail() {
                     </div>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-3 gap-x-6 gap-y-2 text-sm">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2 text-sm">
                     <div><span className="text-muted-foreground">Nome:</span> <span className="text-foreground">{cl.name}</span></div>
                     <div><span className="text-muted-foreground">CPF:</span> <span className="text-foreground">{cl.cpf || "—"}</span></div>
                     <div><span className="text-muted-foreground">RG:</span> <span className="text-foreground">{cl.rg || "—"}</span></div>
                     <div><span className="text-muted-foreground">Nacionalidade:</span> <span className="text-foreground">{cl.nationality || "—"}</span></div>
                     <div><span className="text-muted-foreground">Estado civil:</span> <span className="text-foreground">{cl.marital_status || "—"}</span></div>
                     <div><span className="text-muted-foreground">Profissão:</span> <span className="text-foreground">{cl.profession || "—"}</span></div>
-                    <div><span className="text-muted-foreground">E-mail:</span> <span className="text-foreground">{cl.email || "—"}</span></div>
+                    <div><span className="text-muted-foreground">E-mail:</span> <span className="text-foreground break-all">{cl.email || "—"}</span></div>
                     <div><span className="text-muted-foreground">Telefone:</span> <span className="text-foreground">{cl.phone || "—"}</span></div>
                     <div><span className="text-muted-foreground">Origem:</span> <span className="text-foreground">{cl.origin || "—"}</span></div>
                   </div>
@@ -810,17 +810,17 @@ export default function ClientDetail() {
               <div className="p-4">
                 {editingAddress ? (
                   <div className="space-y-3">
-                    <div className="grid grid-cols-4 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                       <div><Label className="text-xs">CEP</Label><Input value={addressForm.address_zip} onChange={e => {
                         const v = e.target.value.replace(/\D/g, "").slice(0, 8);
                         const masked = v.length > 5 ? v.replace(/(\d{5})(\d)/, "$1-$2") : v;
                         setAddressForm(p => ({ ...p, address_zip: masked }));
                         if (v.length === 8) fetchCep(v);
                       }} placeholder="00000-000" className="mt-1" /></div>
-                      <div className="col-span-2"><Label className="text-xs">Rua</Label><Input value={addressForm.address_street} onChange={e => setAddressForm(p => ({ ...p, address_street: e.target.value }))} className="mt-1" /></div>
+                      <div className="sm:col-span-1 lg:col-span-2"><Label className="text-xs">Rua</Label><Input value={addressForm.address_street} onChange={e => setAddressForm(p => ({ ...p, address_street: e.target.value }))} className="mt-1" /></div>
                       <div><Label className="text-xs">Número</Label><Input value={addressForm.address_number} onChange={e => setAddressForm(p => ({ ...p, address_number: e.target.value }))} className="mt-1" /></div>
                     </div>
-                    <div className="grid grid-cols-4 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                       <div><Label className="text-xs">Complemento</Label><Input value={addressForm.address_complement} onChange={e => setAddressForm(p => ({ ...p, address_complement: e.target.value }))} className="mt-1" /></div>
                       <div><Label className="text-xs">Bairro</Label><Input value={addressForm.address_neighborhood} onChange={e => setAddressForm(p => ({ ...p, address_neighborhood: e.target.value }))} className="mt-1" /></div>
                       <div><Label className="text-xs">Cidade</Label><Input value={addressForm.address_city} onChange={e => setAddressForm(p => ({ ...p, address_city: e.target.value }))} className="mt-1" /></div>
