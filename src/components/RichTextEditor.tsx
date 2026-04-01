@@ -75,7 +75,7 @@ const Indent = Extension.create({
       },
     ];
   },
-  addCommands() {
+  addCommands(): any {
     return {
       indent:
         () =>
