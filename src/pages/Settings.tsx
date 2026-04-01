@@ -332,8 +332,10 @@ function SignatureSettings({ value, onChange }: { value: string; onChange: (v: s
           </div>
         </div>
         <p className="text-[11px] text-muted-foreground">
-          Encontre em{" "}
-          <span className="font-medium">app.zapsign.com.br → Configurações → Integrações → API</span>
+          Encontre em <span className="font-medium">app.zapsign.com.br → Configurações → Integrações → API</span>
+        </p>
+        <p className="text-[11px] text-muted-foreground">
+          No ZapSign, normalmente basta usar o token da conta/workspace correto — não há etapa extra de “ativar integração”.
         </p>
       </div>
 
