@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { RequestDataModal } from "@/components/RequestDataModal";
+import { ClientAccessCard } from "@/components/ClientAccessCard";
 import { ExtractionSuggestions } from "@/components/ExtractionSuggestions";
 import ExtractionProgress from "@/components/ExtractionProgress";
 import ExtractionReviewPanel, { type ReviewSuggestion } from "@/components/ExtractionReviewPanel";
@@ -95,6 +96,23 @@ export default function ClientDetail() {
   const [showReviewPanel, setShowReviewPanel] = useState(false);
   const [scanSummary, setScanSummary] = useState<{ total: number; auto: number; review: number } | null>(null);
   const queryClient = useQueryClient();
+
+  // Fetch portal token
+  const { data: portalToken } = useQuery({
+    queryKey: ["portal-token", id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("client_sessions")
+        .select("token, expires_at")
+        .eq("client_id", id!)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (data && new Date(data.expires_at) > new Date()) return data.token as string;
+      return null;
+    },
+    enabled: !!id,
+  });
 
   // Fetch all documents for this client's cases
   const caseIds = cases.map((c: any) => c.id);
@@ -594,17 +612,19 @@ export default function ClientDetail() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => setShowRequestData(true)} disabled={cases.length === 0}>
-            <Send className="w-3.5 h-3.5 mr-1.5" />Solicitar Dados
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleSendPortalLink} disabled={sendingPortal || !cl.phone}>
-            {sendingPortal ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <ExternalLink className="w-3.5 h-3.5 mr-1.5" />}Enviar Portal
-          </Button>
           <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" onClick={() => setDeleteOpen(true)}>
             <Trash2 className="w-3.5 h-3.5 mr-1.5" />Excluir
           </Button>
         </div>
       </div>
+
+      <ClientAccessCard
+        clientId={client.id}
+        clientName={client.name}
+        clientPhone={cl.phone}
+        portalToken={portalToken ?? undefined}
+        onSolicitarDados={() => setShowRequestData(true)}
+      />
 
       {cases.length > 0 && (
         <RequestDataModal
