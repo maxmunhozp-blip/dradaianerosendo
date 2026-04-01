@@ -40,7 +40,7 @@ import {
 import {
   Shield, ShieldOff, Users, Loader2, ChevronDown, FolderOpen, UserCircle,
   FileText, Settings, Eye, PenLine, Briefcase, GraduationCap, Calculator,
-  MonitorSmartphone, ClipboardList, Search, Plus, Trash2, Pencil, User,
+  MonitorSmartphone, ClipboardList, Search, Plus, Trash2, Pencil, User, UserPlus,
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -151,6 +151,7 @@ export default function UsersManagement() {
   } | null>(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [editingProfile, setEditingProfile] = useState<DBProfile | null>(null);
+  const [showAddUser, setShowAddUser] = useState(false);
 
   const toggleUser = (id: string) =>
     setOpenUsers((p) => ({ ...p, [id]: !p[id] }));
@@ -255,10 +256,16 @@ export default function UsersManagement() {
             <p className="text-sm text-muted-foreground">Controle de permissões e acessos do sistema</p>
           </div>
         </div>
-        <Button size="sm" className="gap-1.5" onClick={() => { setEditingProfile(null); setShowProfileModal(true); }}>
-          <Plus className="w-3.5 h-3.5" />
-          Novo Perfil
-        </Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setShowAddUser(true)}>
+            <UserPlus className="w-3.5 h-3.5" />
+            Adicionar Usuário
+          </Button>
+          <Button size="sm" className="gap-1.5" onClick={() => { setEditingProfile(null); setShowProfileModal(true); }}>
+            <Plus className="w-3.5 h-3.5" />
+            Novo Perfil
+          </Button>
+        </div>
       </div>
 
       {/* Custom profiles management */}
@@ -517,6 +524,11 @@ export default function UsersManagement() {
         onOpenChange={setShowProfileModal}
         editing={editingProfile}
       />
+
+      <AddUserModal
+        open={showAddUser}
+        onOpenChange={setShowAddUser}
+      />
     </div>
   );
 }
@@ -658,6 +670,92 @@ function ProfileModal({ open, onOpenChange, editing }: { open: boolean; onOpenCh
           <Button className="w-full" onClick={handleSave} disabled={saving}>
             {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
             {editing ? "Salvar alterações" : "Criar perfil"}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function AddUserModal({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+  const [role, setRole] = useState<"admin" | "advogado" | "client">("advogado");
+  const [saving, setSaving] = useState(false);
+  const queryClient = useQueryClient();
+
+  const handleCreate = async () => {
+    if (!email.trim() || !password.trim()) {
+      toast.error("E-mail e senha são obrigatórios");
+      return;
+    }
+    setSaving(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session?.access_token}`,
+          },
+          body: JSON.stringify({ email: email.trim(), password, name: name.trim(), role }),
+        }
+      );
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Erro ao criar usuário");
+      toast.success(`Usuário ${email} criado com sucesso`);
+      queryClient.invalidateQueries({ queryKey: ["users-with-roles"] });
+      queryClient.invalidateQueries({ queryKey: ["user-permissions"] });
+      setEmail("");
+      setPassword("");
+      setName("");
+      setRole("advogado");
+      onOpenChange(false);
+    } catch (e: any) {
+      toast.error(e.message || "Erro ao criar usuário");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Adicionar Usuário</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 mt-2">
+          <div className="space-y-1.5">
+            <Label className="text-xs">Nome</Label>
+            <Input placeholder="Nome completo" value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">E-mail</Label>
+            <Input type="email" placeholder="email@exemplo.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Senha</Label>
+            <Input type="password" placeholder="Mínimo 6 caracteres" value={password} onChange={(e) => setPassword(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Papel</Label>
+            <Select value={role} onValueChange={(v: any) => setRole(v)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="admin">Admin</SelectItem>
+                <SelectItem value="advogado">Advogado</SelectItem>
+                <SelectItem value="client">Cliente</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <Button className="w-full" onClick={handleCreate} disabled={saving}>
+            {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+            Criar usuário
           </Button>
         </div>
       </DialogContent>
