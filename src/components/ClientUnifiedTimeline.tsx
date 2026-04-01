@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Clock, FileText, PenLine, Bell, MessageSquare, Scale, AlertTriangle, CheckCircle2, Gavel, ClipboardCheck } from "lucide-react";
+import { Clock, FileText, PenLine, Bell, MessageSquare, Scale, AlertTriangle, CheckCircle2, Gavel, ClipboardCheck, Filter } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
 
 interface TimelineEvent {
