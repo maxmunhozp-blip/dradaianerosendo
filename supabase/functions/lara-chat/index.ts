@@ -7,7 +7,19 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const SYSTEM_PROMPT = `Você é LARA — Legal AI Research Assistant — uma estagiária jurídica virtual especializada em Direito de Família brasileiro.
+const SYSTEM_PROMPT = `Você é a LARA, gestora de casos do escritório da Dra. Daiane Rosendo. Você não é apenas uma assistente — você é uma estagiária sênior que conhece cada cliente, cada prazo e cada protocolo do escritório.
+
+MODO GESTORA: Quando a advogada perguntar sobre o escritório em geral (clientes, documentos, prazos), use sua visão completa e responda como uma gerente de casos — organizada, proativa, com dados reais.
+
+MODO CASO: Quando estiver em um caso específico, aprofunde-se naquele processo.
+
+AÇÕES: Quando identificar algo que precisa de ação, liste no final da resposta as ações disponíveis neste formato exato:
+
+ACTIONS_START
+[{"type":"send_whatsapp","label":"Cobrar cliente via WhatsApp","data":{"client_id":"...","phone":"...","message":"..."}},{"type":"create_task","label":"Criar lembrete","data":{"title":"...","due_date":"..."}},{"type":"open_client","label":"Abrir cadastro","data":{"client_id":"..."}},{"type":"generate_document","label":"Gerar documento","data":{"case_id":"..."}},{"type":"schedule_reminder","label":"Agendar lembrete","data":{"title":"...","date":"..."}}]
+ACTIONS_END
+
+Use este formato APENAS quando houver ações concretas e úteis. Inclua dados reais do contexto (client_id, phone, etc). NUNCA invente dados.
 
 ## Identidade
 - Você é uma estagiária jurídica de inteligência artificial integrada ao sistema LexAI, utilizada por uma advogada especialista em Direito de Família.
@@ -279,6 +291,32 @@ REGRAS IMPORTANTES para WhatsApp:
 - Se não houver clientes com pendências, informe que está tudo em dia.
 - Se a advogada pedir para cobrar um cliente específico, gere apenas a mensagem daquele cliente.
 - SEMPRE use o template configurado nas CONFIGURAÇÕES DO ESCRITÓRIO. Se o template estiver vazio ou não existir, use o template padrão acima.`;
+
+async function fetchSkills(supabase: any, userId?: string): Promise<string> {
+  const query = supabase
+    .from("lara_skills")
+    .select("name, trigger_keywords, system_instructions, actions_available")
+    .eq("is_active", true);
+
+  // Get builtin + user's custom skills
+  if (userId) {
+    query.or(`is_builtin.eq.true,user_id.eq.${userId}`);
+  } else {
+    query.eq("is_builtin", true);
+  }
+
+  const { data } = await query;
+  if (!data || data.length === 0) return "";
+
+  let ctx = "\n\n## SUAS HABILIDADES ATIVAS\n";
+  for (const skill of data) {
+    ctx += `\n### ${skill.name}\n`;
+    ctx += `Gatilhos: ${(skill.trigger_keywords || []).join(", ")}\n`;
+    ctx += `Instruções: ${skill.system_instructions}\n`;
+    ctx += `Ações disponíveis: ${(skill.actions_available || []).join(", ")}\n`;
+  }
+  return ctx;
+}
 
 async function fetchSettings(supabase: any): Promise<Record<string, string>> {
   const { data } = await supabase
@@ -637,12 +675,13 @@ Deno.serve(async (req: Request) => {
     const isLeiCommand = !isCaseAudit && lastMsg?.role === "user" && /^\/lei\s+/i.test(lastMsg.content.trim());
 
     // Fetch all context in parallel (including LexML if needed)
-    const [officeContext, caseContext, settings, lexmlContext, intimacoesContext] = await Promise.all([
+    const [officeContext, caseContext, settings, lexmlContext, intimacoesContext, skillsContext] = await Promise.all([
       fetchOfficeContext(supabase, !!caseId),
       caseId ? fetchCaseContext(supabase, caseId) : Promise.resolve(""),
       fetchSettings(supabase),
       legalQuery ? fetchLexMLContext(legalQuery, supabaseUrl) : Promise.resolve(""),
       fetchIntimacoesContext(supabase),
+      fetchSkills(supabase),
     ]);
     
     // If /lei command but LexML returned nothing, return error immediately
@@ -703,7 +742,7 @@ Use seu conhecimento jurídico para complementar os dados do LexML com explicaç
       settingsContext += `\n### TEMPLATE DE ASSINATURA:\n${settings.template_signing}\n`;
     }
 
-    const fullSystemPrompt = SYSTEM_PROMPT + "\n\n" + officeContext + settingsContext + intimacoesContext + (caseContext ? "\n\n" + caseContext : "") + lexmlContext;
+    const fullSystemPrompt = SYSTEM_PROMPT + "\n\n" + officeContext + settingsContext + intimacoesContext + skillsContext + (caseContext ? "\n\n" + caseContext : "") + lexmlContext;
 
     // Build messages for the AI API
     const aiMessages: any[] = [

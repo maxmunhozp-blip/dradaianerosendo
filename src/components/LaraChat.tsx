@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, Paperclip, FileText, Image, X, Loader2, MessageSquare, CheckCircle2, Scale, Save, ClipboardList, AlertTriangle, ChevronDown, ChevronUp } from "lucide-react";
+import { Send, Paperclip, FileText, Image, X, Loader2, MessageSquare, CheckCircle2, Scale, Save, ClipboardList, AlertTriangle, ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { LaraActionButtons } from "@/components/LaraActionButtons";
 import ReactMarkdown from "react-markdown";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -31,11 +33,24 @@ interface SaveDataAction {
   case_fields?: Record<string, any>;
 }
 
+interface LaraAction {
+  type: "send_whatsapp" | "create_task" | "open_client" | "generate_document" | "schedule_reminder";
+  label: string;
+  data: Record<string, any>;
+}
+
 function parseActionBlocks(content: string) {
   let cleanContent = content;
   let whatsappActions: WhatsAppAction[] = [];
   let wizardChoice: WizardChoice | null = null;
   let saveDataAction: SaveDataAction | null = null;
+  let laraActions: LaraAction[] = [];
+
+  // LARA structured actions (ACTIONS_START/END)
+  cleanContent = cleanContent.replace(/ACTIONS_START\s*\n?([\s\S]*?)\n?ACTIONS_END/g, (_, json) => {
+    try { const parsed = JSON.parse(json.trim()); if (Array.isArray(parsed)) laraActions = parsed; } catch {}
+    return "";
+  });
 
   // WhatsApp actions
   cleanContent = cleanContent.replace(/```whatsapp-action\s*\n([\s\S]*?)```/g, (_, json) => {
@@ -55,7 +70,7 @@ function parseActionBlocks(content: string) {
     return "";
   });
 
-  return { cleanContent: cleanContent.trim(), whatsappActions, wizardChoice, saveDataAction };
+  return { cleanContent: cleanContent.trim(), whatsappActions, wizardChoice, saveDataAction, laraActions };
 }
 
 function WhatsAppActionBlock({ actions }: { actions: WhatsAppAction[] }) {
@@ -243,7 +258,7 @@ export function LaraChat({
       return <p className="whitespace-pre-wrap">{msg.content}</p>;
     }
 
-    const { cleanContent, whatsappActions, wizardChoice, saveDataAction } = parseActionBlocks(msg.content);
+    const { cleanContent, whatsappActions, wizardChoice, saveDataAction, laraActions } = parseActionBlocks(msg.content);
     const hasLexML = cleanContent.includes("[lexml-verified]");
     const displayContent = cleanContent.replace(/\[lexml-verified\]/g, "").trim();
 
@@ -258,6 +273,7 @@ export function LaraChat({
             <Scale className="w-3 h-3" />Verificado via LexML
           </div>
         )}
+        {laraActions.length > 0 && !msg.isStreaming && <LaraActionButtons actions={laraActions} />}
         {whatsappActions.length > 0 && !msg.isStreaming && <WhatsAppActionBlock actions={whatsappActions} />}
         {wizardChoice && !msg.isStreaming && <WizardChoiceBlock choice={wizardChoice} onSend={handleQuickSend} />}
         {saveDataAction && !msg.isStreaming && <SaveDataBlock action={saveDataAction} clientId={clientId} caseId={caseId} />}

@@ -647,6 +647,51 @@ export type Database = {
           },
         ]
       }
+      lara_skills: {
+        Row: {
+          actions_available: string[] | null
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          is_builtin: boolean | null
+          name: string
+          specialty_tags: string[] | null
+          system_instructions: string
+          trigger_keywords: string[] | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          actions_available?: string[] | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_builtin?: boolean | null
+          name: string
+          specialty_tags?: string[] | null
+          system_instructions: string
+          trigger_keywords?: string[] | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          actions_available?: string[] | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_builtin?: boolean | null
+          name?: string
+          specialty_tags?: string[] | null
+          system_instructions?: string
+          trigger_keywords?: string[] | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           attachments: Json | null

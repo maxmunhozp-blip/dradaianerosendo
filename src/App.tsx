@@ -29,6 +29,7 @@ import Intimacoes from "@/pages/Intimacoes";
 import MailPage from "@/pages/MailPage";
 import NotFound from "./pages/NotFound.tsx";
 import PublicDataRequest from "./pages/PublicDataRequest";
+import LaraSkills from "./pages/LaraSkills";
 
 const queryClient = new QueryClient();
 
@@ -60,6 +61,7 @@ const App = () => (
                 <Route path="/templates" element={<Templates />} />
                 <Route path="/intimacoes" element={<Intimacoes />} />
                 <Route path="/mail" element={<MailPage />} />
+                <Route path="/settings/lara-skills" element={<LaraSkills />} />
               </Route>
             </Route>
 
