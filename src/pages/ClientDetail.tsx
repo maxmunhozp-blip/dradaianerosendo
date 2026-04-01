@@ -117,8 +117,76 @@ export default function ClientDetail() {
   );
   const allScanned = uploadedDocs.length > 0 && doneDocs.length === uploadedDocs.length;
   const canScan = !scanning && (!allScanned || failedDocs.length > 0 || pendingDocs.length > 0);
+  const canRescanAll = !scanning && doneDocs.length > 0;
 
   const docsToScan = [...pendingDocs, ...failedDocs];
+
+  const handleRescanAll = async () => {
+    // Reset all docs to pending, then scan all
+    for (const doc of uploadedDocs) {
+      await supabase.from("documents").update({ extraction_status: "pending", extracted_data: {} }).eq("id", doc.id);
+    }
+    // Delete old suggestions
+    await supabase.from("extraction_suggestions").delete().eq("client_id", id!);
+    queryClient.invalidateQueries({ queryKey: ["client-all-docs", id] });
+    queryClient.invalidateQueries({ queryKey: ["extraction-suggestions", id] });
+    // Now scan
+    setScanning(true);
+    let success = 0;
+    for (let i = 0; i < uploadedDocs.length; i++) {
+      const doc = uploadedDocs[i];
+      setScanProgress(`Escaneando documento ${i + 1} de ${uploadedDocs.length}...`);
+      try {
+        const result = await Promise.race([
+          supabase.functions.invoke("process-document", {
+            body: { document_id: doc.id, case_id: doc.case_id, client_id: id, file_url: doc.file_url, file_name: doc.name },
+          }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 45000)),
+        ]) as any;
+        if (result?.error || !result?.data?.success) {
+          await supabase.from("documents").update({ extraction_status: "failed" }).eq("id", doc.id);
+        } else { success++; }
+      } catch {
+        await supabase.from("documents").update({ extraction_status: "failed" }).eq("id", doc.id);
+      }
+    }
+    setScanProgress("");
+    setScanning(false);
+    queryClient.invalidateQueries({ queryKey: ["extraction-suggestions", id] });
+    queryClient.invalidateQueries({ queryKey: ["client-all-docs", id] });
+    queryClient.invalidateQueries({ queryKey: ["clients", id] });
+    queryClient.invalidateQueries({ queryKey: ["clients"] });
+    toast.success(`Reescaneamento concluído (${success}/${uploadedDocs.length})`);
+  };
+
+  const handleRescanSingle = async (doc: any) => {
+    setScanning(true);
+    setScanProgress(`Reescaneando ${doc.name}...`);
+    await supabase.from("documents").update({ extraction_status: "pending", extracted_data: {} }).eq("id", doc.id);
+    await supabase.from("extraction_suggestions").delete().eq("document_id", doc.id);
+    try {
+      const result = await Promise.race([
+        supabase.functions.invoke("process-document", {
+          body: { document_id: doc.id, case_id: doc.case_id, client_id: id, file_url: doc.file_url, file_name: doc.name },
+        }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 45000)),
+      ]) as any;
+      if (result?.error || !result?.data?.success) {
+        await supabase.from("documents").update({ extraction_status: "failed" }).eq("id", doc.id);
+        toast.error(`Falha ao escanear ${doc.name}`);
+      } else {
+        toast.success(`${doc.name} escaneado com sucesso`);
+      }
+    } catch {
+      await supabase.from("documents").update({ extraction_status: "failed" }).eq("id", doc.id);
+      toast.error(`Timeout ao escanear ${doc.name}`);
+    }
+    setScanProgress("");
+    setScanning(false);
+    queryClient.invalidateQueries({ queryKey: ["extraction-suggestions", id] });
+    queryClient.invalidateQueries({ queryKey: ["client-all-docs", id] });
+    queryClient.invalidateQueries({ queryKey: ["clients", id] });
+  };
 
   const handleScanAll = async () => {
     if (docsToScan.length === 0) {
