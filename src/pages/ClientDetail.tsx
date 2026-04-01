@@ -23,8 +23,11 @@ import {
 import {
   ArrowLeft, Phone, Mail, Plus, FolderOpen, Send, Loader2,
   Pencil, Trash2, Save, X, ChevronDown, ChevronRight, MapPin, Users, UserX, Baby, ExternalLink, ScanSearch,
-  CheckCircle2, Clock, XCircle,
+  CheckCircle2, Clock, XCircle, MoreHorizontal,
 } from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
