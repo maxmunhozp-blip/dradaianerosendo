@@ -40,7 +40,7 @@ import {
 import {
   Shield, ShieldOff, Users, Loader2, ChevronDown, FolderOpen, UserCircle,
   FileText, Settings, Eye, PenLine, Briefcase, GraduationCap, Calculator,
-  MonitorSmartphone, ClipboardList, Search, Plus, Trash2, Pencil, User,
+  MonitorSmartphone, ClipboardList, Search, Plus, Trash2, Pencil, User, UserPlus,
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
