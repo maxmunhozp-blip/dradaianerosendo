@@ -971,7 +971,7 @@ Use seu conhecimento jurídico para complementar os dados do LexML com explicaç
 
     let fullSystemPrompt: string;
     if (isPortalMode) {
-      const portalCtx = await fetchPortalClientContext(clientUserId, supabase);
+      const portalCtx = await fetchPortalClientContext(clientId, supabase);
       const sofiaPrompt = buildSofiaSystemPrompt(portalCtx || {
         firstName: "cliente",
         clientName: "cliente",
