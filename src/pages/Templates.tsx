@@ -435,41 +435,7 @@ export default function Templates() {
   };
 
   const handlePreviewPdf = () => {
-    if (previewMode === "pdf") {
-      setPreviewMode("text");
-      setPdfPages([]);
-      return;
-    }
-
-    try {
-      const pdf = buildPdfDoc();
-      if (!pdf) return;
-      
-      // Render each page as an image using jsPDF's internal canvas
-      const totalPages = pdf.internal.pages.length - 1; // pages are 1-indexed
-      const pages: string[] = [];
-      
-      for (let i = 1; i <= totalPages; i++) {
-        pdf.setPage(i);
-        // Get page as data URL image
-        const canvas = document.createElement("canvas");
-        const pageWidth = pdf.internal.pageSize.getWidth();
-        const pageHeight = pdf.internal.pageSize.getHeight();
-        const scale = 2; // 2x for retina
-        canvas.width = pageWidth * scale * (96 / 25.4); // mm to px at 96dpi * scale
-        canvas.height = pageHeight * scale * (96 / 25.4);
-      }
-      
-      // Simpler approach: output as data URI per page
-      // jsPDF doesn't support per-page image natively, so use the full PDF data URI
-      // and render via an object tag
-      const dataUri = pdf.output("datauristring");
-      setPdfPages([dataUri]);
-      setPreviewMode("pdf");
-    } catch (e) {
-      console.error("Erro ao gerar preview:", e);
-      toast.error("Erro ao gerar preview do PDF");
-    }
+    setPreviewMode(previewMode === "pdf" ? "text" : "pdf");
   };
 
   const selectedCaseData = cases?.find((c) => c.id === selectedCase);
