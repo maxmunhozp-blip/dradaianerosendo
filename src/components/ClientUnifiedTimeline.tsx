@@ -374,23 +374,26 @@ export function ClientUnifiedTimeline({ caseIds }: { caseIds: string[] }) {
                       <Icon className={isFirst ? "w-4.5 h-4.5" : "w-4 h-4"} />
                     </div>
 
-                    {/* Content */}
                     <div className="flex-1 min-w-0 pt-0.5">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-semibold text-foreground">
-                          {event.title}
-                        </span>
-                        <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded flex-shrink-0">
-                          {formatDateFull(event.event_date)}
-                        </span>
-                        {event.case_type && (
-                          <Link
-                            to={`/cases/${event.case_id}`}
-                            className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary hover:bg-primary/20 transition-colors flex-shrink-0"
-                          >
-                            {event.case_type}
-                          </Link>
-                        )}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-sm font-semibold text-foreground truncate">
+                            {event.title}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {event.case_type && (
+                            <Link
+                              to={`/cases/${event.case_id}`}
+                              className="text-[10px] px-1.5 py-0.5 rounded text-muted-foreground hover:text-foreground transition-colors"
+                            >
+                              {event.case_type}
+                            </Link>
+                          )}
+                          <span className="text-[10px] text-muted-foreground">
+                            {formatDateFull(event.event_date)}
+                          </span>
+                        </div>
                       </div>
                       {event.description && (
                         <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{event.description}</p>
