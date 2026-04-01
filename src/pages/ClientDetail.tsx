@@ -462,22 +462,50 @@ export default function ClientDetail() {
       )}
 
       {/* Scan + Extraction Suggestions */}
-      {allDocs.length > 0 && (
-        <div className="flex items-center gap-3 mb-2">
+      {uploadedDocs.length > 0 && (
+        <div className="mb-3 space-y-2">
           <Button
-            variant="outline"
+            variant={allScanned ? "outline" : failedDocs.length > 0 ? "outline" : "outline"}
             size="sm"
             onClick={handleScanAll}
-            disabled={scanning || pendingDocs.length === 0}
-            className="gap-2"
+            disabled={!canScan}
+            className={`gap-2 ${allScanned ? "border-green-500 text-green-700" : failedDocs.length > 0 ? "border-amber-500 text-amber-700" : ""}`}
           >
             {scanning ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : allScanned ? (
+              <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
             ) : (
               <ScanSearch className="w-3.5 h-3.5" />
             )}
-            {scanning ? scanProgress : `Escanear documentos com IA (${pendingDocs.length})`}
+            {scanning
+              ? scanProgress
+              : allScanned
+              ? "Escaneamento concluído"
+              : failedDocs.length > 0
+              ? `Reescanear documentos com falha (${failedDocs.length})`
+              : `Escanear documentos com IA (${docsToScan.length})`}
           </Button>
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+            {uploadedDocs.map((doc: any) => {
+              const isDone = doc.extraction_status === "done" && hasExtractedData(doc);
+              const isFailed = doc.extraction_status === "failed" || (doc.extraction_status === "done" && !hasExtractedData(doc));
+              return (
+                <span key={doc.id} className="flex items-center gap-1">
+                  {isDone ? (
+                    <CheckCircle2 className="w-3 h-3 text-green-600" />
+                  ) : isFailed ? (
+                    <XCircle className="w-3 h-3 text-destructive" />
+                  ) : (
+                    <Clock className="w-3 h-3 text-muted-foreground" />
+                  )}
+                  <span className={isDone ? "text-green-700" : isFailed ? "text-destructive" : ""}>
+                    {doc.name.length > 25 ? doc.name.slice(0, 22) + "..." : doc.name}
+                  </span>
+                </span>
+              );
+            })}
+          </div>
         </div>
       )}
       <ExtractionSuggestions clientId={client.id} />
