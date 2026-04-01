@@ -326,7 +326,7 @@ export function ClientUnifiedTimeline({ caseIds }: { caseIds: string[] }) {
         </Button>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-3">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="mb-3">
         <TabsList className="h-8 w-full grid grid-cols-4">
           {TIMELINE_TABS.map((tab) => {
             const count = tab.types
