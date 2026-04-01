@@ -436,6 +436,17 @@ export function DocumentRow({ doc, clientName, clientEmail, clientCpf, clientPho
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {/* Signature Modal */}
+      <SignatureModal
+        open={signatureOpen}
+        onOpenChange={setSignatureOpen}
+        documentId={doc.id}
+        documentName={doc.name}
+        clientName={clientName}
+        clientEmail={clientEmail}
+        clientCpf={clientCpf}
+        clientPhone={clientPhone}
+      />
     </div>
   );
 }

@@ -556,7 +556,16 @@ export default function CaseDetail() {
                     onAction={() => fileInputRef.current?.click()}
                   />
                 ) : (
-                  documents.map((doc) => <DocumentRow key={doc.id} doc={doc} />)
+                  documents.map((doc) => (
+                    <DocumentRow
+                      key={doc.id}
+                      doc={doc as any}
+                      clientName={(caseData as any).clients?.name || ""}
+                      clientEmail={(caseData as any).clients?.email || ""}
+                      clientCpf={(caseData as any).clients?.cpf || ""}
+                      clientPhone={(caseData as any).clients?.phone || ""}
+                    />
+                  ))
                 )}
               </div>
             </div>

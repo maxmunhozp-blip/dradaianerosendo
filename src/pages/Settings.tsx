@@ -54,6 +54,7 @@ const ALL_KEYS = [
   "hours_saturday_start",
   "hours_saturday_end",
   "hours_sunday",
+  "signature_api_token",
 ];
 
 function CollapsibleSection({
