@@ -28,6 +28,7 @@ const ACTION_ICONS: Record<string, typeof MessageSquare> = {
   schedule_reminder: Bell,
   scan_documents: ScanSearch,
   download_document: Download,
+  send_for_signature: PenLine,
 };
 
 const ACTION_DESCRIPTIONS: Record<string, (data: Record<string, any>) => string> = {
