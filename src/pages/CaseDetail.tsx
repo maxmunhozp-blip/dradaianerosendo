@@ -615,8 +615,6 @@ export default function CaseDetail() {
                 {hearings.length === 0 ? (
                   <EmptyState
                     icon={CalendarDays}
-                    title="Nenhuma data"
-                    description="Adicione audiências e prazos para este caso."
                     actionLabel="Adicionar data"
                     onAction={() => setShowHearingModal(true)}
                   />
