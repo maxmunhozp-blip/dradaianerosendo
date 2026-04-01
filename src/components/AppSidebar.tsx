@@ -63,7 +63,7 @@ export function AppSidebar() {
   const { data: perms } = useMyPermissions();
 
   const isActive = (path: string) => {
-    if (path === "/") return currentPath === "/";
+    if (path === "/dashboard") return currentPath === "/dashboard";
     return currentPath.startsWith(path);
   };
 
