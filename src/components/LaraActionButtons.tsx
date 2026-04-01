@@ -393,7 +393,7 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
   // Fetch email accounts
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.from("email_accounts").select("id, email, label").eq("status", "active");
+      const { data } = await supabase.from("email_accounts").select("id, email, label").in("status", ["active", "conectado"]);
       if (data && data.length > 0) {
         setEmailAccounts(data);
         setSelectedAccountId(data[0].id);
