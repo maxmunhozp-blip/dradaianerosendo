@@ -167,7 +167,7 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
       toast.error("Erro ao escanear: " + (e.message || "erro desconhecido"));
     } finally {
       setScanning(false);
-      const idx = actions.indexOf(action);
+      const idx = allActions.indexOf(action);
       setExecuted((prev) => new Set(prev).add(idx));
       setConfirmAction(null);
     }
