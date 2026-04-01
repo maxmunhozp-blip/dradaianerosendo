@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo } from "react";
+import { ClientUnifiedTimeline } from "@/components/ClientUnifiedTimeline";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { RequestDataModal } from "@/components/RequestDataModal";
