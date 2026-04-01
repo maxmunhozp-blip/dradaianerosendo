@@ -43,7 +43,7 @@ Deno.serve(async (req: Request) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { account_id, to, subject, body, in_reply_to } = await req.json();
+    const { account_id, to, cc, bcc, subject, body, in_reply_to } = await req.json();
 
     if (!account_id || !to || !subject || !body) {
       return new Response(
@@ -120,11 +120,29 @@ Deno.serve(async (req: Request) => {
       throw new Error("MAIL FROM failed: " + resp);
     }
 
-    // RCPT TO
+    // RCPT TO (main recipient)
     resp = await smtpWrite(conn, `RCPT TO:<${to}>`);
     if (!resp.includes("250")) {
       conn.close();
       throw new Error("RCPT TO failed: " + resp);
+    }
+
+    // RCPT TO for CC
+    if (cc) {
+      resp = await smtpWrite(conn, `RCPT TO:<${cc}>`);
+      if (!resp.includes("250")) {
+        conn.close();
+        throw new Error("RCPT TO (CC) failed: " + resp);
+      }
+    }
+
+    // RCPT TO for BCC
+    if (bcc) {
+      resp = await smtpWrite(conn, `RCPT TO:<${bcc}>`);
+      if (!resp.includes("250")) {
+        conn.close();
+        throw new Error("RCPT TO (BCC) failed: " + resp);
+      }
     }
 
     // DATA
@@ -138,6 +156,7 @@ Deno.serve(async (req: Request) => {
     const boundary = `boundary_${crypto.randomUUID().replace(/-/g, "")}`;
     let emailData = `From: ${account.email}\r\n`;
     emailData += `To: ${to}\r\n`;
+    if (cc) emailData += `Cc: ${cc}\r\n`;
     emailData += `Subject: =?UTF-8?B?${encodeBase64(subject)}?=\r\n`;
     emailData += `MIME-Version: 1.0\r\n`;
     emailData += `Content-Type: text/plain; charset=UTF-8\r\n`;
