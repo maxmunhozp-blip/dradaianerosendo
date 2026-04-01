@@ -263,6 +263,30 @@ export default function PortalDocs() {
         </div>
       )}
 
+      {/* Upload new document button */}
+      {caseIds.length > 0 && !isUploading && (
+        <div style={{ marginTop: 20 }}>
+          <button
+            onClick={() => { setUploadingDocId(null); fileRef.current?.click(); }}
+            disabled={isUploading}
+            style={{
+              width: "100%", background: "#fff", border: "2px dashed #D1D5DB",
+              borderRadius: 12, padding: "20px 16px", cursor: "pointer",
+              display: "flex", flexDirection: "column", alignItems: "center", gap: 8,
+              fontFamily: "var(--wizard-font-body)",
+            }}
+          >
+            <Upload size={22} color="#6B7280" />
+            <span style={{ fontSize: 14, fontWeight: 600, color: "var(--wizard-primary)" }}>
+              Enviar novo documento
+            </span>
+            <span style={{ fontSize: 12, color: "#9CA3AF" }}>
+              PDF, JPG ou PNG (máx. 10MB)
+            </span>
+          </button>
+        </div>
+      )}
+
       {documents.length === 0 && (
         <div style={{ textAlign: "center", padding: "48px 0", color: "#9CA3AF" }}>
           <FileText size={40} style={{ margin: "0 auto 12px", opacity: 0.5 }} />
