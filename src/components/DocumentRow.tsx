@@ -63,10 +63,12 @@ export function DocumentRow({ doc }: DocumentRowProps) {
   const [saving, setSaving] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const updateDoc = useUpdateDocument();
   const uploadDoc = useUploadDocument();
+  const deleteDoc = useDeleteDocument();
 
   const categoryLabels: Record<string, string> = {
     pessoal: "Pessoal",
