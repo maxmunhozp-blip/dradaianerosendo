@@ -93,7 +93,7 @@ export default function PortalHome() {
   const { data: whatsappSetting } = useQuery({
     queryKey: ["portal-whatsapp-setting"],
     queryFn: async () => {
-      const { data } = await pub.from("settings").select("value").eq("key", "whatsapp_number").maybeSingle();
+      const { data } = await pub.from("settings").select("value").eq("key", "office_phone").maybeSingle();
       return data?.value || "5500000000000";
     },
   });
