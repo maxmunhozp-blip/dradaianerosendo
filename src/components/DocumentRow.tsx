@@ -1,14 +1,17 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { StatusBadge } from "./StatusBadge";
 import {
   Download, Scale, ChevronDown, ChevronRight,
   Bold, Italic, List, Paperclip, Save, Loader2, Eye,
-  CheckCircle2, AlertCircle, Trash2, PenLine,
+  CheckCircle2, AlertCircle, Trash2, PenLine, Mail,
 } from "lucide-react";
 import { SignatureModal, SignatureStatusBadge } from "@/components/SignatureModal";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -72,6 +75,16 @@ export function DocumentRow({ doc, clientName, clientEmail, clientCpf, clientPho
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [signatureOpen, setSignatureOpen] = useState(false);
+  const [emailOpen, setEmailOpen] = useState(false);
+  const [emailTo, setEmailTo] = useState(clientEmail || "");
+  const [emailCc, setEmailCc] = useState("");
+  const [emailBcc, setEmailBcc] = useState("");
+  const [showCcBcc, setShowCcBcc] = useState(false);
+  const [emailSubject, setEmailSubject] = useState("");
+  const [emailBody, setEmailBody] = useState("");
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [emailAccounts, setEmailAccounts] = useState<{ id: string; email: string; label: string }[]>([]);
+  const [selectedAccountId, setSelectedAccountId] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const updateDoc = useUpdateDocument();
@@ -83,6 +96,55 @@ export function DocumentRow({ doc, clientName, clientEmail, clientCpf, clientPho
     assinado: "Assinado",
     processo: "Processo",
     outro: "Outro",
+  };
+
+  // Fetch email accounts on mount
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from("email_accounts").select("id, email, label").in("status", ["active", "conectado"]);
+      if (data && data.length > 0) {
+        setEmailAccounts(data);
+        setSelectedAccountId(data[0].id);
+      }
+    })();
+  }, []);
+
+  const openEmailDialog = () => {
+    setEmailTo(clientEmail || "");
+    setEmailSubject(`Documento: ${doc.name}`);
+    setEmailBody(`Olá,\n\nSegue em anexo o documento "${doc.name}".\n\nAtenciosamente.`);
+    setEmailCc("");
+    setEmailBcc("");
+    setShowCcBcc(false);
+    setEmailOpen(true);
+  };
+
+  const handleSendEmail = async () => {
+    if (!emailTo.trim()) { toast.error("Informe o destinatário"); return; }
+    if (!doc.file_url) { toast.error("Documento sem arquivo"); return; }
+    setSendingEmail(true);
+    try {
+      const signedUrl = await getSignedUrl(doc.file_url);
+      if (!signedUrl) throw new Error("Erro ao gerar URL do arquivo");
+
+      const { error } = await supabase.functions.invoke("send-email", {
+        body: {
+          account_id: selectedAccountId || undefined,
+          to: emailTo.trim(),
+          cc: emailCc.trim() || undefined,
+          bcc: emailBcc.trim() || undefined,
+          subject: emailSubject,
+          body: emailBody + `\n\n📎 Documento: ${doc.name}\n${signedUrl}`,
+        },
+      });
+      if (error) throw error;
+      toast.success("E-mail enviado com sucesso!");
+      setEmailOpen(false);
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao enviar e-mail");
+    } finally {
+      setSendingEmail(false);
+    }
   };
 
   const isPdf = doc.file_url?.toLowerCase().endsWith(".pdf");
@@ -273,6 +335,15 @@ export function DocumentRow({ doc, clientName, clientEmail, clientCpf, clientPho
               >
                 <Download className="w-3.5 h-3.5" />
               </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                title="Enviar por e-mail"
+                onClick={(e) => { e.stopPropagation(); openEmailDialog(); }}
+              >
+                <Mail className="w-3.5 h-3.5" />
+              </Button>
             </>
           )}
           {doc.file_url && doc.file_url !== "" && (!doc.signature_status || doc.signature_status === "none") && (
@@ -447,6 +518,80 @@ export function DocumentRow({ doc, clientName, clientEmail, clientCpf, clientPho
         clientCpf={clientCpf}
         clientPhone={clientPhone}
       />
+      {/* Email Dialog */}
+      <Dialog open={emailOpen} onOpenChange={setEmailOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base flex items-center gap-2">
+              <Mail className="w-4 h-4" />
+              Enviar documento por e-mail
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            {emailAccounts.length > 1 && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Enviar de</Label>
+                <Select value={selectedAccountId} onValueChange={setSelectedAccountId}>
+                  <SelectTrigger className="h-8 text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {emailAccounts.map((acc) => (
+                      <SelectItem key={acc.id} value={acc.id} className="text-xs">
+                        {acc.label} ({acc.email})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            <div className="space-y-1.5">
+              <Label htmlFor={`email-to-${doc.id}`} className="text-xs">Para</Label>
+              <Input id={`email-to-${doc.id}`} className="h-8 text-sm" value={emailTo} onChange={e => setEmailTo(e.target.value)} placeholder="email@exemplo.com" />
+            </div>
+            {!showCcBcc && (
+              <button type="button" className="text-xs text-primary hover:underline" onClick={() => setShowCcBcc(true)}>
+                + Enviar cópia (CC/BCC)
+              </button>
+            )}
+            {showCcBcc && (
+              <>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">
+                    Cópia (CC) <span className="text-[10px] text-muted-foreground">— todos verão</span>
+                  </Label>
+                  <Input className="h-8 text-sm" value={emailCc} onChange={e => setEmailCc(e.target.value)} placeholder="email@exemplo.com" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">
+                    Cópia oculta (BCC) <span className="text-[10px] text-muted-foreground">— ninguém vê</span>
+                  </Label>
+                  <Input className="h-8 text-sm" value={emailBcc} onChange={e => setEmailBcc(e.target.value)} placeholder="email@exemplo.com" />
+                </div>
+              </>
+            )}
+            <div className="space-y-1.5">
+              <Label className="text-xs">Assunto</Label>
+              <Input className="h-8 text-sm" value={emailSubject} onChange={e => setEmailSubject(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Mensagem</Label>
+              <Textarea className="text-sm min-h-[80px] resize-y" value={emailBody} onChange={e => setEmailBody(e.target.value)} />
+            </div>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 rounded px-3 py-2">
+              <Paperclip className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">{doc.name}</span>
+            </div>
+            <div className="flex justify-end gap-2 pt-1">
+              <Button variant="outline" size="sm" onClick={() => setEmailOpen(false)}>Cancelar</Button>
+              <Button size="sm" className="gap-1.5" onClick={handleSendEmail} disabled={sendingEmail || !emailTo.trim()}>
+                {sendingEmail ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Mail className="w-3.5 h-3.5" />}
+                Enviar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
