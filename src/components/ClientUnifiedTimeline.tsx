@@ -360,7 +360,7 @@ export function ClientUnifiedTimeline({ caseIds }: { caseIds: string[] }) {
             <div className="absolute left-[18px] top-4 bottom-4 w-px bg-border" />
 
             <div className="space-y-0">
-              {filteredEvents.map((event, idx) => {
+              {visibleEvents.map((event, idx) => {
                 const Icon = TYPE_ICONS[event.type] || Clock;
                 const isFirst = idx === 0;
                 const iconColor = event.type === "mensagem"
