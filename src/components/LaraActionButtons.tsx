@@ -18,6 +18,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import jsPDF from "jspdf";
 
+/** Remove accents and special chars from file names for storage compatibility */
+function sanitizeFileName(name: string): string {
+  return name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9_\-\.]/g, "_");
+}
+
 /** Parse TipTap HTML into structured blocks for PDF rendering */
 function parseHtmlToBlocks(html: string): Array<{
   type: "h1" | "h2" | "h3" | "p" | "hr" | "li";
@@ -471,7 +479,7 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
 
             const pdfBlob = generatePdfFromHtml(`<p>${cleanText.replace(/\n\n/g, "</p><p>").replace(/\n/g, "<br/>")}</p>`);
 
-            const fileName = `${caseId}/${Date.now()}_${docName.replace(/\s+/g, "_")}.pdf`;
+            const fileName = `${caseId}/${Date.now()}_${sanitizeFileName(docName)}.pdf`;
             const { error: uploadError } = await supabase.storage
               .from("case-documents")
               .upload(fileName, pdfBlob, { contentType: "application/pdf" });
@@ -833,7 +841,7 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
               setSavingPdf(true);
               try {
                 const { docName, caseId, action, actionIndex } = pdfPreviewMeta;
-                const fileName = `${caseId}/${Date.now()}_${docName.replace(/\s+/g, "_")}.pdf`;
+                const fileName = `${caseId}/${Date.now()}_${sanitizeFileName(docName)}.pdf`;
 
                 const { error: uploadError } = await supabase.storage
                   .from("case-documents")
