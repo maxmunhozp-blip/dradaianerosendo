@@ -123,6 +123,34 @@ const PROFILE_PRESETS: ProfilePreset[] = [
       can_access_settings: false,
     },
   },
+  {
+    label: "Secretária",
+    icon: ClipboardList,
+    description: "Gerencia clientes e agenda, sem editar casos",
+    permissions: {
+      can_view_cases: true,
+      can_edit_cases: false,
+      can_view_clients: true,
+      can_edit_clients: true,
+      can_view_documents: true,
+      can_edit_documents: false,
+      can_access_settings: false,
+    },
+  },
+  {
+    label: "Perito",
+    icon: Search,
+    description: "Visualiza casos e documentos atribuídos",
+    permissions: {
+      can_view_cases: true,
+      can_edit_cases: false,
+      can_view_clients: false,
+      can_edit_clients: false,
+      can_view_documents: true,
+      can_edit_documents: true,
+      can_access_settings: false,
+    },
+  },
 ];
 
 export default function UsersManagement() {
