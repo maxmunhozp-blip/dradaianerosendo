@@ -337,117 +337,109 @@ async function fetchSettings(supabase: any): Promise<Record<string, string>> {
 }
 
 async function fetchOfficeContext(supabase: any, hasCaseId: boolean): Promise<string> {
-  // 1. All active clients with their cases
+  // 1. All clients (not just active) with address fields
   const { data: clients } = await supabase
     .from("clients")
-    .select("id, name, cpf, email, phone, status")
-    .eq("status", "ativo");
+    .select("id, name, cpf, email, phone, status, address_street, address_number, address_city, address_state, address_zip, rg, nationality, marital_status, profession");
 
   if (!clients || clients.length === 0) {
-    return `\n---\nCONTEXTO ATUAL DO ESCRITÓRIO: Nenhum cliente ativo encontrado no sistema.\n---`;
+    return `\n=== DADOS REAIS DO ESCRITÓRIO ===\nNenhum cliente encontrado no sistema.\n=== FIM DOS DADOS ===`;
   }
 
-  // 2. All cases for active clients
-  const clientIds = clients.map((c: any) => c.id);
+  // 2. ALL cases with ALL documents, checklist, hearings via join
   const { data: cases } = await supabase
     .from("cases")
-    .select("id, case_type, status, client_id, cnj_number, court, description")
-    .in("client_id", clientIds);
+    .select("id, case_type, status, client_id, cnj_number, court, description, children, opposing_party_name, opposing_party_cpf, opposing_party_address, created_at");
 
   const caseIds = (cases || []).map((c: any) => c.id);
 
-  // 3. Pending checklist items and pending documents in parallel
-  const [checklistResult, docsResult] = await Promise.all([
+  // 3. Fetch ALL documents, ALL checklist items, ALL hearings (not filtered by status)
+  const [docsResult, checklistResult, hearingsResult] = await Promise.all([
     caseIds.length > 0
-      ? supabase.from("checklist_items").select("id, label, case_id, required_by").in("case_id", caseIds).eq("done", false)
+      ? supabase.from("documents").select("id, name, category, status, case_id, created_at").in("case_id", caseIds)
       : { data: [] },
     caseIds.length > 0
-      ? supabase.from("documents").select("id, name, category, case_id").in("case_id", caseIds).eq("status", "solicitado")
+      ? supabase.from("checklist_items").select("id, label, done, case_id, required_by").in("case_id", caseIds)
+      : { data: [] },
+    caseIds.length > 0
+      ? supabase.from("hearings").select("id, title, date, status, location, case_id").in("case_id", caseIds).order("date", { ascending: true })
       : { data: [] },
   ]);
 
-  const pendingChecklist = checklistResult.data || [];
-  const pendingDocs = docsResult.data || [];
+  const allDocs = docsResult.data || [];
+  const allChecklist = checklistResult.data || [];
+  const allHearings = hearingsResult.data || [];
 
-  // Status counts
-  const statusCounts: Record<string, number> = {};
-  for (const c of cases || []) {
-    statusCounts[c.status] = (statusCounts[c.status] || 0) + 1;
-  }
-  const statusList = Object.entries(statusCounts).map(([s, n]) => `- ${s}: ${n} caso(s)`).join("\n");
-
-  // If a case is selected, return only summary counts (case context has the detail)
-  if (hasCaseId) {
-    return `
----
-RESUMO DO ESCRITÓRIO: ${clients.length} clientes ativos, ${(cases || []).length} casos, ${pendingDocs.length} documentos pendentes, ${pendingChecklist.length} itens de checklist pendentes.
-
-Casos por status:
-${statusList || "Nenhum caso cadastrado."}
----`;
-  }
-
-  // Full context when no case is selected
   // Group by case
-  const checklistByCase: Record<string, any[]> = {};
-  for (const item of pendingChecklist) {
-    if (!checklistByCase[item.case_id]) checklistByCase[item.case_id] = [];
-    checklistByCase[item.case_id].push(item);
-  }
   const docsByCase: Record<string, any[]> = {};
-  for (const doc of pendingDocs) {
-    if (!docsByCase[doc.case_id]) docsByCase[doc.case_id] = [];
-    docsByCase[doc.case_id].push(doc);
-  }
+  for (const d of allDocs) { if (!docsByCase[d.case_id]) docsByCase[d.case_id] = []; docsByCase[d.case_id].push(d); }
+  const checklistByCase: Record<string, any[]> = {};
+  for (const c of allChecklist) { if (!checklistByCase[c.case_id]) checklistByCase[c.case_id] = []; checklistByCase[c.case_id].push(c); }
+  const hearingsByCase: Record<string, any[]> = {};
+  for (const h of allHearings) { if (!hearingsByCase[h.case_id]) hearingsByCase[h.case_id] = []; hearingsByCase[h.case_id].push(h); }
 
   const casesByClient: Record<string, any[]> = {};
-  for (const c of cases || []) {
-    if (!casesByClient[c.client_id]) casesByClient[c.client_id] = [];
-    casesByClient[c.client_id].push(c);
-  }
+  for (const c of cases || []) { if (!casesByClient[c.client_id]) casesByClient[c.client_id] = []; casesByClient[c.client_id].push(c); }
 
-  let clientsWithPending = "";
+  const clientsById: Record<string, any> = {};
+  for (const cl of clients) clientsById[cl.id] = cl;
+
+  // Build comprehensive context
+  let ctx = "\n=== DADOS REAIS DO ESCRITÓRIO ===\n\nCASOS ATIVOS:\n";
+  let caseNum = 0;
+
   for (const client of clients) {
     const clientCases = casesByClient[client.id] || [];
-    const hasPending = clientCases.some(
-      (c: any) => (checklistByCase[c.id]?.length || 0) > 0 || (docsByCase[c.id]?.length || 0) > 0
-    );
-    if (hasPending) {
-      clientsWithPending += `\n- **${client.name}** (CPF: ${client.cpf || "N/A"}, E-mail: ${client.email || "N/A"}, Tel: ${client.phone || "N/A"})`;
-      for (const cs of clientCases) {
-        const pendingCL = checklistByCase[cs.id] || [];
-        const pendingD = docsByCase[cs.id] || [];
-        if (pendingCL.length > 0 || pendingD.length > 0) {
-          clientsWithPending += `\n  Caso: ${cs.case_type} (Status: ${cs.status})`;
-          for (const d of pendingD) clientsWithPending += `\n    - ${d.name} [${d.category}]`;
-          for (const cl of pendingCL) clientsWithPending += `\n    - ${cl.label}${cl.required_by ? ` (responsável: ${cl.required_by})` : ""}`;
-        }
-      }
+    if (clientCases.length === 0) continue;
+
+    for (const cs of clientCases) {
+      caseNum++;
+      const docs = docsByCase[cs.id] || [];
+      const checklist = checklistByCase[cs.id] || [];
+      const hearings = hearingsByCase[cs.id] || [];
+
+      // Check missing client data
+      const missingFields: string[] = [];
+      if (!client.phone) missingFields.push("telefone");
+      if (!client.address_street) missingFields.push("endereço");
+      if (!client.cpf) missingFields.push("CPF");
+      if (!client.rg) missingFields.push("RG");
+      if (!client.marital_status) missingFields.push("estado civil");
+      if (!client.profession) missingFields.push("profissão");
+      const children = cs.children || [];
+      if (!Array.isArray(children) || children.length === 0) missingFields.push("filhos");
+      if (!cs.opposing_party_name) missingFields.push("dados da parte contrária");
+
+      const address = client.address_street
+        ? `${client.address_street}, ${client.address_number || "S/N"} — ${client.address_city || ""}/${client.address_state || ""} CEP ${client.address_zip || ""}`
+        : "Não cadastrado";
+
+      ctx += `\nCaso ${caseNum}:`;
+      ctx += `\n- Cliente: ${client.name} (ID: ${client.id}) | Telefone: ${client.phone || "N/A"} | E-mail: ${client.email || "N/A"} | CPF: ${client.cpf || "N/A"}`;
+      ctx += `\n- Endereço: ${address}`;
+      ctx += `\n- Tipo: ${cs.case_type} | Status: ${cs.status} | CNJ: ${cs.cnj_number || "N/A"}`;
+      ctx += `\n- Aberto em: ${cs.created_at}`;
+      ctx += `\n- Parte contrária: ${cs.opposing_party_name || "Não cadastrada"}${cs.opposing_party_cpf ? ` (CPF: ${cs.opposing_party_cpf})` : ""}`;
+      ctx += `\n- Filhos: ${Array.isArray(children) && children.length > 0 ? children.map((c: any) => `${c.name} (${c.birth_date || c.birthdate || "N/I"})`).join(", ") : "Nenhum cadastrado"}`;
+      ctx += `\n- Documentos no sistema (${docs.length}): ${docs.length > 0 ? docs.map((d: any) => `${d.name} [${d.category}] (${d.status})`).join(", ") : "Nenhum"}`;
+      ctx += `\n- Checklist (${checklist.length}): ${checklist.length > 0 ? checklist.map((c: any) => `${c.label} (${c.done ? "concluído" : "PENDENTE"})`).join(", ") : "Nenhum"}`;
+      ctx += `\n- Audiências (${hearings.length}): ${hearings.length > 0 ? hearings.map((h: any) => `${h.title} em ${h.date} (${h.status})`).join(", ") : "Nenhuma"}`;
+      ctx += `\n- Dados faltantes no cadastro: ${missingFields.length > 0 ? missingFields.join(", ") : "Nenhum — cadastro completo"}`;
+      ctx += "\n";
     }
   }
 
-  let allClientsSummary = "";
-  for (const client of clients) {
-    const clientCases = casesByClient[client.id] || [];
-    allClientsSummary += `\n- **${client.name}**: ${clientCases.length > 0 ? clientCases.map((c: any) => `${c.case_type} (${c.status})`).join(", ") : "sem casos"}`;
-  }
+  // Summary stats
+  const statusCounts: Record<string, number> = {};
+  for (const c of cases || []) { statusCounts[c.status] = (statusCounts[c.status] || 0) + 1; }
+  const pendingDocs = allDocs.filter((d: any) => d.status === "solicitado");
+  const pendingChecklist = allChecklist.filter((c: any) => !c.done);
 
-  return `
----
-CONTEXTO ATUAL DO ESCRITÓRIO (dados em tempo real):
+  ctx += `\nRESUMO: ${clients.length} clientes, ${(cases || []).length} casos, ${pendingDocs.length} documentos pendentes (solicitados), ${pendingChecklist.length} itens de checklist pendentes.`;
+  ctx += `\nCasos por status: ${Object.entries(statusCounts).map(([s, n]) => `${s}: ${n}`).join(", ") || "N/A"}`;
+  ctx += "\n=== FIM DOS DADOS ===";
 
-Clientes ativos (${clients.length}):
-${allClientsSummary}
-
-Clientes com documentos/checklist pendentes:
-${clientsWithPending || "Nenhum cliente com pendências."}
-
-Casos por status:
-${statusList || "Nenhum caso cadastrado."}
-
-Total de documentos pendentes (solicitados): ${pendingDocs.length}
-Total de itens de checklist pendentes: ${pendingChecklist.length}
----`;
+  return ctx;
 }
 
 async function fetchIntimacoesContext(supabase: any): Promise<string> {
