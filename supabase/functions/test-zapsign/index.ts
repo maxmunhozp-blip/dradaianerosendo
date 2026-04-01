@@ -33,7 +33,7 @@ serve(async (req) => {
       const errText = await res.text();
       console.error("ZapSign test error:", errText);
       return new Response(
-        JSON.stringify({ success: false, error: "Token inválido" }),
+        JSON.stringify({ success: false, error: errText || "Token inválido" }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
