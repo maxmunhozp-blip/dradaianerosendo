@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { streamLaraChat } from "@/lib/lara-stream";
 import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
-import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, LevelFormat } from "docx";
+import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, LevelFormat, Header, Footer, ImageRun, PageBreak, BorderStyle } from "docx";
 import { saveAs } from "file-saver";
 import jsPDF from "jspdf";
 import {
@@ -18,7 +18,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
-import { FileText, Loader2, Copy, RefreshCw, Sparkles, Download, FileDown } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { FileText, Loader2, Copy, RefreshCw, Sparkles, Download, FileDown, Stamp } from "lucide-react";
 
 const FORMAT_INSTRUCTIONS = `
 
