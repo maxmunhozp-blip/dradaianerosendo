@@ -328,7 +328,7 @@ interface ScanResult {
   status: "pending" | "processing" | "done" | "failed";
 }
 
-export function LaraActionButtons({ actions, onScanComplete, messageContent }: { actions: LaraAction[]; onScanComplete?: (summary: string) => void; messageContent?: string }) {
+export function LaraActionButtons({ actions, onScanComplete, messageContent, allMessages }: { actions: LaraAction[]; onScanComplete?: (summary: string) => void; messageContent?: string; allMessages?: { role: string; content: string }[] }) {
   const navigate = useNavigate();
   const [confirmAction, setConfirmAction] = useState<LaraAction | null>(null);
   const [executing, setExecuting] = useState(false);
