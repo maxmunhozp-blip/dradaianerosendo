@@ -211,7 +211,7 @@ export default function PublicDataRequest() {
         <Card className="w-full max-w-md">
           <CardContent className="pt-6 text-center">
             <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Check className="w-8 h-8 text-green-600" />
+              <Check className="w-8 h-8 text-primary" />
             </div>
             <p className="text-lg font-semibold mb-2">Dados enviados! ✅</p>
             <p className="text-sm text-muted-foreground">

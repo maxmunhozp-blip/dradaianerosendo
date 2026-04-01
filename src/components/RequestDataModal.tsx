@@ -115,7 +115,7 @@ export function RequestDataModal({ open, onOpenChange, caseId, clientId, clientD
 
         {fields.length === 0 ? (
           <div className="text-center py-6">
-            <Check className="w-10 h-10 text-green-500 mx-auto mb-2" />
+            <Check className="w-10 h-10 text-primary mx-auto mb-2" />
             <p className="text-sm text-muted-foreground">Todos os dados estão preenchidos! 🎉</p>
           </div>
         ) : (
