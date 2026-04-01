@@ -34,7 +34,7 @@ interface SaveDataAction {
 }
 
 interface LaraAction {
-  type: "send_whatsapp" | "create_task" | "open_client" | "generate_document" | "schedule_reminder" | "scan_documents" | "download_document" | "send_for_signature";
+  type: "send_whatsapp" | "create_task" | "open_client" | "generate_document" | "schedule_reminder" | "scan_documents" | "download_document" | "send_for_signature" | "generate_pdf";
   label: string;
   data: Record<string, any>;
 }
