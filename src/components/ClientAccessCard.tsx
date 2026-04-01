@@ -104,6 +104,7 @@ export function ClientAccessCard({
       setRenewing(false);
     }
   };
+  const handleCopy = () => {
     if (!portalUrl) return;
     navigator.clipboard.writeText(portalUrl);
     setCopied(true);
