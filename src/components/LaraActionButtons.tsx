@@ -512,7 +512,6 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
               .replace(/\*\*(.*?)\*\*/g, "$1")
               .replace(/\*(.*?)\*/g, "$1")
               .trim();
-              .trim();
 
             const pdfBlob = generatePdfFromHtml(`<p>${cleanText.replace(/\n\n/g, "</p><p>").replace(/\n/g, "<br/>")}</p>`);
 
