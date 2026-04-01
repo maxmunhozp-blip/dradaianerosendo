@@ -20,6 +20,7 @@ import Agenda from "@/pages/Agenda";
 import PortalHome from "@/pages/PortalHome";
 import PortalDocs from "@/pages/PortalDocs";
 import PortalChat from "@/pages/PortalChat";
+import PortalAssistente from "@/pages/PortalAssistente";
 import PortalProfile from "@/pages/PortalProfile";
 import PortalLogin from "@/pages/PortalLogin";
 import Login from "@/pages/Login";
