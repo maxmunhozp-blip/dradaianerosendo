@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2, MessageSquare, ClipboardList, ExternalLink, FileText, Bell, ScanSearch, CheckCircle2, XCircle, Download, PenLine, Save, Send, Mail } from "lucide-react";
+import { Loader2, MessageSquare, ClipboardList, ExternalLink, FileText, Bell, ScanSearch, CheckCircle2, XCircle, Download, PenLine, Save, Send, Mail, AlertCircle, ArrowLeft } from "lucide-react";
 import RichTextEditor, { type RichTextEditorHandle } from "@/components/RichTextEditor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -547,24 +547,7 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
             .replace(/\*(.*?)\*/g, "$1")
             .trim();
 
-          // CRITICAL: Block generation if document contains placeholders or missing data
-          const placeholderPatterns = [
-            /\[PREENCHER[^\]]*\]/i,
-            /\[preencher[^\]]*\]/i,
-            /_{3,}/,                          // Three or more underscores (blank fields)
-            /\(endereço[^)]*\)/i,             // (endereço do escritório) etc
-            /a definir/i,
-            /\[.*não cadastrado.*\]/i,
-            /\[.*não informado.*\]/i,
-            /\[.*faltando.*\]/i,
-          ];
-
-          const foundPlaceholders = placeholderPatterns.filter(p => p.test(cleanText));
-          if (foundPlaceholders.length > 0) {
-            toast.error("Documento contém dados incompletos! Peça à LARA para coletar os dados faltantes antes de gerar o PDF.", { duration: 6000 });
-            break;
-          }
-
+          // Always open editor — let user fill in missing fields manually
           const idx = allActions.indexOf(confirmAction);
           setEditableText(cleanText);
           setEditMeta({ docName, caseId, action: confirmAction, actionIndex: idx });
@@ -833,8 +816,17 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
               <FileText className="w-4 h-4" />
               Editar — {editMeta?.docName}
             </DialogTitle>
-            <DialogDescription>Edite o texto antes de gerar o PDF.</DialogDescription>
+            <DialogDescription>
+              Revise e edite o texto. Campos com <span className="font-semibold text-amber-600">[PREENCHER]</span> precisam ser preenchidos antes de gerar o PDF.
+            </DialogDescription>
           </DialogHeader>
+          {/* Placeholder warning banner */}
+          {editableText && /\[PREENCHER[^\]]*\]/i.test(editableText) && (
+            <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-800 rounded-md px-3 py-2 text-xs">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>Este documento contém campos <strong>[PREENCHER]</strong> que precisam ser preenchidos. Use Ctrl+H ou edite diretamente no texto.</span>
+            </div>
+          )}
           <RichTextEditor
             ref={editorRef}
             initialContent={editableText}
@@ -852,13 +844,23 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
               if (!editMeta) return;
               const html = editorRef.current?.getHTML() || "";
               if (!html.trim()) return;
+
+              // Validate placeholders only at PDF generation time
+              const textContent = html.replace(/<[^>]*>/g, "");
+              const placeholderPatterns = [
+                /\[PREENCHER[^\]]*\]/i,
+                /_{3,}/,
+                /\[.*não cadastrado.*\]/i,
+                /\[.*não informado.*\]/i,
+              ];
+              const hasPlaceholders = placeholderPatterns.some(p => p.test(textContent));
+              if (hasPlaceholders) {
+                toast.error("Ainda há campos a preencher no documento. Revise os campos marcados com [PREENCHER] ou ___ antes de gerar o PDF.", { duration: 6000 });
+                return;
+              }
+
               const pdfBlob = generatePdfFromHtml(html);
               const previewUrl = URL.createObjectURL(pdfBlob);
-
-
-
-
-              // Also store for save flow
               setPdfPreviewBlob(pdfBlob);
               setPdfPreviewUrl(previewUrl);
               setPdfPreviewMeta(editMeta);
@@ -922,6 +924,20 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
             </div>
           </div>
           <DialogFooter className="gap-2 flex-wrap pt-2">
+            <Button variant="outline" onClick={() => {
+              // Go back to editor with current content
+              if (pdfPreviewMeta) {
+                setEditableText(editorRef.current?.getHTML() || "");
+                setEditMeta(pdfPreviewMeta);
+                setEditingText(true);
+              }
+              if (pdfPreviewUrl) URL.revokeObjectURL(pdfPreviewUrl);
+              setPdfPreviewUrl(null);
+              setPdfPreviewBlob(null);
+              setPdfPreviewMeta(null);
+            }}>
+              <ArrowLeft className="w-4 h-4 mr-1" /> Voltar ao editor
+            </Button>
             <Button variant="outline" onClick={() => {
               if (pdfPreviewUrl) URL.revokeObjectURL(pdfPreviewUrl);
               setPdfPreviewUrl(null);
