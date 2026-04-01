@@ -449,19 +449,17 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
 
         case "generate_document":
         case "generate_pdf": {
-          const docText = messageContent || "";
+          const rawText = messageContent || "";
           const docName = confirmAction.data.document_name || confirmAction.data.template || "Documento";
           const caseId = confirmAction.data.case_id;
 
-          if (!docText.trim()) { toast.error("Conteúdo do documento não encontrado"); break; }
+          if (!rawText.trim()) { toast.error("Conteúdo do documento não encontrado"); break; }
           if (!caseId) { toast.error("Caso não identificado"); break; }
 
-          const cleanText = docText
+          const cleanText = extractLegalDocumentContent(rawText)
             .replace(/#{1,6}\s/g, "")
             .replace(/\*\*(.*?)\*\*/g, "$1")
             .replace(/\*(.*?)\*/g, "$1")
-            .replace(/ACTIONS_START[\s\S]*?ACTIONS_END/g, "")
-            .replace(/```[\s\S]*?```/g, "")
             .trim();
 
           const idx = allActions.indexOf(confirmAction);
