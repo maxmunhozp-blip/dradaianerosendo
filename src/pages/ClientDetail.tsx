@@ -325,6 +325,9 @@ export default function ClientDetail() {
           </div>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => setShowRequestData(true)} disabled={cases.length === 0}>
+            <Send className="w-3.5 h-3.5 mr-1.5" />Solicitar Dados
+          </Button>
           <Button variant="outline" size="sm" onClick={handleInviteClient} disabled={inviting || !cl.email}>
             {inviting ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Send className="w-3.5 h-3.5 mr-1.5" />}Convidar
           </Button>
@@ -333,6 +336,17 @@ export default function ClientDetail() {
           </Button>
         </div>
       </div>
+
+      {cases.length > 0 && (
+        <RequestDataModal
+          open={showRequestData}
+          onOpenChange={setShowRequestData}
+          caseId={cases[0].id}
+          clientId={client.id}
+          clientData={client as Record<string, unknown>}
+          caseData={cases[0] as Record<string, unknown>}
+        />
+      )}
 
       {/* Collapsible Sections */}
       <div className="space-y-3 mb-6">
