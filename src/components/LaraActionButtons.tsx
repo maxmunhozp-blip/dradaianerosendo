@@ -27,7 +27,7 @@ const ACTION_ICONS: Record<string, typeof MessageSquare> = {
   generate_document: FileText,
   schedule_reminder: Bell,
   scan_documents: ScanSearch,
-};
+  download_document: Download,
 
 const ACTION_DESCRIPTIONS: Record<string, (data: Record<string, any>) => string> = {
   send_whatsapp: (d) => `Enviar mensagem via WhatsApp para ${d.phone || "o cliente"}`,
