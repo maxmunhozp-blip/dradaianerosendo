@@ -91,6 +91,9 @@ export default function ClientDetail() {
   const [scanCurrentIndex, setScanCurrentIndex] = useState(0);
   const [scanResults, setScanResults] = useState<Record<string, { confidence: string; fieldsFound: number }>>({});
   const [scanDocList, setScanDocList] = useState<{ id: string; name: string }[]>([]);
+  const [reviewSuggestions, setReviewSuggestions] = useState<ReviewSuggestion[]>([]);
+  const [showReviewPanel, setShowReviewPanel] = useState(false);
+  const [scanSummary, setScanSummary] = useState<{ total: number; auto: number; review: number } | null>(null);
   const queryClient = useQueryClient();
 
   // Fetch all documents for this client's cases
