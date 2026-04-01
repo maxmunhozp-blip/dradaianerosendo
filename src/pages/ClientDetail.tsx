@@ -702,66 +702,58 @@ export default function ClientDetail() {
         />
       )}
 
-      {/* ═══ SECTION 1: CASOS — primary workflow ═══ */}
-      <div className="space-y-3 mb-6">
-        <Collapsible open={casesOpen} onOpenChange={setCasesOpen}>
-          <div className="border border-border rounded-lg overflow-hidden">
-            <div className="flex items-center justify-between py-2 px-3 bg-muted/30 rounded-md">
-              <CollapsibleTrigger asChild>
-                <button className="flex items-center gap-2 text-sm font-medium text-foreground hover:text-foreground/80 transition-colors">
-                  {casesOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-                  <FolderOpen className="w-4 h-4" />
-                  Casos ({cases.length})
-                </button>
-              </CollapsibleTrigger>
-              <Dialog open={caseDialogOpen} onOpenChange={setCaseDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="sm"><Plus className="w-3.5 h-3.5 mr-1.5" />Novo caso</Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader><DialogTitle>Novo caso</DialogTitle></DialogHeader>
-                  <div className="space-y-4 mt-2">
-                    <div><Label>Tipo</Label>
-                      <Select value={caseForm.case_type} onValueChange={v => setCaseForm(f => ({ ...f, case_type: v }))}>
-                        <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
-                        <SelectContent>{caseTypesList.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
-                      </Select>
-                    </div>
-                    <div><Label>Descrição</Label>
-                      <Textarea value={caseForm.description} onChange={e => setCaseForm(f => ({ ...f, description: e.target.value }))} placeholder="Descreva o caso..." className="mt-1.5" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div><Label>Número CNJ (opcional)</Label><Input value={caseForm.cnj_number} onChange={e => setCaseForm(f => ({ ...f, cnj_number: e.target.value }))} placeholder="0000000-00.0000.0.00.0000" className="mt-1.5" /></div>
-                      <div><Label>Vara (opcional)</Label><Input value={caseForm.court} onChange={e => setCaseForm(f => ({ ...f, court: e.target.value }))} placeholder="Ex: 2a Vara de Família" className="mt-1.5" /></div>
-                    </div>
-                    <Button className="w-full" onClick={handleCreateCase} disabled={createCase.isPending}>{createCase.isPending ? "Criando..." : "Criar caso"}</Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </div>
-            <CollapsibleContent>
-              <div className="p-4">
-                {cases.length === 0 ? (
-                  <EmptyState icon={FolderOpen} title="Nenhum caso registrado" description="Crie o primeiro caso para este cliente." actionLabel="Novo caso" onAction={() => setCaseDialogOpen(true)} />
-                ) : (
-                  <div className="border border-border rounded-lg divide-y divide-border">
-                    {cases.map(c => (
-                      <Link key={c.id} to={`/cases/${c.id}`} className="flex items-center justify-between px-4 py-3 hover:bg-muted/50 transition-colors">
-                        <div>
-                          <p className="text-sm font-medium text-foreground">{c.case_type}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">{c.description}</p>
-                          {c.cnj_number && <p className="text-xs text-muted-foreground mt-0.5">CNJ: {c.cnj_number}</p>}
-                        </div>
-                        <StatusBadge status={c.status} />
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </CollapsibleContent>
+      {/* ═══ SECTION 1: CASOS — shown directly, no collapsible ═══ */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+            <FolderOpen className="w-4 h-4" />
+            Casos ({cases.length})
           </div>
-        </Collapsible>
+          <Dialog open={caseDialogOpen} onOpenChange={setCaseDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm"><Plus className="w-3.5 h-3.5 mr-1.5" />Novo caso</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Novo caso</DialogTitle></DialogHeader>
+              <div className="space-y-4 mt-2">
+                <div><Label>Tipo</Label>
+                  <Select value={caseForm.case_type} onValueChange={v => setCaseForm(f => ({ ...f, case_type: v }))}>
+                    <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                    <SelectContent>{caseTypesList.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div><Label>Descrição</Label>
+                  <Textarea value={caseForm.description} onChange={e => setCaseForm(f => ({ ...f, description: e.target.value }))} placeholder="Descreva o caso..." className="mt-1.5" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div><Label>Número CNJ (opcional)</Label><Input value={caseForm.cnj_number} onChange={e => setCaseForm(f => ({ ...f, cnj_number: e.target.value }))} placeholder="0000000-00.0000.0.00.0000" className="mt-1.5" /></div>
+                  <div><Label>Vara (opcional)</Label><Input value={caseForm.court} onChange={e => setCaseForm(f => ({ ...f, court: e.target.value }))} placeholder="Ex: 2a Vara de Família" className="mt-1.5" /></div>
+                </div>
+                <Button className="w-full" onClick={handleCreateCase} disabled={createCase.isPending}>{createCase.isPending ? "Criando..." : "Criar caso"}</Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+        {cases.length === 0 ? (
+          <EmptyState icon={FolderOpen} title="Nenhum caso registrado" description="Crie o primeiro caso para este cliente." actionLabel="Novo caso" onAction={() => setCaseDialogOpen(true)} />
+        ) : (
+          <div className="border border-border rounded-lg divide-y divide-border">
+            {cases.map(c => (
+              <Link key={c.id} to={`/cases/${c.id}`} className="flex items-center justify-between px-4 py-3 hover:bg-muted/50 transition-colors">
+                <div>
+                  <p className="text-sm font-medium text-foreground">{c.case_type}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{c.description}</p>
+                  {c.cnj_number && <p className="text-xs text-muted-foreground mt-0.5">CNJ: {c.cnj_number}</p>}
+                </div>
+                <StatusBadge status={c.status} />
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
+
+      {/* ═══ TIMELINE UNIFICADA — todas as movimentações de todos os casos ═══ */}
+      {caseIds.length > 0 && <ClientUnifiedTimeline caseIds={caseIds} />}
 
       {/* ═══ SECTION 2: DADOS DO CLIENTE — reference data ═══ */}
       <div className="space-y-3 mb-6">
