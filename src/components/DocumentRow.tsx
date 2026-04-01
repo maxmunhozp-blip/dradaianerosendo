@@ -42,7 +42,7 @@ interface DocumentRowProps {
     extraction_status?: string | null;
     extraction_confidence?: string | null;
     signature_status?: string | null;
-    signers?: any[] | null;
+    signers?: any | null;
   };
   clientName?: string;
   clientEmail?: string;
