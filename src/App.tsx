@@ -37,6 +37,7 @@ import PublicDataRequest from "./pages/PublicDataRequest";
 import LaraSkills from "./pages/LaraSkills";
 import DocumentBranding from "./pages/DocumentBranding";
 import EmailSettings from "./pages/EmailSettings";
+import AdminPage from "./pages/AdminPage";
 
 const queryClient = new QueryClient();
 
