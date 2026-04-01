@@ -215,19 +215,12 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
 
         case "generate_document":
         case "generate_pdf": {
-          // Extract document text from the message content
           const docText = messageContent || "";
           const docName = confirmAction.data.document_name || confirmAction.data.template || "Documento";
           const caseId = confirmAction.data.case_id;
 
-          if (!docText.trim()) {
-            toast.error("Conteúdo do documento não encontrado");
-            break;
-          }
-          if (!caseId) {
-            toast.error("Caso não identificado");
-            break;
-          }
+          if (!docText.trim()) { toast.error("Conteúdo do documento não encontrado"); break; }
+          if (!caseId) { toast.error("Caso não identificado"); break; }
 
           // Generate PDF with jsPDF
           const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
@@ -237,7 +230,6 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
           pdf.setFont("helvetica", "normal");
           pdf.setFontSize(12);
 
-          // Clean markdown formatting for PDF
           const cleanText = docText
             .replace(/#{1,6}\s/g, "")
             .replace(/\*\*(.*?)\*\*/g, "$1")
@@ -259,61 +251,15 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
             y += lineHeight;
           }
 
-          // Upload PDF to storage
           const pdfBlob = pdf.output("blob");
-          const fileName = `${caseId}/${Date.now()}_${docName.replace(/\s+/g, "_")}.pdf`;
-          
-          const { error: uploadError } = await supabase.storage
-            .from("case-documents")
-            .upload(fileName, pdfBlob, { contentType: "application/pdf" });
+          const previewUrl = URL.createObjectURL(pdfBlob);
 
-          if (uploadError) {
-            toast.error("Erro ao fazer upload do PDF: " + uploadError.message);
-            break;
-          }
-
-          const { data: urlData } = supabase.storage
-            .from("case-documents")
-            .getPublicUrl(fileName);
-
-          // Create document record
-          const { data: newDoc, error: docError } = await supabase
-            .from("documents")
-            .insert({
-              case_id: caseId,
-              name: docName,
-              file_url: urlData.publicUrl,
-              status: "aprovado",
-              category: "peticao",
-              uploaded_by: "lara",
-              signature_status: "none",
-            })
-            .select("id, name")
-            .single();
-
-          if (docError) {
-            toast.error("Erro ao criar documento: " + docError.message);
-            break;
-          }
-
-          toast.success(`PDF "${docName}" gerado e salvo no caso!`);
-
-          // Store generated doc info and add signature action
-          setGeneratedDocId(newDoc.id);
-          setGeneratedDocName(newDoc.name);
-          setDynamicActions(prev => [
-            ...prev,
-            {
-              type: "send_for_signature" as const,
-              label: `Enviar "${newDoc.name}" para assinatura`,
-              data: {
-                document_id: newDoc.id,
-                document_name: newDoc.name,
-                client_phone: confirmAction.data.client_phone,
-                client_name: confirmAction.data.client_name,
-              },
-            },
-          ]);
+          // Show preview instead of saving immediately
+          const idx = allActions.indexOf(confirmAction);
+          setPdfPreviewBlob(pdfBlob);
+          setPdfPreviewUrl(previewUrl);
+          setPdfPreviewMeta({ docName, caseId, action: confirmAction, actionIndex: idx });
+          setConfirmAction(null);
           break;
         }
 
