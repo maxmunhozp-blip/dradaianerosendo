@@ -98,6 +98,12 @@ export default function PublicDataRequest() {
   const [skipCpf, setSkipCpf] = useState(false);
   const [cpfError, setCpfError] = useState(false);
 
+  // Simple fields
+  const [maritalStatus, setMaritalStatus] = useState("");
+  const [profession, setProfession] = useState("");
+  const [rg, setRg] = useState("");
+  const [nationality, setNationality] = useState("");
+
   const [submitting, setSubmitting] = useState(false);
 
   const numberRef = useRef<HTMLInputElement>(null);
@@ -151,6 +157,12 @@ export default function PublicDataRequest() {
 
       const fields = data.fields_requested as string[];
       const builtSteps: string[] = [];
+      // Simple fields first
+      if (fields.includes("marital_status")) builtSteps.push("marital_status");
+      if (fields.includes("profession")) builtSteps.push("profession");
+      if (fields.includes("rg")) builtSteps.push("rg");
+      if (fields.includes("nationality")) builtSteps.push("nationality");
+      // Complex fields
       if (fields.includes("address")) builtSteps.push("cep", "address_confirm");
       if (fields.includes("children")) builtSteps.push("children_ask", "children_data");
       if (fields.includes("opposing_party")) builtSteps.push("opposing");
@@ -296,6 +308,10 @@ export default function PublicDataRequest() {
     if (opposingName) formData.opposing_party_name = opposingName;
     if (opposingCpf && !skipCpf) formData.opposing_party_cpf = opposingCpf;
     if (opposingAddress) formData.opposing_party_address = opposingAddress;
+    if (maritalStatus) formData.marital_status = maritalStatus;
+    if (profession) formData.profession = profession;
+    if (rg) formData.rg = rg;
+    if (nationality) formData.nationality = nationality;
     return formData;
   };
 
@@ -487,6 +503,108 @@ export default function PublicDataRequest() {
                 </span>
               </div>
               <button onClick={() => setCurrentStep(1)} style={s.btn}>Começar</button>
+            </div>
+          )}
+
+          {/* ── Marital Status ── */}
+          {currentStepName === "marital_status" && (
+            <div>
+              <p style={{ ...s.display, fontSize: 22, fontWeight: 600, color: "var(--wizard-primary)", marginBottom: 20 }}>
+                Qual é o seu estado civil?
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {["Solteiro(a)", "Casado(a)", "Divorciado(a)", "Viúvo(a)", "Separado(a)", "União Estável"].map(opt => (
+                  <button
+                    key={opt}
+                    onClick={() => {
+                      setMaritalStatus(opt);
+                      setTimeout(goNext, 600);
+                    }}
+                    style={{
+                      minHeight: 64, border: `2px solid ${maritalStatus === opt ? "#1E3A5F" : "#E5E7EB"}`,
+                      borderRadius: 12, background: maritalStatus === opt ? "#EBF4FF" : "#fff",
+                      cursor: "pointer", fontSize: 16, fontWeight: 600,
+                      fontFamily: "var(--wizard-font-body)",
+                      color: "var(--wizard-primary)", transition: "all .2s",
+                      display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                    }}
+                  >
+                    {maritalStatus === opt && <CheckCircle size={18} color="#1E3A5F" />}
+                    {opt}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── Profession ── */}
+          {currentStepName === "profession" && (
+            <div>
+              <label style={{ ...s.label, fontSize: 18 }}>Qual é a sua profissão?</label>
+              <input
+                value={profession}
+                onChange={e => setProfession(e.target.value)}
+                style={s.input}
+                placeholder="Ex: Professor(a), Vendedor(a)..."
+                autoCapitalize="words"
+                autoFocus
+              />
+              <div style={{ marginTop: 20 }}>
+                <button
+                  onClick={goNext}
+                  disabled={!profession.trim()}
+                  style={{ ...s.btn, ...(!profession.trim() ? s.btnDisabled : {}) }}
+                >
+                  Continuar
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ── RG ── */}
+          {currentStepName === "rg" && (
+            <div>
+              <label style={{ ...s.label, fontSize: 18 }}>Qual é o número do seu RG?</label>
+              <input
+                value={rg}
+                onChange={e => setRg(e.target.value)}
+                style={s.input}
+                placeholder="Ex: 12.345.678-9"
+                autoFocus
+              />
+              <div style={{ marginTop: 20 }}>
+                <button
+                  onClick={goNext}
+                  disabled={!rg.trim()}
+                  style={{ ...s.btn, ...(!rg.trim() ? s.btnDisabled : {}) }}
+                >
+                  Continuar
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ── Nationality ── */}
+          {currentStepName === "nationality" && (
+            <div>
+              <label style={{ ...s.label, fontSize: 18 }}>Qual é a sua nacionalidade?</label>
+              <input
+                value={nationality}
+                onChange={e => setNationality(e.target.value)}
+                style={s.input}
+                placeholder="Ex: Brasileiro(a)"
+                autoCapitalize="words"
+                autoFocus
+              />
+              <div style={{ marginTop: 20 }}>
+                <button
+                  onClick={goNext}
+                  disabled={!nationality.trim()}
+                  style={{ ...s.btn, ...(!nationality.trim() ? s.btnDisabled : {}) }}
+                >
+                  Continuar
+                </button>
+              </div>
             </div>
           )}
 
