@@ -79,7 +79,7 @@ export default function Dashboard() {
       </div>
 
       {/* Integration status */}
-      <ZapSignStatus />
+      <IntegrationStatusBar />
 
       {/* Signature status */}
       <SignaturePanel ownerFilter={ownerFilter} />
