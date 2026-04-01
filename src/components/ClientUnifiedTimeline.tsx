@@ -149,7 +149,7 @@ export function ClientUnifiedTimeline({ caseIds }: { caseIds: string[] }) {
         unified.push({
           id: `msg-${m.id}`,
           case_id: m.case_id,
-          title: `💬 ${roleLabel}`,
+          title: roleLabel,
           description: (m.content || "").substring(0, 120),
           type: "mensagem",
           status: "concluído",
@@ -179,7 +179,7 @@ export function ClientUnifiedTimeline({ caseIds }: { caseIds: string[] }) {
         unified.push({
           id: `doc-${d.id}`,
           case_id: d.case_id,
-          title: `📄 ${d.name}${sigLabel}`,
+          title: `${d.name}${sigLabel}`,
           description: `Categoria: ${d.category} · Status: ${d.status}`,
           type: d.signature_status && d.signature_status !== "none" ? "assinatura" : "documento",
           status: d.signature_status === "signed" ? "assinado" : d.status,
@@ -193,7 +193,7 @@ export function ClientUnifiedTimeline({ caseIds }: { caseIds: string[] }) {
         unified.push({
           id: `hear-${h.id}`,
           case_id: h.case_id,
-          title: `⚖️ ${h.title}`,
+          title: h.title,
           description: h.location ? `Local: ${h.location}` : "",
           type: "audiencia",
           status: h.status,
@@ -207,7 +207,7 @@ export function ClientUnifiedTimeline({ caseIds }: { caseIds: string[] }) {
         unified.push({
           id: `int-${i.id}`,
           case_id: i.case_id || "",
-          title: `⚠️ ${i.raw_email_subject || "Intimação"}`,
+          title: i.raw_email_subject || "Intimação",
           description: i.ai_summary || "",
           type: "intimacao",
           status: i.status,
@@ -222,7 +222,7 @@ export function ClientUnifiedTimeline({ caseIds }: { caseIds: string[] }) {
           unified.push({
             id: `chk-${c.id}`,
             case_id: c.case_id,
-            title: `✅ ${c.label}`,
+            title: c.label,
             description: "Item concluído",
             type: "checklist",
             status: "concluído",
@@ -368,7 +368,7 @@ export function ClientUnifiedTimeline({ caseIds }: { caseIds: string[] }) {
                     <div className="flex-1 min-w-0 pt-0.5">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm font-semibold text-foreground">
-                          {event.title.replace(/^[📄⚖️⚠️✅]\s?/, "")}
+                          {event.title}
                         </span>
                         <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded flex-shrink-0">
                           {formatDateFull(event.event_date)}
