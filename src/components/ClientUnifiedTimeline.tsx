@@ -272,7 +272,7 @@ export function ClientUnifiedTimeline({ caseIds }: { caseIds: string[] }) {
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2 text-sm font-medium text-foreground">
           <Clock className="w-4 h-4" />
-          Movimentações ({filteredEvents.length})
+          Timeline ({filteredEvents.length})
         </div>
         <Button
           variant="outline"
@@ -326,38 +326,53 @@ export function ClientUnifiedTimeline({ caseIds }: { caseIds: string[] }) {
           {activeFilter ? "Nenhuma movimentação deste tipo." : "Nenhuma movimentação registrada ainda."}
         </div>
       ) : (
-        <div className="border border-border rounded-lg divide-y divide-border max-h-[500px] overflow-y-auto">
-          {filteredEvents.map((event) => {
-            const Icon = TYPE_ICONS[event.type] || Clock;
-            const statusColor = STATUS_COLORS[event.status] || "text-muted-foreground";
+        <div className="border border-border rounded-lg p-4 max-h-[500px] overflow-y-auto">
+          <div className="relative">
+            {/* Vertical line */}
+            <div className="absolute left-[18px] top-4 bottom-4 w-px bg-border" />
 
-            return (
-              <div key={event.id} className="flex items-start gap-3 px-4 py-3 hover:bg-muted/30 transition-colors">
-                <div className={`mt-0.5 ${statusColor}`}>
-                  <Icon className="w-4 h-4" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium text-foreground truncate">{event.title}</p>
-                    {event.case_type && (
-                      <Link
-                        to={`/cases/${event.case_id}`}
-                        className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
-                      >
-                        {event.case_type}
-                      </Link>
-                    )}
+            <div className="space-y-0">
+              {filteredEvents.map((event, idx) => {
+                const Icon = TYPE_ICONS[event.type] || Clock;
+                const isFirst = idx === 0;
+                const iconColor = event.type === "mensagem"
+                  ? "text-amber-500 border-amber-200 bg-amber-50"
+                  : "text-muted-foreground border-border bg-background";
+
+                return (
+                  <div key={event.id} className="relative flex items-start gap-3 py-3">
+                    {/* Circle icon */}
+                    <div className={`relative z-10 flex items-center justify-center shrink-0 rounded-full border-2 ${iconColor} ${isFirst ? "w-10 h-10" : "w-9 h-9"}`}>
+                      <Icon className={isFirst ? "w-4.5 h-4.5" : "w-4 h-4"} />
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1 min-w-0 pt-0.5">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-semibold text-foreground">
+                          {event.title.replace(/^[📄⚖️⚠️✅]\s?/, "")}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded flex-shrink-0">
+                          {formatDateFull(event.event_date)}
+                        </span>
+                        {event.case_type && (
+                          <Link
+                            to={`/cases/${event.case_id}`}
+                            className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary hover:bg-primary/20 transition-colors flex-shrink-0"
+                          >
+                            {event.case_type}
+                          </Link>
+                        )}
+                      </div>
+                      {event.description && (
+                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{event.description}</p>
+                      )}
+                    </div>
                   </div>
-                  {event.description && (
-                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{event.description}</p>
-                  )}
-                </div>
-                <span className="text-[11px] text-muted-foreground flex-shrink-0 mt-0.5">
-                  {formatDate(event.event_date)}
-                </span>
-              </div>
-            );
-          })}
+                );
+              })}
+            </div>
+          </div>
         </div>
       )}
     </div>
