@@ -1,6 +1,6 @@
 import { Outlet, NavLink } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
-import { LogOut, FileText, LayoutDashboard, FolderOpen } from "lucide-react";
+import { LogOut, FileText, LayoutDashboard, FolderOpen, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function PortalLayout() {
