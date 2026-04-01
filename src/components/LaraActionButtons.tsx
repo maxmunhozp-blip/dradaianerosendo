@@ -393,7 +393,7 @@ interface ScanResult {
   status: "pending" | "processing" | "done" | "failed";
 }
 
-export function LaraActionButtons({ actions, onScanComplete, messageContent, allMessages }: { actions: LaraAction[]; onScanComplete?: (summary: string) => void; messageContent?: string; allMessages?: { role: string; content: string }[] }) {
+export function LaraActionButtons({ actions, onScanComplete, messageContent, allMessages, contextCaseId }: { actions: LaraAction[]; onScanComplete?: (summary: string) => void; messageContent?: string; allMessages?: { role: string; content: string }[]; contextCaseId?: string }) {
   const navigate = useNavigate();
   const [confirmAction, setConfirmAction] = useState<LaraAction | null>(null);
   const [executing, setExecuting] = useState(false);
@@ -606,7 +606,7 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent, all
         case "generate_document":
         case "generate_pdf": {
           const docName = confirmAction.data.document_name || confirmAction.data.template || "Documento";
-          const caseId = confirmAction.data.case_id;
+          const caseId = confirmAction.data.case_id && /^[0-9a-f-]{36}$/i.test(confirmAction.data.case_id) ? confirmAction.data.case_id : contextCaseId;
           const cleanText = resolveDocumentDraft(messageContent, allMessages);
 
           if (!cleanText) { toast.error("Texto do documento não encontrado na conversa"); break; }
@@ -645,7 +645,7 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent, all
           }
 
           if (needsEditor) {
-            const caseId = confirmAction.data.case_id || "";
+            const caseId = (confirmAction.data.case_id && /^[0-9a-f-]{36}$/i.test(confirmAction.data.case_id) ? confirmAction.data.case_id : contextCaseId) || "";
             const docName = confirmAction.data.document_name || "Documento";
             const cleanText = resolveDocumentDraft(messageContent, allMessages);
 
