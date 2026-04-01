@@ -191,6 +191,24 @@ export function ClientAccessCard({
                   </button>
                 )}
               </div>
+              {/* Expiration info + Renew */}
+              <div className="flex items-center justify-between mt-2">
+                <p className={`text-[11px] ${isExpiringSoon ? 'text-amber-600 font-medium' : 'text-muted-foreground'}`}>
+                  {daysRemaining !== null
+                    ? daysRemaining === 0
+                      ? "Expira hoje"
+                      : `Expira em ${daysRemaining} dia${daysRemaining > 1 ? "s" : ""}`
+                    : ""}
+                </p>
+                <button
+                  onClick={handleRenew}
+                  disabled={renewing}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-border text-[11px] font-medium hover:bg-muted transition-colors disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-3 h-3 ${renewing ? "animate-spin" : ""}`} />
+                  {renewing ? "Renovando..." : "Renovar link"}
+                </button>
+              </div>
             </div>
           ) : (
             <div className="rounded-md bg-muted/50 border border-dashed border-border px-4 py-3">
