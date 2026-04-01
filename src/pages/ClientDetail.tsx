@@ -19,6 +19,7 @@ import {
 import {
   ArrowLeft, Phone, Mail, Plus, FolderOpen, Send, Loader2,
   Pencil, Trash2, Save, X, ChevronDown, ChevronRight, MapPin, Users, UserX, Baby, ExternalLink, ScanSearch,
+  CheckCircle2, Clock, XCircle,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
