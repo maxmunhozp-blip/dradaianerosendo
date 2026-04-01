@@ -40,14 +40,30 @@ Deno.serve(async (req) => {
 
     if (error) throw error;
 
-    // Set role if provided
+    // Set role — directly update user_roles table (service role bypasses RLS)
     if (role && data.user) {
-      await admin.rpc("set_user_role", { _target_user_id: data.user.id, _role: role });
+      await admin.from("user_roles").delete().eq("user_id", data.user.id);
+      await admin.from("user_roles").insert({ user_id: data.user.id, role });
     }
 
     // If role is client, link to existing client record by email
     if (role === "client" && data.user) {
       await admin.rpc("link_client_by_email", { _user_id: data.user.id, _email: email });
+    }
+
+    // Update permissions based on role
+    if (data.user) {
+      const isAdminOrAdvogado = role === "admin" || role === "advogado";
+      await admin.from("user_permissions").upsert({
+        user_id: data.user.id,
+        can_view_cases: isAdminOrAdvogado,
+        can_edit_cases: isAdminOrAdvogado,
+        can_view_clients: isAdminOrAdvogado,
+        can_edit_clients: isAdminOrAdvogado,
+        can_view_documents: isAdminOrAdvogado,
+        can_edit_documents: isAdminOrAdvogado,
+        can_access_settings: role === "admin",
+      }, { onConflict: "user_id" });
     }
 
     return new Response(JSON.stringify({ user: { id: data.user.id, email: data.user.email } }), {
