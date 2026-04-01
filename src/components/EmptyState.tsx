@@ -15,7 +15,7 @@ export function EmptyState({
   onAction?: () => void;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center py-8 px-4">
+    <div className="flex flex-col items-center justify-center py-4 px-4">
       <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center mb-2">
         <Icon className="w-5 h-5 text-muted-foreground" />
       </div>
