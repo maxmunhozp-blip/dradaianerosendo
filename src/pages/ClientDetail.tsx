@@ -523,8 +523,8 @@ export default function ClientDetail() {
       const portalUrl = `${window.location.origin}/portal?token=${token}`;
       const firstName = client.name.split(" ")[0];
       const message = `Olá ${firstName}! Acesse sua área do cliente pelo link abaixo para acompanhar seu processo:\n\n${portalUrl}`;
-      const waUrl = whatsappLink(phone, message);
-      window.open(waUrl, "_blank");
+      const clean = phone.startsWith("55") ? phone : `55${phone}`;
+      window.open(`https://wa.me/${clean}?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
       toast.success("Link do portal gerado!");
     } catch (err: any) {
       toast.error("Erro ao gerar link do portal");
