@@ -554,7 +554,29 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
             }}>
               Descartar
             </Button>
-            <Button variant="outline" onClick={() => {
+            <Button variant="outline" size="sm" onClick={() => {
+              if (!pdfPreviewBlob || !pdfPreviewMeta) return;
+              const phone = pdfPreviewMeta.action?.data?.client_phone || "";
+              const clientNameShort = (pdfPreviewMeta.action?.data?.client_name || "").split(" ")[0];
+              const docName = pdfPreviewMeta.docName || "documento";
+              if (!phone) {
+                toast.error("Telefone do cliente não encontrado");
+                return;
+              }
+              // Download first so client can attach
+              const a = document.createElement("a");
+              a.href = pdfPreviewUrl!;
+              a.download = `${docName.replace(/\s+/g, "_")}.pdf`;
+              a.click();
+              // Open WhatsApp
+              const cleanPhone = phone.replace(/\D/g, "");
+              const msg = encodeURIComponent(`Olá ${clientNameShort}! Segue em anexo o documento "${docName}" para sua análise e assinatura.`);
+              window.open(`https://wa.me/${cleanPhone}?text=${msg}`, "_blank");
+              toast.success("PDF baixado — anexe no WhatsApp");
+            }}>
+              <Send className="w-4 h-4 mr-1" /> Enviar ao cliente
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => {
               if (pdfPreviewUrl) {
                 const a = document.createElement("a");
                 a.href = pdfPreviewUrl;
