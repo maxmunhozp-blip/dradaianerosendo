@@ -797,17 +797,21 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
             <DialogDescription>
               {signatureFlowMeta
                 ? "Revise e edite o documento antes de gerar o PDF e enviar para assinatura eletrônica."
-                : <>Revise e edite o texto. Campos com <span className="font-semibold text-amber-600">[PREENCHER]</span> precisam ser preenchidos antes de gerar o PDF.</>
+                : "Revise e edite o texto antes de gerar o PDF."
               }
             </DialogDescription>
           </DialogHeader>
-          {/* Placeholder warning banner */}
-          {editableText && /\[PREENCHER[^\]]*\]/i.test(editableText) && (
-            <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-800 rounded-md px-3 py-2 text-xs">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>Este documento contém campos <strong>[PREENCHER]</strong> que precisam ser preenchidos. Use Ctrl+H ou edite diretamente no texto.</span>
-            </div>
-          )}
+          {/* Placeholder count banner */}
+          {editableText && (() => {
+            const matches = editableText.match(/\[PREENCHER[^\]]*\]/gi);
+            if (!matches || matches.length === 0) return null;
+            return (
+              <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-800 rounded-md px-3 py-2 text-xs">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span><strong>{matches.length}</strong> campo{matches.length > 1 ? "s" : ""} <strong>[PREENCHER]</strong> ainda pendente{matches.length > 1 ? "s" : ""}. Você pode editar agora ou gerar o PDF assim mesmo.</span>
+              </div>
+            );
+          })()}
           <RichTextEditor
             ref={editorRef}
             initialContent={editableText}
