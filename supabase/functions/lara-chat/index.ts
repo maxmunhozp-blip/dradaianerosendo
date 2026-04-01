@@ -298,7 +298,7 @@ async function fetchSettings(supabase: any): Promise<Record<string, string>> {
   return map;
 }
 
-async function fetchOfficeContext(supabase: any): Promise<string> {
+async function fetchOfficeContext(supabase: any, hasCaseId: boolean): Promise<string> {
   // 1. All active clients with their cases
   const { data: clients } = await supabase
     .from("clients")
@@ -306,11 +306,7 @@ async function fetchOfficeContext(supabase: any): Promise<string> {
     .eq("status", "ativo");
 
   if (!clients || clients.length === 0) {
-    return `
----
-CONTEXTO ATUAL DO ESCRITÓRIO (dados em tempo real):
-Nenhum cliente ativo encontrado no sistema.
----`;
+    return `\n---\nCONTEXTO ATUAL DO ESCRITÓRIO: Nenhum cliente ativo encontrado no sistema.\n---`;
   }
 
   // 2. All cases for active clients
@@ -325,52 +321,59 @@ Nenhum cliente ativo encontrado no sistema.
   // 3. Pending checklist items and pending documents in parallel
   const [checklistResult, docsResult] = await Promise.all([
     caseIds.length > 0
-      ? supabase
-          .from("checklist_items")
-          .select("id, label, case_id, required_by")
-          .in("case_id", caseIds)
-          .eq("done", false)
+      ? supabase.from("checklist_items").select("id, label, case_id, required_by").in("case_id", caseIds).eq("done", false)
       : { data: [] },
     caseIds.length > 0
-      ? supabase
-          .from("documents")
-          .select("id, name, category, case_id")
-          .in("case_id", caseIds)
-          .eq("status", "solicitado")
+      ? supabase.from("documents").select("id, name, category, case_id").in("case_id", caseIds).eq("status", "solicitado")
       : { data: [] },
   ]);
 
   const pendingChecklist = checklistResult.data || [];
   const pendingDocs = docsResult.data || [];
 
+  // Status counts
+  const statusCounts: Record<string, number> = {};
+  for (const c of cases || []) {
+    statusCounts[c.status] = (statusCounts[c.status] || 0) + 1;
+  }
+  const statusList = Object.entries(statusCounts).map(([s, n]) => `- ${s}: ${n} caso(s)`).join("\n");
+
+  // If a case is selected, return only summary counts (case context has the detail)
+  if (hasCaseId) {
+    return `
+---
+RESUMO DO ESCRITÓRIO: ${clients.length} clientes ativos, ${(cases || []).length} casos, ${pendingDocs.length} documentos pendentes, ${pendingChecklist.length} itens de checklist pendentes.
+
+Casos por status:
+${statusList || "Nenhum caso cadastrado."}
+---`;
+  }
+
+  // Full context when no case is selected
   // Group by case
   const checklistByCase: Record<string, any[]> = {};
   for (const item of pendingChecklist) {
     if (!checklistByCase[item.case_id]) checklistByCase[item.case_id] = [];
     checklistByCase[item.case_id].push(item);
   }
-
   const docsByCase: Record<string, any[]> = {};
   for (const doc of pendingDocs) {
     if (!docsByCase[doc.case_id]) docsByCase[doc.case_id] = [];
     docsByCase[doc.case_id].push(doc);
   }
 
-  // Build client → cases map
   const casesByClient: Record<string, any[]> = {};
   for (const c of cases || []) {
     if (!casesByClient[c.client_id]) casesByClient[c.client_id] = [];
     casesByClient[c.client_id].push(c);
   }
 
-  // Build the context string
   let clientsWithPending = "";
   for (const client of clients) {
     const clientCases = casesByClient[client.id] || [];
     const hasPending = clientCases.some(
       (c: any) => (checklistByCase[c.id]?.length || 0) > 0 || (docsByCase[c.id]?.length || 0) > 0
     );
-
     if (hasPending) {
       clientsWithPending += `\n- **${client.name}** (CPF: ${client.cpf || "N/A"}, E-mail: ${client.email || "N/A"}, Tel: ${client.phone || "N/A"})`;
       for (const cs of clientCases) {
@@ -378,33 +381,13 @@ Nenhum cliente ativo encontrado no sistema.
         const pendingD = docsByCase[cs.id] || [];
         if (pendingCL.length > 0 || pendingD.length > 0) {
           clientsWithPending += `\n  Caso: ${cs.case_type} (Status: ${cs.status})`;
-          if (pendingD.length > 0) {
-            clientsWithPending += `\n  Documentos pendentes (solicitados):`;
-            for (const d of pendingD) {
-              clientsWithPending += `\n    - ${d.name} [${d.category}]`;
-            }
-          }
-          if (pendingCL.length > 0) {
-            clientsWithPending += `\n  Checklist pendente:`;
-            for (const cl of pendingCL) {
-              clientsWithPending += `\n    - ${cl.label}${cl.required_by ? ` (responsável: ${cl.required_by})` : ""}`;
-            }
-          }
+          for (const d of pendingD) clientsWithPending += `\n    - ${d.name} [${d.category}]`;
+          for (const cl of pendingCL) clientsWithPending += `\n    - ${cl.label}${cl.required_by ? ` (responsável: ${cl.required_by})` : ""}`;
         }
       }
     }
   }
 
-  // Status counts
-  const statusCounts: Record<string, number> = {};
-  for (const c of cases || []) {
-    statusCounts[c.status] = (statusCounts[c.status] || 0) + 1;
-  }
-  const statusList = Object.entries(statusCounts)
-    .map(([s, n]) => `- ${s}: ${n} caso(s)`)
-    .join("\n");
-
-  // All clients summary
   let allClientsSummary = "";
   for (const client of clients) {
     const clientCases = casesByClient[client.id] || [];
@@ -655,7 +638,7 @@ Deno.serve(async (req: Request) => {
 
     // Fetch all context in parallel (including LexML if needed)
     const [officeContext, caseContext, settings, lexmlContext, intimacoesContext] = await Promise.all([
-      fetchOfficeContext(supabase),
+      fetchOfficeContext(supabase, !!caseId),
       caseId ? fetchCaseContext(supabase, caseId) : Promise.resolve(""),
       fetchSettings(supabase),
       legalQuery ? fetchLexMLContext(legalQuery, supabaseUrl) : Promise.resolve(""),
@@ -761,6 +744,11 @@ Use seu conhecimento jurídico para complementar os dados do LexML com explicaç
       });
     }
 
+    // Determine max_tokens based on document commands
+    const lastContent = lastMsg?.content?.toLowerCase() || "";
+    const isDocumentCommand = lastContent.includes("/peticao") || lastContent.includes("/procuracao") || lastContent.includes("/contrato");
+    const maxTokens = isDocumentCommand ? 8192 : 4096;
+
     // Call Lovable AI Gateway with streaming
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -771,6 +759,7 @@ Use seu conhecimento jurídico para complementar os dados do LexML com explicaç
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: aiMessages,
+        max_tokens: maxTokens,
         stream: true,
       }),
     });

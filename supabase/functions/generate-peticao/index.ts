@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import Anthropic from "npm:@anthropic-ai/sdk";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -99,10 +100,10 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!ANTHROPIC_API_KEY) {
       return new Response(
-        JSON.stringify({ error: "LOVABLE_API_KEY não configurada" }),
+        JSON.stringify({ error: "ANTHROPIC_API_KEY não configurada" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -149,7 +150,6 @@ Deno.serve(async (req: Request) => {
     try {
       const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
       const lexmlQueries = [caseData.case_type];
-      // Add specific law queries based on case type
       const lawMap: Record<string, string[]> = {
         "Divórcio": ["lei 10406 divórcio", "lei 13105 divórcio"],
         "Guarda": ["lei 10406 guarda", "lei 8069 guarda"],
@@ -195,9 +195,10 @@ Deno.serve(async (req: Request) => {
       console.error("LexML verification error:", e);
     }
 
-    // Fetch document contents from storage if URLs are provided
-    const aiMessages: any[] = [];
-    const contentParts: any[] = [{ type: "text", text: userPrompt }];
+    // Build Claude content blocks — supports native PDF and image reading
+    const contentBlocks: Anthropic.Messages.ContentBlockParam[] = [
+      { type: "text", text: userPrompt + (lexmlContext || "") },
+    ];
 
     if (documentUrls && documentUrls.length > 0) {
       const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -207,7 +208,6 @@ Deno.serve(async (req: Request) => {
       for (const doc of documentUrls) {
         if (!doc.file_url) continue;
         try {
-          // Extract the file path from the URL
           const urlObj = new URL(doc.file_url);
           const pathMatch = urlObj.pathname.match(/\/storage\/v1\/object\/public\/case-documents\/(.+)/);
           if (!pathMatch) continue;
@@ -223,23 +223,32 @@ Deno.serve(async (req: Request) => {
             new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), "")
           );
 
-          const mimeType = doc.file_url.endsWith(".pdf")
-            ? "application/pdf"
-            : doc.file_url.match(/\.(jpg|jpeg)$/i)
-            ? "image/jpeg"
-            : doc.file_url.match(/\.png$/i)
-            ? "image/png"
-            : "application/octet-stream";
+          const isPdf = doc.file_url.endsWith(".pdf");
+          const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(doc.file_url);
 
-          if (mimeType.startsWith("image/")) {
-            contentParts.push({
-              type: "image_url",
-              image_url: { url: `data:${mimeType};base64,${base64}` },
-            });
+          if (isPdf) {
+            // Claude natively reads PDFs
+            contentBlocks.push({
+              type: "document",
+              source: { type: "base64", media_type: "application/pdf", data: base64 },
+            } as any);
+          } else if (isImage) {
+            const mimeType = doc.file_url.match(/\.(jpg|jpeg)$/i)
+              ? "image/jpeg"
+              : doc.file_url.match(/\.png$/i)
+              ? "image/png"
+              : doc.file_url.match(/\.gif$/i)
+              ? "image/gif"
+              : "image/webp";
+
+            contentBlocks.push({
+              type: "image",
+              source: { type: "base64", media_type: mimeType, data: base64 },
+            } as any);
           } else {
-            contentParts.push({
+            contentBlocks.push({
               type: "text",
-              text: `[Conteúdo do documento "${doc.name}" — formato ${mimeType}, ${Math.round(arrayBuffer.byteLength / 1024)}KB]`,
+              text: `[Documento "${doc.name}" — formato não suportado para leitura direta, ${Math.round(arrayBuffer.byteLength / 1024)}KB]`,
             });
           }
         } catch (e) {
@@ -248,53 +257,53 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    aiMessages.push({
-      role: "system",
-      content: buildSystemPrompt(caseData.case_type) + lexmlContext,
-    });
-    aiMessages.push({
-      role: "user",
-      content: contentParts.length > 1 ? contentParts : userPrompt,
+    // Call Claude API with streaming
+    const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
+
+    const stream = anthropic.messages.stream({
+      model: "claude-sonnet-4-6",
+      max_tokens: 8192,
+      system: buildSystemPrompt(caseData.case_type),
+      messages: [{ role: "user", content: contentBlocks }],
     });
 
-    // Call AI Gateway
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
+    // Convert Claude stream to SSE format compatible with frontend
+    const encoder = new TextEncoder();
+    const readableStream = new ReadableStream({
+      async start(controller) {
+        try {
+          for await (const event of stream) {
+            if (event.type === "content_block_delta") {
+              const delta = event.delta;
+              if ("text" in delta) {
+                const sseData = JSON.stringify({
+                  choices: [{ delta: { content: delta.text } }],
+                });
+                controller.enqueue(encoder.encode(`data: ${sseData}\n\n`));
+              }
+            }
+          }
+          controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+          controller.close();
+        } catch (e) {
+          console.error("Claude stream error:", e);
+          const errorMsg = e instanceof Error ? e.message : "Erro no streaming";
+          
+          if (errorMsg.includes("rate_limit") || errorMsg.includes("429")) {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: "Limite de requisições excedido. Tente novamente em alguns instantes." })}\n\n`));
+          } else if (errorMsg.includes("insufficient") || errorMsg.includes("402")) {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: "Créditos insuficientes." })}\n\n`));
+          } else {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: "Erro ao gerar petição" })}\n\n`));
+          }
+          controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+          controller.close();
+        }
       },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: aiMessages,
-        stream: true,
-      }),
     });
 
-    if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Limite de requisições excedido. Tente novamente em alguns instantes." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "Créditos insuficientes." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
-      return new Response(
-        JSON.stringify({ error: "Erro ao gerar petição" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Stream the response back
-    return new Response(response.body, {
-      headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+    return new Response(readableStream, {
+      headers: { ...corsHeaders, "Content-Type": "text/event-stream", "Cache-Control": "no-cache" },
     });
   } catch (e) {
     console.error("generate-peticao error:", e);
