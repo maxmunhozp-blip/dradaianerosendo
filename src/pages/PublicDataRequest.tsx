@@ -40,10 +40,7 @@ function maskCep(v: string) {
 
 function maskCpf(v: string) {
   const d = v.replace(/\D/g, "").slice(0, 11);
-  return d
-    .replace(/(\d{3})(\d)/, "$1.$2")
-    .replace(/(\d{3})(\d)/, "$1.$2")
-    .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+  return d.replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d{1,2})$/, "$1-$2");
 }
 
 // ─── Styles ───
@@ -61,31 +58,26 @@ const s = {
     border: "1.5px solid #D1D5DB", background: "#fff", outline: "none", fontFamily: "var(--wizard-font-body)",
     transition: "border-color .2s",
   } as React.CSSProperties,
-  inputFocus: { borderColor: "var(--wizard-accent)" } as React.CSSProperties,
   label: { display: "block", fontSize: 14, fontWeight: 600, marginBottom: 6, color: "var(--wizard-primary)" } as React.CSSProperties,
-  error: { display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--wizard-error)", marginTop: 6 } as React.CSSProperties,
-  subtle: { fontSize: 13, color: "#6B7280", textAlign: "center" as const, marginTop: 8 },
+  error: { display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "#C53030", marginTop: 6 } as React.CSSProperties,
   card: { background: "#fff", borderRadius: 16, padding: "32px 24px", boxShadow: "0 2px 16px rgba(0,0,0,.06)" } as React.CSSProperties,
 };
 
 interface ChildEntry { name: string; day: string; month: string; year: string; }
 
-// ─── Component ───
 export default function PublicDataRequest() {
   const { token } = useParams<{ token: string }>();
 
-  // State
   const [pageState, setPageState] = useState<"loading" | "error" | "wizard" | "completed">("loading");
   const [errorMsg, setErrorMsg] = useState("");
   const [requestData, setRequestData] = useState<{ fields_requested: string[]; client_id: string; case_id: string | null } | null>(null);
   const [clientName, setClientName] = useState("");
   const [caseType, setCaseType] = useState("");
+  const [whatsappNumber, setWhatsappNumber] = useState("5500000000000");
 
-  // Steps
-  const [currentStep, setCurrentStep] = useState(0); // 0 = welcome
+  const [currentStep, setCurrentStep] = useState(0);
   const [steps, setSteps] = useState<string[]>([]);
 
-  // Form data
   const [cep, setCep] = useState("");
   const [addressData, setAddressData] = useState({ street: "", number: "", complement: "", neighborhood: "", city: "", state: "" });
   const [cepLoading, setCepLoading] = useState(false);
@@ -104,19 +96,16 @@ export default function PublicDataRequest() {
   const [cpfError, setCpfError] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const numberRef = useRef<HTMLInputElement>(null);
 
   // Load request
-  useEffect(() => {
-    loadRequest();
-  }, [token]);
+  useEffect(() => { loadRequest(); }, [token]);
 
-  // Restore progress from localStorage
+  // Restore progress
   useEffect(() => {
     if (!token) return;
-    const saved = localStorage.getItem(`wizard-${token}`);
+    const saved = localStorage.getItem(`lexai_wizard_${token}`);
     if (saved) {
       try {
         const d = JSON.parse(saved);
@@ -133,10 +122,10 @@ export default function PublicDataRequest() {
     }
   }, [token]);
 
-  // Save progress to localStorage on changes
+  // Save progress
   const saveLocal = useCallback(() => {
     if (!token) return;
-    localStorage.setItem(`wizard-${token}`, JSON.stringify({
+    localStorage.setItem(`lexai_wizard_${token}`, JSON.stringify({
       cep, addressData, children, childCount, hasChildren, opposingName, opposingCpf, opposingAddress, currentStep,
     }));
   }, [token, cep, addressData, children, childCount, hasChildren, opposingName, opposingCpf, opposingAddress, currentStep]);
@@ -151,13 +140,12 @@ export default function PublicDataRequest() {
         .eq("token", token!)
         .maybeSingle();
 
-      if (error || !data) { setErrorMsg("Link inválido. Verifique se o endereço está correto."); setPageState("error"); return; }
+      if (error || !data) { setErrorMsg("Link inválido — entre em contato com seu advogado."); setPageState("error"); return; }
       if (data.status === "completed") { setPageState("completed"); return; }
       if (new Date(data.expires_at) < new Date()) { setErrorMsg("Link expirado — entre em contato com seu advogado para solicitar um novo."); setPageState("error"); return; }
 
       setRequestData(data as any);
 
-      // Build steps
       const fields = data.fields_requested as string[];
       const builtSteps: string[] = [];
       if (fields.includes("address")) builtSteps.push("cep", "address_confirm");
@@ -165,9 +153,23 @@ export default function PublicDataRequest() {
       if (fields.includes("opposing_party")) builtSteps.push("opposing");
       setSteps(builtSteps);
 
-      // Try to get client name via edge function context (won't work for anon, graceful fallback)
-      setClientName("");
-      setCaseType("");
+      // Get client name
+      const { data: clientData } = await publicSupabase
+        .from("clients").select("name").eq("id", data.client_id).maybeSingle();
+      if (clientData?.name) setClientName(clientData.name.split(" ")[0]);
+
+      // Get case type
+      if (data.case_id) {
+        const { data: caseData } = await publicSupabase
+          .from("cases").select("case_type").eq("id", data.case_id).maybeSingle();
+        if (caseData?.case_type) setCaseType(caseData.case_type);
+      }
+
+      // Get WhatsApp number
+      const { data: waSetting } = await publicSupabase
+        .from("settings").select("value").eq("key", "whatsapp_number").maybeSingle();
+      if (waSetting?.value) setWhatsappNumber(waSetting.value.replace(/\D/g, ""));
+
       setPageState("wizard");
     } catch {
       setErrorMsg("Erro ao carregar formulário.");
@@ -175,25 +177,19 @@ export default function PublicDataRequest() {
     }
   };
 
-  const totalVisibleSteps = steps.filter(s => {
-    if (s === "address_confirm" && !addressConfirmed && !showManualAddress && !cepError) return false;
-    if (s === "children_data" && hasChildren !== true) return false;
+  // Progress calculation
+  const countableSteps = steps.filter(st => {
+    if (st === "address_confirm" && !addressConfirmed && !showManualAddress && !cepError) return false;
+    if (st === "children_data" && hasChildren !== true) return false;
     return true;
-  }).length;
-
-  const currentVisibleStep = (() => {
-    const currentStepName = steps[currentStep - 1]; // -1 because step 0 is welcome
-    if (!currentStepName) return 0;
-    let count = 0;
-    for (let i = 0; i < steps.length; i++) {
-      const st = steps[i];
-      if (st === "address_confirm" && !addressConfirmed && !showManualAddress && !cepError) continue;
-      if (st === "children_data" && hasChildren !== true) continue;
-      count++;
-      if (i === currentStep - 1) return count;
-    }
-    return count;
+  });
+  const totalSteps = countableSteps.length;
+  const currentVisibleIdx = (() => {
+    if (currentStep === 0) return 0;
+    const stepName = steps[currentStep - 1];
+    return countableSteps.indexOf(stepName) + 1;
   })();
+  const progressPct = totalSteps > 0 ? (currentVisibleIdx / totalSteps) * 100 : 0;
 
   // ─── CEP Lookup ───
   const handleCepChange = async (val: string) => {
@@ -213,17 +209,12 @@ export default function PublicDataRequest() {
           setShowManualAddress(true);
         } else {
           setAddressData({
-            street: data.logradouro || "",
-            number: "",
-            complement: "",
-            neighborhood: data.bairro || "",
-            city: data.localidade || "",
-            state: data.uf || "",
+            street: data.logradouro || "", number: "", complement: "",
+            neighborhood: data.bairro || "", city: data.localidade || "", state: data.uf || "",
           });
           setAddressConfirmed(true);
-          // Auto-advance to confirm screen
           const cepIdx = steps.indexOf("cep");
-          setCurrentStep(cepIdx + 2); // +1 for welcome offset, goes to address_confirm
+          setCurrentStep(cepIdx + 2);
           setTimeout(() => numberRef.current?.focus(), 300);
         }
       } catch {
@@ -235,10 +226,16 @@ export default function PublicDataRequest() {
     }
   };
 
+  const openManualAddress = () => {
+    setShowManualAddress(true);
+    setAddressConfirmed(true);
+    const cepIdx = steps.indexOf("cep");
+    setCurrentStep(cepIdx + 2);
+  };
+
   // ─── Navigation ───
   const goNext = () => {
     let nextStep = currentStep + 1;
-    // Skip children_data if no children
     while (nextStep - 1 < steps.length) {
       const stepName = steps[nextStep - 1];
       if (stepName === "children_data" && hasChildren !== true) { nextStep++; continue; }
@@ -264,33 +261,40 @@ export default function PublicDataRequest() {
     setCurrentStep(prevStep);
   };
 
-  // ─── Save partial progress ───
+  // ─── Save partial ───
+  const buildFormData = () => {
+    const formData: Record<string, unknown> = {};
+    if (addressData.street) {
+      formData.address_street = addressData.street;
+      formData.address_number = addressData.number;
+      formData.address_complement = addressData.complement;
+      formData.address_neighborhood = addressData.neighborhood;
+      formData.address_city = addressData.city;
+      formData.address_state = addressData.state;
+      formData.address_zip = cep.replace(/\D/g, "");
+    }
+    if (hasChildren === true) {
+      formData.children = children.filter(c => c.name.trim()).map(c => ({
+        name: c.name,
+        birthdate: c.year && c.month && c.day
+          ? `${c.year}-${String(MONTHS.indexOf(c.month) + 1).padStart(2, "0")}-${c.day.padStart(2, "0")}`
+          : "",
+      }));
+    } else if (hasChildren === false) {
+      formData.children = [];
+    }
+    if (opposingName) formData.opposing_party_name = opposingName;
+    if (opposingCpf && !skipCpf) formData.opposing_party_cpf = opposingCpf;
+    if (opposingAddress) formData.opposing_party_address = opposingAddress;
+    return formData;
+  };
+
   const savePartial = async () => {
     try {
-      const formData: Record<string, unknown> = {};
-      if (addressData.street) {
-        formData.address_street = addressData.street;
-        formData.address_number = addressData.number;
-        formData.address_complement = addressData.complement;
-        formData.address_neighborhood = addressData.neighborhood;
-        formData.address_city = addressData.city;
-        formData.address_state = addressData.state;
-        formData.address_zip = cep.replace(/\D/g, "");
-      }
-      if (hasChildren === true) {
-        formData.children = children.filter(c => c.name.trim()).map(c => ({
-          name: c.name,
-          birthdate: c.year && c.month && c.day ? `${c.year}-${String(MONTHS.indexOf(c.month) + 1).padStart(2, "0")}-${c.day.padStart(2, "0")}` : "",
-        }));
-      }
-      if (opposingName) formData.opposing_party_name = opposingName;
-      if (opposingCpf && !skipCpf) formData.opposing_party_cpf = opposingCpf;
-      if (opposingAddress) formData.opposing_party_address = opposingAddress;
-
       await fetch(`${supabaseUrl}/functions/v1/submit-data-request`, {
         method: "POST",
         headers: { "Content-Type": "application/json", apikey: supabaseAnonKey },
-        body: JSON.stringify({ token, data: formData }),
+        body: JSON.stringify({ token, data: buildFormData(), partial: true }),
       });
     } catch { /* silent */ }
   };
@@ -304,45 +308,13 @@ export default function PublicDataRequest() {
   const handleSubmit = async () => {
     setSubmitting(true);
     try {
-      const formData: Record<string, unknown> = {};
-
-      if (steps.includes("cep") && addressData.street) {
-        formData.address_street = addressData.street;
-        formData.address_number = addressData.number;
-        formData.address_complement = addressData.complement;
-        formData.address_neighborhood = addressData.neighborhood;
-        formData.address_city = addressData.city;
-        formData.address_state = addressData.state;
-        formData.address_zip = cep.replace(/\D/g, "");
-      }
-
-      if (steps.includes("children_ask")) {
-        if (hasChildren === true) {
-          formData.children = children.filter(c => c.name.trim()).map(c => ({
-            name: c.name,
-            birthdate: c.year && c.month && c.day
-              ? `${c.year}-${String(MONTHS.indexOf(c.month) + 1).padStart(2, "0")}-${c.day.padStart(2, "0")}`
-              : "",
-          }));
-        } else {
-          formData.children = [];
-        }
-      }
-
-      if (steps.includes("opposing")) {
-        if (opposingName) formData.opposing_party_name = opposingName;
-        if (opposingCpf && !skipCpf) formData.opposing_party_cpf = opposingCpf;
-        if (opposingAddress) formData.opposing_party_address = opposingAddress;
-      }
-
       const res = await fetch(`${supabaseUrl}/functions/v1/submit-data-request`, {
         method: "POST",
         headers: { "Content-Type": "application/json", apikey: supabaseAnonKey },
-        body: JSON.stringify({ token, data: formData }),
+        body: JSON.stringify({ token, data: buildFormData() }),
       });
-
       if (!res.ok) throw new Error("fail");
-      localStorage.removeItem(`wizard-${token}`);
+      localStorage.removeItem(`lexai_wizard_${token}`);
       setPageState("completed");
     } catch {
       toast.error("Parece que a internet falhou. Seus dados estão salvos — tente de novo quando tiver sinal.");
@@ -367,26 +339,31 @@ export default function PublicDataRequest() {
     setChildren(prev => prev.map((c, i) => i === idx ? { ...c, [field]: val } : c));
   };
 
-  // ─── Render current step ───
   const currentStepName = currentStep === 0 ? "welcome" : steps[currentStep - 1] || "done";
 
-  // Progress bar
+  // ─── Progress Bar ───
   const ProgressBar = () => (
     currentStep > 0 && currentStepName !== "done" ? (
-      <div style={{ padding: "16px 24px 0" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-          <button onClick={goBack} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, color: "var(--wizard-primary)", fontSize: 14, fontWeight: 600, fontFamily: "var(--wizard-font-body)" }}>
+      <div style={{ padding: "20px 24px 0" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+          <button onClick={goBack} style={{
+            background: "none", border: "none", cursor: "pointer",
+            display: "flex", alignItems: "center", gap: 4,
+            color: "var(--wizard-primary)", fontSize: 14, fontWeight: 600,
+            fontFamily: "var(--wizard-font-body)",
+          }}>
             <ChevronLeft size={18} /> Voltar
           </button>
-          <span style={{ ...s.display, fontSize: 14, fontWeight: 600, color: "var(--wizard-primary)" }}>
-            Passo {currentVisibleStep} de {totalVisibleSteps}
+          <span style={{ fontSize: 14, color: "#4A5568", fontFamily: "var(--wizard-font-body)" }}>
+            Quase lá...
           </span>
         </div>
-        <div style={{ height: 4, borderRadius: 2, background: "#E5E7EB", overflow: "hidden" }}>
+        <div style={{ height: 8, borderRadius: 9999, background: "#E2E8F0", overflow: "hidden" }}>
           <div style={{
-            height: "100%", borderRadius: 2, transition: "width .4s ease",
-            width: `${(currentVisibleStep / totalVisibleSteps) * 100}%`,
-            background: `linear-gradient(90deg, var(--wizard-primary), var(--wizard-accent))`,
+            height: "100%", borderRadius: 9999,
+            transition: "width 500ms ease",
+            width: `${Math.max(progressPct, 5)}%`,
+            background: "linear-gradient(90deg, #1E3A5F, #2B9E8F)",
           }} />
         </div>
       </div>
@@ -395,7 +372,11 @@ export default function PublicDataRequest() {
 
   const FillLater = () => (
     currentStep > 0 && currentStepName !== "done" ? (
-      <button onClick={handleFillLater} style={{ display: "block", margin: "16px auto 0", background: "none", border: "none", fontSize: 13, color: "#9CA3AF", cursor: "pointer", textDecoration: "underline", fontFamily: "var(--wizard-font-body)" }}>
+      <button onClick={handleFillLater} style={{
+        display: "block", margin: "16px auto 0", background: "none", border: "none",
+        fontSize: 14, color: "#718096", cursor: "pointer", textDecoration: "underline",
+        fontFamily: "var(--wizard-font-body)",
+      }}>
         Preencher depois
       </button>
     ) : null
@@ -416,8 +397,10 @@ export default function PublicDataRequest() {
       <div style={{ ...s.page, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
         <Sonner />
         <div style={{ ...s.card, maxWidth: 400, textAlign: "center" }}>
-          <AlertCircle size={48} color="var(--wizard-error)" style={{ margin: "0 auto 16px" }} />
-          <p style={{ ...s.display, fontSize: 20, fontWeight: 600, color: "var(--wizard-primary)", marginBottom: 8 }}>Link indisponível</p>
+          <AlertCircle size={48} color="#C53030" style={{ margin: "0 auto 16px" }} />
+          <p style={{ ...s.display, fontSize: 20, fontWeight: 600, color: "var(--wizard-primary)", marginBottom: 8 }}>
+            Link indisponível
+          </p>
           <p style={{ fontSize: 15, color: "#6B7280" }}>{errorMsg}</p>
         </div>
       </div>
@@ -430,23 +413,31 @@ export default function PublicDataRequest() {
       <div style={{ ...s.page, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
         <Sonner />
         <div style={{ ...s.card, maxWidth: 400, textAlign: "center" }}>
-          <div style={{ animation: "pulse 1s ease-in-out" }}>
-            <CheckCircle size={64} color="var(--wizard-accent)" style={{ margin: "0 auto 16px" }} />
+          <div className="animate-scale-in">
+            <CheckCircle size={64} color="#276749" style={{ margin: "0 auto 16px" }} />
           </div>
-          <p style={{ ...s.display, fontSize: 22, fontWeight: 600, color: "var(--wizard-primary)", marginBottom: 8 }}>
+          <p style={{ ...s.display, fontSize: 26, fontWeight: 600, color: "var(--wizard-primary)", marginBottom: 8 }}>
             Informações enviadas!
           </p>
-          <p style={{ fontSize: 15, color: "#6B7280", marginBottom: 24 }}>
-            A Dra. Daiane já vai receber seus dados e dará continuidade ao processo.
+          <p style={{ fontSize: 18, color: "#4A5568", marginBottom: 24, lineHeight: 1.5 }}>
+            A Dra. Daiane já vai receber seus dados e dará continuidade ao seu processo.
           </p>
           <button
-            onClick={() => window.open("https://wa.me/5500000000000", "_blank")}
+            onClick={() => window.open(`https://wa.me/${whatsappNumber}`, "_blank")}
             style={{ ...s.btn, background: "var(--wizard-accent)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
           >
-            <MessageSquare size={20} /> Falar com meu escritório no WhatsApp
+            <MessageSquare size={20} /> Falar com o escritório no WhatsApp
           </button>
         </div>
-        <style>{`@keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.15); } }`}</style>
+        <style>{`
+          .animate-scale-in {
+            animation: scaleIn 400ms ease-out;
+          }
+          @keyframes scaleIn {
+            0% { transform: scale(0.3); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+          }
+        `}</style>
       </div>
     );
   }
@@ -467,15 +458,15 @@ export default function PublicDataRequest() {
               <h1 style={{ ...s.display, fontSize: 26, fontWeight: 600, color: "var(--wizard-primary)", marginBottom: 8 }}>
                 Olá{clientName ? `, ${clientName}` : ""}!
               </h1>
-              <p style={{ fontSize: 16, color: "#4B5563", marginBottom: 24, lineHeight: 1.5 }}>
-                A Dra. Daiane precisa de algumas informações para seu processo.
+              <p style={{ fontSize: 18, color: "#4A5568", marginBottom: 24, lineHeight: 1.5 }}>
+                A Dra. Daiane precisa de algumas informações para dar continuidade ao seu processo.
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 28, alignItems: "center" }}>
                 <span style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, color: "#6B7280" }}>
-                  <Lock size={16} color="var(--wizard-accent)" /> Dados protegidos por criptografia
+                  <Lock size={14} color="var(--wizard-accent)" /> Dados protegidos por criptografia
                 </span>
                 <span style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, color: "#6B7280" }}>
-                  <Clock size={16} color="var(--wizard-accent)" /> Menos de 3 minutos
+                  <Clock size={14} color="var(--wizard-accent)" /> Menos de 3 minutos
                 </span>
               </div>
               <button onClick={() => setCurrentStep(1)} style={s.btn}>Começar</button>
@@ -485,7 +476,7 @@ export default function PublicDataRequest() {
           {/* ── CEP ── */}
           {currentStepName === "cep" && (
             <div>
-              <label style={s.label}>Qual é o seu CEP?</label>
+              <label style={{ ...s.label, fontSize: 18 }}>Qual é o seu CEP?</label>
               <input
                 value={cep}
                 onChange={e => handleCepChange(e.target.value)}
@@ -504,21 +495,26 @@ export default function PublicDataRequest() {
                   <AlertCircle size={14} /> Não achei esse CEP. Pode preencher o endereço manualmente abaixo?
                 </div>
               )}
-              <p style={s.subtle}>Não sabe o CEP? Digite só o bairro e cidade</p>
-              {showManualAddress && (
-                <div style={{ marginTop: 16 }}>
-                  <button onClick={() => { setShowManualAddress(true); setAddressConfirmed(true); goNext(); }} style={{ ...s.btn, background: "var(--wizard-accent)" }}>
-                    Preencher manualmente
-                  </button>
-                </div>
-              )}
+              <div style={{ marginTop: 16 }}>
+                <button
+                  onClick={openManualAddress}
+                  style={{
+                    width: "100%", minHeight: 48, fontSize: 15, fontWeight: 600,
+                    border: "1.5px solid #D1D5DB", borderRadius: 10, background: "#fff",
+                    color: "var(--wizard-primary)", cursor: "pointer",
+                    fontFamily: "var(--wizard-font-body)",
+                  }}
+                >
+                  Não sei meu CEP — preencher manualmente
+                </button>
+              </div>
             </div>
           )}
 
           {/* ── Address Confirm ── */}
           {currentStepName === "address_confirm" && (
             <div>
-              <p style={{ ...s.display, fontSize: 18, fontWeight: 600, color: "var(--wizard-primary)", marginBottom: 16 }}>
+              <p style={{ ...s.display, fontSize: 22, fontWeight: 600, color: "var(--wizard-primary)", marginBottom: 16 }}>
                 Este é seu endereço?
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -552,8 +548,12 @@ export default function PublicDataRequest() {
                 </div>
               </div>
               <div style={{ marginTop: 20 }}>
-                <button onClick={goNext} disabled={!addressData.street || !addressData.number} style={{ ...s.btn, ...(!addressData.street || !addressData.number ? s.btnDisabled : {}) }}>
-                  Continuar
+                <button
+                  onClick={goNext}
+                  disabled={!addressData.street || !addressData.number}
+                  style={{ ...s.btn, ...(!addressData.street || !addressData.number ? s.btnDisabled : {}) }}
+                >
+                  Está correto, continuar
                 </button>
               </div>
             </div>
@@ -562,7 +562,7 @@ export default function PublicDataRequest() {
           {/* ── Children Ask ── */}
           {currentStepName === "children_ask" && (
             <div>
-              <p style={{ ...s.display, fontSize: 20, fontWeight: 600, color: "var(--wizard-primary)", marginBottom: 20 }}>
+              <p style={{ ...s.display, fontSize: 22, fontWeight: 600, color: "var(--wizard-primary)", marginBottom: 20 }}>
                 Vocês têm filhos em comum?
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -574,15 +574,18 @@ export default function PublicDataRequest() {
                     key={String(opt.val)}
                     onClick={() => {
                       setHasChildren(opt.val);
-                      setTimeout(() => goNext(), 300);
+                      setTimeout(() => goNext(), 800);
                     }}
                     style={{
-                      minHeight: 80, border: `2px solid ${hasChildren === opt.val ? "var(--wizard-accent)" : "#E5E7EB"}`,
-                      borderRadius: 12, background: hasChildren === opt.val ? "rgba(43,158,143,.08)" : "#fff",
-                      cursor: "pointer", fontSize: 16, fontWeight: 600, fontFamily: "var(--wizard-font-body)",
+                      minHeight: 80, border: `2px solid ${hasChildren === opt.val ? "#1E3A5F" : "#E5E7EB"}`,
+                      borderRadius: 12, background: hasChildren === opt.val ? "#EBF4FF" : "#fff",
+                      cursor: "pointer", fontSize: 16, fontWeight: 600,
+                      fontFamily: "var(--wizard-font-body)",
                       color: "var(--wizard-primary)", transition: "all .2s",
+                      display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
                     }}
                   >
+                    {hasChildren === opt.val && <CheckCircle size={18} color="#1E3A5F" />}
                     {opt.label}
                   </button>
                 ))}
@@ -593,22 +596,35 @@ export default function PublicDataRequest() {
           {/* ── Children Data ── */}
           {currentStepName === "children_data" && (
             <div>
-              <p style={{ ...s.display, fontSize: 18, fontWeight: 600, color: "var(--wizard-primary)", marginBottom: 16 }}>
+              <p style={{ ...s.display, fontSize: 22, fontWeight: 600, color: "var(--wizard-primary)", marginBottom: 16 }}>
                 Quantos filhos?
               </p>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 20, marginBottom: 24 }}>
-                <button onClick={() => updateChildCount(childCount - 1)} style={{ width: 48, height: 48, borderRadius: "50%", border: "2px solid #E5E7EB", background: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <button onClick={() => updateChildCount(childCount - 1)} style={{
+                  width: 48, height: 48, borderRadius: "50%", border: "2px solid #E5E7EB",
+                  background: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
                   <Minus size={20} color="var(--wizard-primary)" />
                 </button>
-                <span style={{ fontSize: 32, fontWeight: 700, color: "var(--wizard-primary)", fontFamily: "var(--wizard-font-display)" }}>{childCount}</span>
-                <button onClick={() => updateChildCount(childCount + 1)} style={{ width: 48, height: 48, borderRadius: "50%", border: "2px solid #E5E7EB", background: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <span style={{ fontSize: 32, fontWeight: 700, color: "var(--wizard-primary)", fontFamily: "var(--wizard-font-display)" }}>
+                  {childCount}
+                </span>
+                <button onClick={() => updateChildCount(childCount + 1)} style={{
+                  width: 48, height: 48, borderRadius: "50%", border: "2px solid #E5E7EB",
+                  background: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
                   <Plus size={20} color="var(--wizard-primary)" />
                 </button>
               </div>
 
               {children.map((child, i) => (
-                <div key={i} style={{ marginBottom: 20, paddingBottom: 20, borderBottom: i < children.length - 1 ? "1px solid #E5E7EB" : "none" }}>
-                  <p style={{ fontSize: 14, fontWeight: 700, color: "var(--wizard-primary)", marginBottom: 12 }}>Filho(a) {i + 1}</p>
+                <div key={i} style={{
+                  marginBottom: 20, paddingBottom: 20,
+                  borderBottom: i < children.length - 1 ? "1px solid #E5E7EB" : "none",
+                }}>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: "var(--wizard-primary)", marginBottom: 12 }}>
+                    Filho(a) {i + 1}
+                  </p>
                   <div style={{ marginBottom: 12 }}>
                     <label style={s.label}>Nome completo</label>
                     <input value={child.name} onChange={e => updateChild(i, "name", e.target.value)} style={s.input} autoCapitalize="words" />
@@ -617,7 +633,7 @@ export default function PublicDataRequest() {
                   <div style={{ display: "flex", gap: 8 }}>
                     <select value={child.day} onChange={e => updateChild(i, "day", e.target.value)} style={{ ...s.input, flex: 1, appearance: "auto" as any }}>
                       <option value="">Dia</option>
-                      {Array.from({ length: 31 }, (_, j) => <option key={j + 1} value={String(j + 1)}>{j + 1}</option>)}
+                      {Array.from({ length: 31 }, (_, j) => <option key={j + 1} value={String(j + 1).padStart(2, "0")}>{j + 1}</option>)}
                     </select>
                     <select value={child.month} onChange={e => updateChild(i, "month", e.target.value)} style={{ ...s.input, flex: 2, appearance: "auto" as any }}>
                       <option value="">Mês</option>
@@ -634,7 +650,11 @@ export default function PublicDataRequest() {
                 </div>
               ))}
 
-              <button onClick={goNext} disabled={!children.some(c => c.name.trim())} style={{ ...s.btn, ...(!children.some(c => c.name.trim()) ? s.btnDisabled : {}) }}>
+              <button
+                onClick={goNext}
+                disabled={!children.some(c => c.name.trim())}
+                style={{ ...s.btn, ...(!children.some(c => c.name.trim()) ? s.btnDisabled : {}) }}
+              >
                 Continuar
               </button>
             </div>
@@ -643,7 +663,7 @@ export default function PublicDataRequest() {
           {/* ── Opposing Party ── */}
           {currentStepName === "opposing" && (
             <div>
-              <p style={{ ...s.display, fontSize: 20, fontWeight: 600, color: "var(--wizard-primary)", marginBottom: 20 }}>
+              <p style={{ ...s.display, fontSize: 22, fontWeight: 600, color: "var(--wizard-primary)", marginBottom: 20 }}>
                 {getCaseTypeLabel(caseType)}
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -661,7 +681,6 @@ export default function PublicDataRequest() {
                       onChange={e => { setOpposingCpf(maskCpf(e.target.value)); setCpfError(false); }}
                       style={s.input}
                       inputMode="numeric"
-                      disabled={skipCpf}
                     />
                   )}
                   {cpfError && (
@@ -688,10 +707,14 @@ export default function PublicDataRequest() {
                       setCpfError(true);
                       return;
                     }
-                    handleSubmit();
+                    goNext();
                   }}
                   disabled={!opposingName.trim() || submitting}
-                  style={{ ...s.btn, ...(!opposingName.trim() || submitting ? s.btnDisabled : {}), display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+                  style={{
+                    ...s.btn,
+                    ...(!opposingName.trim() || submitting ? s.btnDisabled : {}),
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                  }}
                 >
                   {submitting && <Loader2 className="animate-spin" size={20} />}
                   Enviar
