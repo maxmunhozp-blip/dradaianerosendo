@@ -153,7 +153,7 @@ export default function CaseDetail() {
     if (!file) return;
     try {
       const fileUrl = await uploadDoc.mutateAsync({ file, caseId: id! });
-      await createDoc.mutateAsync({
+      const doc = await createDoc.mutateAsync({
         case_id: id!,
         name: file.name,
         file_url: fileUrl,
@@ -162,6 +162,24 @@ export default function CaseDetail() {
         uploaded_by: "advogada",
       });
       toast.success("Documento enviado com sucesso");
+
+      // Trigger AI extraction in background
+      if (caseData?.client_id) {
+        processDocument.mutateAsync({
+          documentId: doc.id,
+          caseId: id!,
+          clientId: caseData.client_id,
+          fileUrl,
+          fileName: file.name,
+        }).then((result) => {
+          if (result?.fields_found > 0) {
+            toast.info(`IA extraiu ${result.fields_found} campo(s) do documento`, { duration: 5000 });
+          }
+        }).catch(() => {
+          // Extraction failure is non-blocking
+          console.warn("Document extraction failed");
+        });
+      }
     } catch {
       toast.error("Erro ao enviar documento");
     }
