@@ -4,6 +4,8 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { RequestDataModal } from "@/components/RequestDataModal";
 import { ExtractionSuggestions } from "@/components/ExtractionSuggestions";
 import ExtractionProgress from "@/components/ExtractionProgress";
+import ExtractionReviewPanel, { type ReviewSuggestion } from "@/components/ExtractionReviewPanel";
+import { fieldLabels } from "@/hooks/use-extraction";
 import { useClient, useUpdateClient, useDeleteClient } from "@/hooks/use-clients";
 import { useCasesByClient, useCreateCase, useUpdateCase } from "@/hooks/use-cases";
 import { useCaseTypes } from "@/hooks/use-case-types";
