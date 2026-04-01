@@ -50,6 +50,13 @@
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
     --warning-foreground: 222 47% 11%;
+
+    --wizard-bg: #FAFAF7;
+    --wizard-primary: #1E3A5F;
+    --wizard-accent: #2B9E8F;
+    --wizard-error: #C53030;
+    --wizard-font-display: 'Lora', Georgia, serif;
+    --wizard-font-body: 'Nunito', system-ui, sans-serif;
   }
 }
 
