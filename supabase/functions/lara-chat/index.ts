@@ -635,6 +635,13 @@ ${childrenStr}
 ${docs.length > 0
     ? docs.map((d: any) => {
         let line = `- ${d.name} (ID: ${d.id}) [${d.category}] — Status: ${d.status} (enviado por: ${d.uploaded_by}) | Extração: ${d.extraction_status || "pending"} | Assinatura: ${d.signature_status || "nenhuma"} | Arquivo: ${d.file_url ? "sim" : "não"}`;
+        if (d.signature_status && d.signature_status !== "none") {
+          line += `\n  Assinatura enviada em: ${d.signature_requested_at || "N/A"}`;
+          if (d.signature_completed_at) line += ` | Concluída em: ${d.signature_completed_at}`;
+          if (d.signers && Array.isArray(d.signers) && d.signers.length > 0) {
+            line += `\n  Signatários: ${d.signers.map((s: any) => `${s.name || "?"} (${s.status || "pending"}) ${s.sign_url ? "— Link: " + s.sign_url : ""}`).join("; ")}`;
+          }
+        }
         if (d.extraction_status === "done" && d.extracted_data && Object.keys(d.extracted_data).length > 0) {
           line += `\n  Dados extraídos: ${JSON.stringify(d.extracted_data)}`;
         }
