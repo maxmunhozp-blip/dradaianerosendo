@@ -48,6 +48,7 @@ export function ClientAccessCard({
 
         if (existing && new Date(existing.expires_at) > new Date()) {
           setToken(existing.token);
+          setExpiresAt(existing.expires_at);
           onTokenCreated?.(existing.token);
         } else {
           const { data: newSession, error } = await supabase
