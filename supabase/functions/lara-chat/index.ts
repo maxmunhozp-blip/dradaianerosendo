@@ -808,6 +808,7 @@ Quando o cliente quiser falar com o escritório ou tiver urgência, oriente-o a 
 }
 
 
+Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
