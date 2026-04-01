@@ -374,6 +374,34 @@ export function DocumentRow({ doc }: DocumentRowProps) {
           </div>
         </DialogContent>
       </Dialog>
+      {/* Delete Confirmation */}
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir documento?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O documento <strong>"{doc.name}"</strong> será removido permanentemente. Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={async () => {
+                try {
+                  await deleteDoc.mutateAsync({ id: doc.id, caseId: doc.case_id, fileUrl: doc.file_url });
+                  toast.success("Documento excluído");
+                } catch {
+                  toast.error("Erro ao excluir documento");
+                }
+              }}
+            >
+              {deleteDoc.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
