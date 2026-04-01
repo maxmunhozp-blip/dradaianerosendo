@@ -28,7 +28,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Shield, ShieldOff, Users, Loader2, ChevronDown, FolderOpen, UserCircle, FileText, Settings, Eye, PenLine } from "lucide-react";
+import { Shield, ShieldOff, Users, Loader2, ChevronDown, FolderOpen, UserCircle, FileText, Settings, Eye, PenLine, Briefcase, GraduationCap, Calculator } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 
@@ -70,6 +70,60 @@ const PERMISSION_GROUPS = [
   },
 ];
 
+type PermissionKeys = "can_view_cases" | "can_edit_cases" | "can_view_clients" | "can_edit_clients" | "can_view_documents" | "can_edit_documents" | "can_access_settings";
+
+interface ProfilePreset {
+  label: string;
+  icon: any;
+  description: string;
+  permissions: Record<PermissionKeys, boolean>;
+}
+
+const PROFILE_PRESETS: ProfilePreset[] = [
+  {
+    label: "Advogado",
+    icon: Briefcase,
+    description: "Acesso total a casos, clientes e documentos",
+    permissions: {
+      can_view_cases: true,
+      can_edit_cases: true,
+      can_view_clients: true,
+      can_edit_clients: true,
+      can_view_documents: true,
+      can_edit_documents: true,
+      can_access_settings: false,
+    },
+  },
+  {
+    label: "Estagiário",
+    icon: GraduationCap,
+    description: "Apenas visualização de casos e documentos",
+    permissions: {
+      can_view_cases: true,
+      can_edit_cases: false,
+      can_view_clients: true,
+      can_edit_clients: false,
+      can_view_documents: true,
+      can_edit_documents: false,
+      can_access_settings: false,
+    },
+  },
+  {
+    label: "Financeiro",
+    icon: Calculator,
+    description: "Acesso a clientes e documentos, sem casos",
+    permissions: {
+      can_view_cases: false,
+      can_edit_cases: false,
+      can_view_clients: true,
+      can_edit_clients: true,
+      can_view_documents: true,
+      can_edit_documents: true,
+      can_access_settings: false,
+    },
+  },
+];
+
 export default function UsersManagement() {
   const { user: currentUser } = useAuth();
   const { data: users, isLoading } = useUsers();
@@ -98,6 +152,20 @@ export default function UsersManagement() {
       toast.success("Permissão atualizada");
     } catch (e: any) {
       toast.error(e.message || "Erro ao atualizar permissão");
+    }
+  };
+
+  const applyPreset = async (userId: string, preset: ProfilePreset) => {
+    try {
+      const keys = Object.keys(preset.permissions) as PermissionKeys[];
+      await Promise.all(
+        keys.map((key) =>
+          updatePermission.mutateAsync({ userId, field: key, value: preset.permissions[key] })
+        )
+      );
+      toast.success(`Perfil "${preset.label}" aplicado com sucesso`);
+    } catch (e: any) {
+      toast.error(e.message || "Erro ao aplicar perfil");
     }
   };
 
@@ -146,6 +214,16 @@ export default function UsersManagement() {
     ].filter(Boolean).length;
   };
 
+  const detectPreset = (perms?: UserPermissions): string | null => {
+    if (!perms) return null;
+    for (const preset of PROFILE_PRESETS) {
+      const keys = Object.keys(preset.permissions) as PermissionKeys[];
+      const matches = keys.every((k) => (perms as any)[k] === preset.permissions[k]);
+      if (matches) return preset.label;
+    }
+    return null;
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
@@ -169,6 +247,7 @@ export default function UsersManagement() {
             const isOpen = openUsers[u.user_id] || false;
             const perms = getPerms(u.user_id);
             const activeCount = countActivePerms(perms);
+            const currentPreset = detectPreset(perms);
 
             return (
               <Collapsible key={u.user_id} open={isOpen} onOpenChange={() => toggleUser(u.user_id)}>
@@ -189,6 +268,11 @@ export default function UsersManagement() {
                             </div>
                             <div className="flex items-center gap-2 mt-0.5">
                               {getRoleBadge(u.role)}
+                              {currentPreset && (
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                                  {currentPreset}
+                                </Badge>
+                              )}
                               <span className="text-[11px] text-muted-foreground">
                                 {activeCount}/7 acessos ativos
                               </span>
@@ -248,6 +332,33 @@ export default function UsersManagement() {
                               Remover
                             </Button>
                           )}
+                        </div>
+                      )}
+
+                      {/* Profile presets */}
+                      {!isSelf && (
+                        <div className="space-y-3">
+                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Perfis predefinidos</p>
+                          <div className="grid grid-cols-3 gap-2">
+                            {PROFILE_PRESETS.map((preset) => {
+                              const isActive = currentPreset === preset.label;
+                              return (
+                                <button
+                                  key={preset.label}
+                                  onClick={() => applyPreset(u.user_id, preset)}
+                                  className={`flex flex-col items-center gap-1.5 p-3 rounded-lg border text-center transition-colors ${
+                                    isActive
+                                      ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                                      : "border-border hover:bg-muted/50"
+                                  }`}
+                                >
+                                  <preset.icon className={`w-5 h-5 ${isActive ? "text-primary" : "text-muted-foreground"}`} />
+                                  <span className={`text-xs font-medium ${isActive ? "text-primary" : ""}`}>{preset.label}</span>
+                                  <span className="text-[10px] text-muted-foreground leading-tight">{preset.description}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
                         </div>
                       )}
 
