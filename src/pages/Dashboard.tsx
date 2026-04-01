@@ -1,4 +1,4 @@
-import { Users, Plus, Bot, CalendarDays, Clock, MapPin, Bell, AlertTriangle, PenLine, CheckCircle2, Clock4, FolderOpen } from "lucide-react";
+import { Users, Plus, Bot, CalendarDays, Clock, MapPin, Bell, AlertTriangle, PenLine, CheckCircle2, Clock4, FolderOpen, Plug, PlugZap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AnimatedCounter } from "@/components/AnimatedCounter";
 import { Link } from "react-router-dom";
@@ -78,11 +78,74 @@ export default function Dashboard() {
         </Link>
       </div>
 
+      {/* Integration status */}
+      <ZapSignStatus />
+
       {/* Signature status */}
       <SignaturePanel ownerFilter={ownerFilter} />
 
       {/* Urgent intimacoes */}
       <UrgentIntimacoes />
+    </div>
+  );
+}
+
+function ZapSignStatus() {
+  const { data, isLoading } = useQuery({
+    queryKey: ["zapsign-status"],
+    queryFn: async () => {
+      const { data: setting } = await supabase
+        .from("settings")
+        .select("value")
+        .eq("key", "signature_api_token")
+        .maybeSingle();
+
+      if (!setting?.value) return { connected: false, error: null };
+
+      try {
+        const res = await supabase.functions.invoke("test-zapsign", {
+          body: { token: setting.value },
+        });
+        if (res.error) return { connected: false, error: "Erro ao testar" };
+        const body = res.data as any;
+        return { connected: body.valid === true, error: body.valid ? null : (body.hint || "Token inválido") };
+      } catch {
+        return { connected: false, error: "Falha na conexão" };
+      }
+    },
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+
+  const connected = data?.connected ?? false;
+
+  return (
+    <div className="mt-6 mb-2">
+      <Link
+        to="/admin?tab=config"
+        className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-border hover:bg-muted/50 transition-colors"
+      >
+        {isLoading ? (
+          <>
+            <Plug className="w-4 h-4 text-muted-foreground animate-pulse" />
+            <span className="text-xs text-muted-foreground">Verificando ZapSign...</span>
+          </>
+        ) : connected ? (
+          <>
+            <PlugZap className="w-4 h-4 text-emerald-500" />
+            <span className="text-xs text-foreground font-medium">ZapSign</span>
+            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+            <span className="text-[10px] text-emerald-600">Conectado</span>
+          </>
+        ) : (
+          <>
+            <Plug className="w-4 h-4 text-destructive" />
+            <span className="text-xs text-foreground font-medium">ZapSign</span>
+            <span className="w-2 h-2 rounded-full bg-destructive" />
+            <span className="text-[10px] text-destructive">Desconectado</span>
+          </>
+        )}
+      </Link>
     </div>
   );
 }
