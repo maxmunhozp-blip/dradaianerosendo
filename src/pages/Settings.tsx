@@ -370,7 +370,7 @@ function SignatureSettings({ value, onChange }: { value: string; onChange: (v: s
   );
 }
 
-
+export default function Settings() {
   const [values, setValues] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [openSections, setOpenSections] = useState({
