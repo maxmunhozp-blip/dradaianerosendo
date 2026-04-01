@@ -2,6 +2,9 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import TextAlign from "@tiptap/extension-text-align";
 import Underline from "@tiptap/extension-underline";
+import FontFamily from "@tiptap/extension-font-family";
+import { TextStyle } from "@tiptap/extension-text-style";
+import { Extension } from "@tiptap/core";
 import { Button } from "@/components/ui/button";
 import {
   Bold,
@@ -19,8 +22,17 @@ import {
   Undo,
   Redo,
   Minus,
+  IndentIncrease,
+  IndentDecrease,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useEffect, forwardRef, useImperativeHandle } from "react";
 
 export interface RichTextEditorHandle {
@@ -32,6 +44,86 @@ interface RichTextEditorProps {
   className?: string;
 }
 
+// Custom Indent extension
+const Indent = Extension.create({
+  name: "indent",
+  addOptions() {
+    return {
+      types: ["heading", "paragraph"],
+      indentRange: 40,
+      minIndentLevel: 0,
+      maxIndentLevel: 200,
+    };
+  },
+  addGlobalAttributes() {
+    return [
+      {
+        types: this.options.types,
+        attributes: {
+          indent: {
+            default: 0,
+            renderHTML: (attributes: Record<string, number>) => {
+              if (!attributes.indent) return {};
+              return { style: `margin-left: ${attributes.indent}px` };
+            },
+            parseHTML: (element: HTMLElement) => {
+              const ml = element.style.marginLeft;
+              return ml ? parseInt(ml, 10) || 0 : 0;
+            },
+          },
+        },
+      },
+    ];
+  },
+  addCommands(): any {
+    return {
+      indent:
+        () =>
+        ({ tr, state, dispatch }: any) => {
+          const { selection } = state;
+          state.doc.nodesBetween(selection.from, selection.to, (node: any, pos: number) => {
+            if (this.options.types.includes(node.type.name)) {
+              const current = node.attrs.indent || 0;
+              const next = Math.min(current + this.options.indentRange, this.options.maxIndentLevel);
+              tr.setNodeMarkup(pos, undefined, { ...node.attrs, indent: next });
+            }
+          });
+          if (dispatch) dispatch(tr);
+          return true;
+        },
+      outdent:
+        () =>
+        ({ tr, state, dispatch }: any) => {
+          const { selection } = state;
+          state.doc.nodesBetween(selection.from, selection.to, (node: any, pos: number) => {
+            if (this.options.types.includes(node.type.name)) {
+              const current = node.attrs.indent || 0;
+              const next = Math.max(current - this.options.indentRange, this.options.minIndentLevel);
+              tr.setNodeMarkup(pos, undefined, { ...node.attrs, indent: next });
+            }
+          });
+          if (dispatch) dispatch(tr);
+          return true;
+        },
+    };
+  },
+  addKeyboardShortcuts() {
+    return {
+      Tab: () => (this.editor as any).commands.indent(),
+      "Shift-Tab": () => (this.editor as any).commands.outdent(),
+    };
+  },
+});
+
+const FONTS = [
+  { label: "Inter", value: "Inter" },
+  { label: "Times New Roman", value: "Times New Roman" },
+  { label: "Arial", value: "Arial" },
+  { label: "Georgia", value: "Georgia" },
+  { label: "Courier New", value: "Courier New" },
+  { label: "Garamond", value: "Garamond" },
+];
+
 function plainTextToHtml(text: string): string {
   const lines = text.split("\n");
   let html = "";
@@ -41,7 +133,6 @@ function plainTextToHtml(text: string): string {
       html += "<p></p>";
       continue;
     }
-    // Detect heading-like lines (all caps, short, or ending with :)
     if (
       (trimmed === trimmed.toUpperCase() && trimmed.length < 80 && trimmed.length > 2 && !trimmed.startsWith("---")) ||
       trimmed.match(/^(PROCURAÇÃO|OUTORGANTE|OUTORGADA|PODERES|FINALIDADE|DO DIREITO|DA TUTELA|DOS PEDIDOS|DOS FATOS)/)
@@ -90,6 +181,9 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(
           types: ["heading", "paragraph"],
         }),
         Underline,
+        TextStyle,
+        FontFamily,
+        Indent,
       ],
       content: "",
       editorProps: {
@@ -113,6 +207,8 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(
 
     if (!editor) return null;
 
+    const currentFont = editor.getAttributes("textStyle").fontFamily || "Inter";
+
     return (
       <div className={`border border-border rounded-md overflow-hidden ${className || ""}`}>
         {/* Toolbar */}
@@ -129,6 +225,27 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(
           >
             <Redo className="w-3.5 h-3.5" />
           </ToolbarButton>
+
+          <Separator orientation="vertical" className="mx-1 h-5" />
+
+          {/* Font selector */}
+          <Select
+            value={currentFont}
+            onValueChange={(val) =>
+              editor.chain().focus().setFontFamily(val).run()
+            }
+          >
+            <SelectTrigger className="h-7 w-[110px] text-[11px] border-border bg-background">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {FONTS.map((f) => (
+                <SelectItem key={f.value} value={f.value} className="text-xs" style={{ fontFamily: f.value }}>
+                  {f.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
           <Separator orientation="vertical" className="mx-1 h-5" />
 
@@ -207,6 +324,22 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(
             title="Justificar"
           >
             <AlignJustify className="w-3.5 h-3.5" />
+          </ToolbarButton>
+
+          <Separator orientation="vertical" className="mx-1 h-5" />
+
+          {/* Indent / Outdent */}
+          <ToolbarButton
+            onClick={() => (editor.commands as any).outdent()}
+            title="Diminuir recuo"
+          >
+            <IndentDecrease className="w-3.5 h-3.5" />
+          </ToolbarButton>
+          <ToolbarButton
+            onClick={() => (editor.commands as any).indent()}
+            title="Aumentar recuo"
+          >
+            <IndentIncrease className="w-3.5 h-3.5" />
           </ToolbarButton>
 
           <Separator orientation="vertical" className="mx-1 h-5" />
