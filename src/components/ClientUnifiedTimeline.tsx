@@ -193,7 +193,7 @@ export function ClientUnifiedTimeline({ caseIds }: { caseIds: string[] }) {
         unified.push({
           id: `hear-${h.id}`,
           case_id: h.case_id,
-          title: `⚖️ ${h.title}`,
+          title: h.title,
           description: h.location ? `Local: ${h.location}` : "",
           type: "audiencia",
           status: h.status,
