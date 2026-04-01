@@ -62,7 +62,7 @@ export default function Templates() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [useLetterhead, setUseLetterhead] = useState(true);
   const [previewMode, setPreviewMode] = useState<"text" | "pdf">("text");
-  const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
+  const [pdfPages, setPdfPages] = useState<string[]>([]);
   const contentRef = useRef<HTMLDivElement>(null);
 
   const { data: branding } = useQuery({
