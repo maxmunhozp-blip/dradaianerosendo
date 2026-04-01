@@ -4,7 +4,7 @@ import { StatusBadge } from "./StatusBadge";
 import {
   Download, Scale, ChevronDown, ChevronRight,
   Bold, Italic, List, Paperclip, Save, Loader2, Eye,
-  CheckCircle2, AlertCircle,
+  CheckCircle2, AlertCircle, Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,8 +21,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useUpdateDocument, useUploadDocument } from "@/hooks/use-documents";
+import { useUpdateDocument, useUploadDocument, useDeleteDocument } from "@/hooks/use-documents";
 import { toast } from "sonner";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface DocumentRowProps {
   doc: {
@@ -59,10 +63,12 @@ export function DocumentRow({ doc }: DocumentRowProps) {
   const [saving, setSaving] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const updateDoc = useUpdateDocument();
   const uploadDoc = useUploadDocument();
+  const deleteDoc = useDeleteDocument();
 
   const categoryLabels: Record<string, string> = {
     pessoal: "Pessoal",
@@ -258,6 +264,15 @@ export function DocumentRow({ doc }: DocumentRowProps) {
               </Button>
             </>
           )}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+            title="Excluir"
+            onClick={(e) => { e.stopPropagation(); setDeleteOpen(true); }}
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </Button>
         </div>
       </button>
 
@@ -359,6 +374,34 @@ export function DocumentRow({ doc }: DocumentRowProps) {
           </div>
         </DialogContent>
       </Dialog>
+      {/* Delete Confirmation */}
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir documento?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O documento <strong>"{doc.name}"</strong> será removido permanentemente. Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={async () => {
+                try {
+                  await deleteDoc.mutateAsync({ id: doc.id, caseId: doc.case_id, fileUrl: doc.file_url });
+                  toast.success("Documento excluído");
+                } catch {
+                  toast.error("Erro ao excluir documento");
+                }
+              }}
+            >
+              {deleteDoc.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

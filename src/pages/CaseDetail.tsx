@@ -16,7 +16,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { ProcessTimeline } from "@/components/ProcessTimeline";
 import { DetailSkeleton } from "@/components/Skeletons";
 import { CaseTimeline } from "@/components/CaseTimeline";
-import { ArrowLeft, Upload, Plus, FileText, ClipboardList, FolderOpen, FileDown, Scale, PanelRightClose, PanelRightOpen, CalendarDays, Clock, MapPin, MessageSquare, Pencil, Trash2, Send } from "lucide-react";
+import { ArrowLeft, Upload, Plus, FileText, ClipboardList, FolderOpen, FileDown, Scale, PanelRightClose, PanelRightOpen, CalendarDays, Clock, MapPin, MessageSquare, Pencil, Trash2, Send, PackageOpen, Loader2, Download } from "lucide-react";
 import { useHearingsByCase } from "@/hooks/use-hearings";
 import { HearingModal } from "@/components/HearingModal";
 import { Badge } from "@/components/ui/badge";
@@ -54,6 +54,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import JSZip from "jszip";
 const statusSteps = ["documentacao", "montagem", "protocolo", "andamento", "encerrado"];
 
 export default function CaseDetail() {
@@ -74,6 +78,7 @@ export default function CaseDetail() {
   const createChecklistItem = useCreateChecklistItem();
   const toggleChecklistItem = useToggleChecklistItem();
   const deleteChecklistItem = useDeleteChecklistItem();
+  const [downloading, setDownloading] = useState(false);
 
   const [newItem, setNewItem] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -184,6 +189,74 @@ export default function CaseDetail() {
       toast.error("Erro ao enviar documento");
     }
     if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const getSignedUrl = async (url: string): Promise<string | null> => {
+    const marker = "/object/public/case-documents/";
+    const idx = url.indexOf(marker);
+    if (idx === -1) return url;
+    const path = url.substring(idx + marker.length);
+    const { data, error } = await supabase.storage.from("case-documents").createSignedUrl(path, 300);
+    if (error || !data?.signedUrl) return null;
+    return data.signedUrl;
+  };
+
+  const handleDownloadAll = async (asZip: boolean) => {
+    const docsWithFiles = documents.filter((d) => d.file_url);
+    if (docsWithFiles.length === 0) {
+      toast.error("Nenhum documento com arquivo para baixar");
+      return;
+    }
+
+    setDownloading(true);
+    const toastId = toast.loading(`Preparando ${docsWithFiles.length} arquivo(s)...`);
+
+    try {
+      if (asZip) {
+        const zip = new JSZip();
+        const caseName = caseData?.case_type?.replace(/\s+/g, "_") || "caso";
+
+        for (let i = 0; i < docsWithFiles.length; i++) {
+          const doc = docsWithFiles[i];
+          toast.loading(`Baixando ${i + 1}/${docsWithFiles.length}...`, { id: toastId });
+          const url = await getSignedUrl(doc.file_url!);
+          if (!url) continue;
+          const res = await fetch(url);
+          const blob = await res.blob();
+          zip.file(doc.name, blob);
+        }
+
+        toast.loading("Gerando ZIP...", { id: toastId });
+        const zipBlob = await zip.generateAsync({ type: "blob" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(zipBlob);
+        a.download = `${caseName}_documentos.zip`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(a.href);
+        toast.success(`${docsWithFiles.length} documento(s) baixados em ZIP`, { id: toastId });
+      } else {
+        for (let i = 0; i < docsWithFiles.length; i++) {
+          const doc = docsWithFiles[i];
+          toast.loading(`Baixando ${i + 1}/${docsWithFiles.length}: ${doc.name}`, { id: toastId });
+          const url = await getSignedUrl(doc.file_url!);
+          if (!url) continue;
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = doc.name;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          await new Promise((r) => setTimeout(r, 500));
+        }
+        toast.success(`${docsWithFiles.length} documento(s) baixados`, { id: toastId });
+      }
+    } catch {
+      toast.error("Erro ao baixar documentos", { id: toastId });
+    } finally {
+      setDownloading(false);
+    }
   };
 
   const handleAddChecklistItem = async () => {
@@ -435,7 +508,32 @@ export default function CaseDetail() {
             <div>
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-sm font-medium text-foreground">Documentos ({documents.length})</h2>
-                <div>
+                <div className="flex items-center gap-2">
+                  {documents.length > 0 && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm" disabled={downloading}>
+                          {downloading ? (
+                            <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                          ) : (
+                            <Download className="w-3.5 h-3.5 mr-1.5" />
+                          )}
+                          Baixar todos
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleDownloadAll(true)} className="gap-2">
+                          <PackageOpen className="w-4 h-4" />
+                          Baixar como ZIP
+                          <span className="text-xs text-muted-foreground ml-auto">Recomendado</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDownloadAll(false)} className="gap-2">
+                          <Download className="w-4 h-4" />
+                          Baixar separados
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
                   <input ref={fileInputRef} type="file" onChange={handleFileUpload} className="hidden" />
                   <Button
                     variant="outline"
