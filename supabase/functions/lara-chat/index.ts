@@ -709,7 +709,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const { messages, caseId, attachments } = await req.json();
+    const { messages, caseId, attachments, isPortalMode } = await req.json();
 
     if (!messages || !Array.isArray(messages)) {
       return new Response(
@@ -800,7 +800,11 @@ Use seu conhecimento jurídico para complementar os dados do LexML com explicaç
       settingsContext += `\n### TEMPLATE DE ASSINATURA:\n${settings.template_signing}\n`;
     }
 
-    const fullSystemPrompt = officeContext + "\n\n" + SYSTEM_PROMPT + "\n\n" + settingsContext + intimacoesContext + skillsContext + (caseContext ? "\n\n" + caseContext : "") + lexmlContext;
+    const portalModePrefix = isPortalMode
+      ? `\n\nMODO PORTAL DO CLIENTE: Você está atendendo o CLIENTE diretamente pelo portal. Use linguagem simples e acolhedora. Não use termos técnicos jurídicos sem explicar. Foque apenas no processo deste cliente. Não mencione outros clientes. Responda como se fosse uma atendente do escritório, não como assistente da advogada. NÃO inclua blocos de ação (ACTIONS_START/END, wizard-choice, save-data-action, whatsapp-action). Apenas responda de forma conversacional.\n\n`
+      : "";
+
+    const fullSystemPrompt = officeContext + "\n\n" + SYSTEM_PROMPT + portalModePrefix + "\n\n" + settingsContext + intimacoesContext + skillsContext + (caseContext ? "\n\n" + caseContext : "") + lexmlContext;
 
     // Build messages for the AI API
     const aiMessages: any[] = [

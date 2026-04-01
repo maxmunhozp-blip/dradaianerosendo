@@ -21,7 +21,7 @@ export const usePortalSession = () => useContext(PortalSessionContext);
 const NAV_ITEMS = [
   { to: "/portal", icon: Home, label: "Início", end: true },
   { to: "/portal/docs", icon: FileText, label: "Documentos" },
-  { to: "/portal/chat", icon: MessageCircle, label: "Falar" },
+  { to: "/portal/assistente", icon: MessageCircle, label: "Falar" },
   { to: "/portal/perfil", icon: User, label: "Perfil" },
 ];
 

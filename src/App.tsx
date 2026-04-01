@@ -20,6 +20,7 @@ import Agenda from "@/pages/Agenda";
 import PortalHome from "@/pages/PortalHome";
 import PortalDocs from "@/pages/PortalDocs";
 import PortalChat from "@/pages/PortalChat";
+import PortalAssistente from "@/pages/PortalAssistente";
 import PortalProfile from "@/pages/PortalProfile";
 import PortalLogin from "@/pages/PortalLogin";
 import Login from "@/pages/Login";
@@ -116,6 +117,7 @@ const App = () => {
               <Route path="/portal" element={<PortalHome />} />
               <Route path="/portal/docs" element={<PortalDocs />} />
               <Route path="/portal/chat" element={<PortalChat />} />
+              <Route path="/portal/assistente" element={<PortalAssistente />} />
               <Route path="/portal/perfil" element={<PortalProfile />} />
             </Route>
 
