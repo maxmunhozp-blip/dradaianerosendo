@@ -117,8 +117,76 @@ export default function ClientDetail() {
   );
   const allScanned = uploadedDocs.length > 0 && doneDocs.length === uploadedDocs.length;
   const canScan = !scanning && (!allScanned || failedDocs.length > 0 || pendingDocs.length > 0);
+  const canRescanAll = !scanning && doneDocs.length > 0;
 
   const docsToScan = [...pendingDocs, ...failedDocs];
+
+  const handleRescanAll = async () => {
+    // Reset all docs to pending, then scan all
+    for (const doc of uploadedDocs) {
+      await supabase.from("documents").update({ extraction_status: "pending", extracted_data: {} }).eq("id", doc.id);
+    }
+    // Delete old suggestions
+    await supabase.from("extraction_suggestions").delete().eq("client_id", id!);
+    queryClient.invalidateQueries({ queryKey: ["client-all-docs", id] });
+    queryClient.invalidateQueries({ queryKey: ["extraction-suggestions", id] });
+    // Now scan
+    setScanning(true);
+    let success = 0;
+    for (let i = 0; i < uploadedDocs.length; i++) {
+      const doc = uploadedDocs[i];
+      setScanProgress(`Escaneando documento ${i + 1} de ${uploadedDocs.length}...`);
+      try {
+        const result = await Promise.race([
+          supabase.functions.invoke("process-document", {
+            body: { document_id: doc.id, case_id: doc.case_id, client_id: id, file_url: doc.file_url, file_name: doc.name },
+          }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 45000)),
+        ]) as any;
+        if (result?.error || !result?.data?.success) {
+          await supabase.from("documents").update({ extraction_status: "failed" }).eq("id", doc.id);
+        } else { success++; }
+      } catch {
+        await supabase.from("documents").update({ extraction_status: "failed" }).eq("id", doc.id);
+      }
+    }
+    setScanProgress("");
+    setScanning(false);
+    queryClient.invalidateQueries({ queryKey: ["extraction-suggestions", id] });
+    queryClient.invalidateQueries({ queryKey: ["client-all-docs", id] });
+    queryClient.invalidateQueries({ queryKey: ["clients", id] });
+    queryClient.invalidateQueries({ queryKey: ["clients"] });
+    toast.success(`Reescaneamento concluído (${success}/${uploadedDocs.length})`);
+  };
+
+  const handleRescanSingle = async (doc: any) => {
+    setScanning(true);
+    setScanProgress(`Reescaneando ${doc.name}...`);
+    await supabase.from("documents").update({ extraction_status: "pending", extracted_data: {} }).eq("id", doc.id);
+    await supabase.from("extraction_suggestions").delete().eq("document_id", doc.id);
+    try {
+      const result = await Promise.race([
+        supabase.functions.invoke("process-document", {
+          body: { document_id: doc.id, case_id: doc.case_id, client_id: id, file_url: doc.file_url, file_name: doc.name },
+        }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 45000)),
+      ]) as any;
+      if (result?.error || !result?.data?.success) {
+        await supabase.from("documents").update({ extraction_status: "failed" }).eq("id", doc.id);
+        toast.error(`Falha ao escanear ${doc.name}`);
+      } else {
+        toast.success(`${doc.name} escaneado com sucesso`);
+      }
+    } catch {
+      await supabase.from("documents").update({ extraction_status: "failed" }).eq("id", doc.id);
+      toast.error(`Timeout ao escanear ${doc.name}`);
+    }
+    setScanProgress("");
+    setScanning(false);
+    queryClient.invalidateQueries({ queryKey: ["extraction-suggestions", id] });
+    queryClient.invalidateQueries({ queryKey: ["client-all-docs", id] });
+    queryClient.invalidateQueries({ queryKey: ["clients", id] });
+  };
 
   const handleScanAll = async () => {
     if (docsToScan.length === 0) {
@@ -474,34 +542,54 @@ export default function ClientDetail() {
       {/* Scan + Extraction Suggestions */}
       {uploadedDocs.length > 0 && (
         <div className="mb-3 space-y-2">
-          <Button
-            variant={allScanned ? "outline" : failedDocs.length > 0 ? "outline" : "outline"}
-            size="sm"
-            onClick={handleScanAll}
-            disabled={!canScan}
-            className={`gap-2 ${allScanned ? "border-green-500 text-green-700" : failedDocs.length > 0 ? "border-amber-500 text-amber-700" : ""}`}
-          >
-            {scanning ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            ) : allScanned ? (
-              <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
-            ) : (
-              <ScanSearch className="w-3.5 h-3.5" />
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleScanAll}
+              disabled={!canScan}
+              className={`gap-2 ${allScanned ? "border-green-500 text-green-700" : failedDocs.length > 0 ? "border-amber-500 text-amber-700" : ""}`}
+            >
+              {scanning ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : allScanned ? (
+                <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
+              ) : (
+                <ScanSearch className="w-3.5 h-3.5" />
+              )}
+              {scanning
+                ? scanProgress
+                : allScanned
+                ? "Escaneamento concluído"
+                : failedDocs.length > 0
+                ? `Reescanear documentos com falha (${failedDocs.length})`
+                : `Escanear documentos com IA (${docsToScan.length})`}
+            </Button>
+            {allScanned && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleRescanAll}
+                disabled={scanning}
+                className="gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+              >
+                <ScanSearch className="w-3 h-3" />
+                Reescanear todos
+              </Button>
             )}
-            {scanning
-              ? scanProgress
-              : allScanned
-              ? "Escaneamento concluído"
-              : failedDocs.length > 0
-              ? `Reescanear documentos com falha (${failedDocs.length})`
-              : `Escanear documentos com IA (${docsToScan.length})`}
-          </Button>
+          </div>
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
             {uploadedDocs.map((doc: any) => {
               const isDone = doc.extraction_status === "done" && hasExtractedData(doc);
               const isFailed = doc.extraction_status === "failed" || (doc.extraction_status === "done" && !hasExtractedData(doc));
               return (
-                <span key={doc.id} className="flex items-center gap-1">
+                <button
+                  key={doc.id}
+                  onClick={() => !scanning && handleRescanSingle(doc)}
+                  disabled={scanning}
+                  className="flex items-center gap-1 hover:underline cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                  title={isDone ? "Clique para reescanear" : isFailed ? "Clique para tentar novamente" : "Aguardando escaneamento"}
+                >
                   {isDone ? (
                     <CheckCircle2 className="w-3 h-3 text-green-600" />
                   ) : isFailed ? (
@@ -512,7 +600,7 @@ export default function ClientDetail() {
                   <span className={isDone ? "text-green-700" : isFailed ? "text-destructive" : ""}>
                     {doc.name.length > 25 ? doc.name.slice(0, 22) + "..." : doc.name}
                   </span>
-                </span>
+                </button>
               );
             })}
           </div>
