@@ -21,8 +21,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useUpdateDocument, useUploadDocument } from "@/hooks/use-documents";
+import { useUpdateDocument, useUploadDocument, useDeleteDocument } from "@/hooks/use-documents";
 import { toast } from "sonner";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface DocumentRowProps {
   doc: {
