@@ -81,6 +81,7 @@ export function useLaraChat(caseId?: string) {
         messages: apiMessages,
         caseId,
         isPortalMode: options?.isPortalMode,
+        clientId: options?.clientId,
         onDelta: (text) => {
           assistantContent += text;
           setMessages((prev) => {
