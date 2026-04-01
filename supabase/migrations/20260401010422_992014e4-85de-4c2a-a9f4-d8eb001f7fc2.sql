@@ -1,0 +1,1 @@
+ALTER TABLE data_requests ADD COLUMN IF NOT EXISTS fields_completed TEXT[] DEFAULT '{}';
