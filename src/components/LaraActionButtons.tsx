@@ -663,7 +663,7 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
           setEditMeta(null);
         }
       }}>
-        <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col">
+        <DialogContent className="sm:max-w-3xl max-h-[85vh] flex flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileText className="w-4 h-4" />
@@ -725,8 +725,8 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
             </DialogTitle>
             <DialogDescription>Revise o documento antes de salvar.</DialogDescription>
           </DialogHeader>
-          <div className="flex-1 min-h-0 rounded-md border border-border bg-muted/40 p-6">
-            <div className="flex h-[60vh] flex-col items-center justify-center gap-4 text-center">
+          <div className="rounded-md border border-border bg-muted/40 p-6">
+            <div className="flex flex-col items-center justify-center gap-4 text-center py-8">
               <FileText className="h-10 w-10 text-muted-foreground" />
               <div className="space-y-1">
                 <p className="text-sm font-medium text-foreground">Preview pronto para revisão</p>
@@ -757,7 +757,7 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
               </div>
             </div>
           </div>
-          <DialogFooter className="gap-2">
+          <DialogFooter className="gap-2 flex-wrap pt-2">
             <Button variant="outline" onClick={() => {
               if (pdfPreviewUrl) URL.revokeObjectURL(pdfPreviewUrl);
               setPdfPreviewUrl(null);
