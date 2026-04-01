@@ -125,11 +125,11 @@ function classifySuggestions(
     const hasValue = cur && cur.trim() !== "" && cur !== "—";
 
     let confidence: SuggestionConfidence;
-    if (hasValue && cur!.trim().toLowerCase() !== trimmed.toLowerCase()) {
-      confidence = "conflict";
-    } else if (hasValue && cur!.trim().toLowerCase() === trimmed.toLowerCase()) {
-      // Same value already exists — treat as high, already correct
+    if (hasValue && normalize(cur) === normalize(trimmed)) {
+      // Same value after normalization — already correct
       confidence = "high";
+    } else if (hasValue && normalize(cur) !== normalize(trimmed)) {
+      confidence = "conflict";
     } else if (!hasValue && ownerClear) {
       confidence = "high";
     } else {
