@@ -256,10 +256,16 @@ export default function UsersManagement() {
             <p className="text-sm text-muted-foreground">Controle de permissões e acessos do sistema</p>
           </div>
         </div>
-        <Button size="sm" className="gap-1.5" onClick={() => { setEditingProfile(null); setShowProfileModal(true); }}>
-          <Plus className="w-3.5 h-3.5" />
-          Novo Perfil
-        </Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setShowAddUser(true)}>
+            <UserPlus className="w-3.5 h-3.5" />
+            Adicionar Usuário
+          </Button>
+          <Button size="sm" className="gap-1.5" onClick={() => { setEditingProfile(null); setShowProfileModal(true); }}>
+            <Plus className="w-3.5 h-3.5" />
+            Novo Perfil
+          </Button>
+        </div>
       </div>
 
       {/* Custom profiles management */}
