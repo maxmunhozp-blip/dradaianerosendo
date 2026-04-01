@@ -1,3 +1,4 @@
+import { useRef, useEffect } from "react";
 import { Users, Plus, Bot, CalendarDays, Clock, MapPin, Bell, AlertTriangle, PenLine, CheckCircle2, Clock4, FolderOpen, Plug, PlugZap, Mail, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AnimatedCounter } from "@/components/AnimatedCounter";
