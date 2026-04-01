@@ -108,8 +108,13 @@ export default function ClientDetail() {
 
   const uploadedDocs = allDocs.filter((d: any) => d.file_url);
   const doneDocs = uploadedDocs.filter((d: any) => d.extraction_status === "done" && hasExtractedData(d));
-  const failedDocs = uploadedDocs.filter((d: any) => d.extraction_status === "failed" || (d.extraction_status === "done" && !hasExtractedData(d)));
-  const pendingDocs = uploadedDocs.filter((d: any) => !d.extraction_status || d.extraction_status === "pending");
+  const failedDocs = uploadedDocs.filter((d: any) =>
+    d.extraction_status === "failed" ||
+    (d.extraction_status === "done" && !hasExtractedData(d))
+  );
+  const pendingDocs = uploadedDocs.filter((d: any) =>
+    !d.extraction_status || d.extraction_status === "pending" || d.extraction_status === "processing"
+  );
   const allScanned = uploadedDocs.length > 0 && doneDocs.length === uploadedDocs.length;
   const canScan = !scanning && (!allScanned || failedDocs.length > 0 || pendingDocs.length > 0);
 
