@@ -401,6 +401,18 @@ export function ClientUnifiedTimeline({ caseIds }: { caseIds: string[] }) {
               })}
             </div>
           </div>
+          {hasMore && (
+            <div className="pt-3 text-center border-t border-border mt-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs text-muted-foreground"
+                onClick={() => setVisibleCount(prev => prev + PAGE_SIZE)}
+              >
+                Carregar mais ({filteredEvents.length - visibleCount} restantes)
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>
