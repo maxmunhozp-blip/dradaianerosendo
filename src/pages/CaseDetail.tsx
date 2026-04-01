@@ -279,6 +279,10 @@ export default function CaseDetail() {
             )}
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setShowRequestData(true)}>
+              <Send className="w-3.5 h-3.5 mr-1.5" />
+              Solicitar dados
+            </Button>
             <Button variant="outline" size="sm" onClick={() => setShowPeticao(true)}>
               <Scale className="w-3.5 h-3.5 mr-1.5" />
               Montar Petição
