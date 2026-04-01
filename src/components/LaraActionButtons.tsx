@@ -540,9 +540,25 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent, all
 
         case "generate_document":
         case "generate_pdf": {
-          const rawText = messageContent || "";
+          // Try current message first, then search previous assistant messages for legal document content
+          let rawText = messageContent || "";
           const docName = confirmAction.data.document_name || confirmAction.data.template || "Documento";
           const caseId = confirmAction.data.case_id;
+
+          // If current message doesn't contain a legal document, search backwards in allMessages
+          const currentHasDoc = extractLegalDocumentContent(rawText).length > 100;
+          if (!currentHasDoc && allMessages && allMessages.length > 0) {
+            for (let i = allMessages.length - 1; i >= 0; i--) {
+              const msg = allMessages[i];
+              if (msg.role === "assistant") {
+                const extracted = extractLegalDocumentContent(msg.content);
+                if (extracted.length > 100) {
+                  rawText = msg.content;
+                  break;
+                }
+              }
+            }
+          }
 
           if (!rawText.trim()) { toast.error("Conteúdo do documento não encontrado"); break; }
           if (!caseId) { toast.error("Caso não identificado"); break; }
