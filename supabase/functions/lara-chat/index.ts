@@ -94,6 +94,8 @@ Você pode ajudar com:
 - Se não souber algo com certeza, diga "não tenho certeza" em vez de inventar.
 - Nunca forneça conselho que substitua a decisão da advogada — você é uma ferramenta de apoio.
 - IMPORTANTE: Você TEM acesso aos dados em tempo real do escritório. Quando perguntarem sobre clientes, casos, documentos pendentes, etc., use os dados fornecidos no contexto. Nunca diga que não tem acesso aos dados — os dados estão disponíveis para você. NUNCA peça dados que já estão no contexto.
+- LEITURA DE DOCUMENTOS: Você lê documentos através dos dados extraídos automaticamente pelo sistema de IA (extraction_status e extracted_data). Quando a advogada perguntar sobre o conteúdo dos documentos, use os dados da seção "Documentos e dados extraídos". Se extraction_status = "done", liste os campos encontrados. Se extraction_status = "pending", responda: "Esses documentos ainda não foram escaneados. Clique em 'Escanear documentos com IA' na ficha do cliente para processar." NUNCA diga que não consegue ler documentos.
+- SUGESTÕES PENDENTES: Quando houver sugestões de dados pendentes de confirmação, informe a advogada e ofereça listar os dados encontrados. Se ela perguntar o que foi extraído, liste campo por campo com o valor sugerido.
 - Quando fundamentação legal real do LexML for fornecida na seção "FUNDAMENTAÇÃO LEXML", CITE obrigatoriamente a URN do LexML na sua resposta para que a advogada possa verificar a fonte. Mencione: "Fonte: LexML [URN]".
 - Se houver dados do LexML no contexto, adicione ao final da resposta a tag: [lexml-verified]
 
@@ -385,7 +387,7 @@ async function fetchOfficeContext(supabase: any, hasCaseId: boolean): Promise<st
   // 3. Fetch ALL documents, ALL checklist items, ALL hearings (not filtered by status)
   const [docsResult, checklistResult, hearingsResult] = await Promise.all([
     caseIds.length > 0
-      ? supabase.from("documents").select("id, name, category, status, case_id, created_at").in("case_id", caseIds)
+      ? supabase.from("documents").select("id, name, category, status, case_id, created_at, extraction_status").in("case_id", caseIds)
       : { data: [] },
     caseIds.length > 0
       ? supabase.from("checklist_items").select("id, label, done, case_id, required_by").in("case_id", caseIds)
@@ -509,7 +511,7 @@ async function fetchCaseContext(supabase: any, caseId: string): Promise<string> 
   const [docsResult, checklistResult, hearingsResult] = await Promise.all([
     supabase
       .from("documents")
-      .select("name, category, status, uploaded_by, created_at")
+      .select("name, category, status, uploaded_by, created_at, extraction_status, extraction_confidence, extracted_data")
       .eq("case_id", caseId),
     supabase
       .from("checklist_items")
@@ -521,6 +523,14 @@ async function fetchCaseContext(supabase: any, caseId: string): Promise<string> 
       .eq("case_id", caseId)
       .order("date", { ascending: true }),
   ]);
+
+  // Fetch extraction suggestions for this client
+  const clientId = (caseData as any).clients?.id || caseData.client_id;
+  const { data: extractionSuggestions } = await supabase
+    .from("extraction_suggestions")
+    .select("field_path, suggested_value, current_value, status, document_id")
+    .eq("case_id", caseId)
+    .eq("status", "pending");
 
   const docs = docsResult.data || [];
   const checklist = checklistResult.data || [];
@@ -575,10 +585,21 @@ ${opposingStr}
 ### Filhos/Menores
 ${childrenStr}
 
-### Todos os documentos do caso (${docs.length})
+### Documentos e dados extraídos (${docs.length})
 ${docs.length > 0
-    ? docs.map((d: any) => `- ${d.name} [${d.category}] — Status: ${d.status} (enviado por: ${d.uploaded_by})`).join("\n")
+    ? docs.map((d: any) => {
+        let line = `- ${d.name} [${d.category}] — Status: ${d.status} (enviado por: ${d.uploaded_by}) | Extração: ${d.extraction_status || "pending"}`;
+        if (d.extraction_status === "done" && d.extracted_data && Object.keys(d.extracted_data).length > 0) {
+          line += `\n  Dados extraídos: ${JSON.stringify(d.extracted_data)}`;
+        }
+        return line;
+      }).join("\n")
     : "Nenhum documento cadastrado."}
+
+### Sugestões de dados pendentes de confirmação (${(extractionSuggestions || []).length})
+${(extractionSuggestions || []).length > 0
+    ? (extractionSuggestions || []).map((s: any) => `- Campo: ${s.field_path} → Valor sugerido: "${s.suggested_value}" (valor atual: ${s.current_value || "vazio"}) — aguardando confirmação da advogada`).join("\n")
+    : "Nenhuma sugestão pendente."}
 
 ### Checklist completo (${checklist.length} itens)
 ${checklist.length > 0
