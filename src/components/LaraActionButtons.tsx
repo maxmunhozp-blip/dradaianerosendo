@@ -15,9 +15,10 @@ import {
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import jsPDF from "jspdf";
 
 interface LaraAction {
-  type: "send_whatsapp" | "create_task" | "open_client" | "generate_document" | "schedule_reminder" | "scan_documents" | "download_document" | "send_for_signature";
+  type: "send_whatsapp" | "create_task" | "open_client" | "generate_document" | "schedule_reminder" | "scan_documents" | "download_document" | "send_for_signature" | "generate_pdf";
   label: string;
   data: Record<string, any>;
 }
@@ -27,6 +28,7 @@ const ACTION_ICONS: Record<string, typeof MessageSquare> = {
   create_task: ClipboardList,
   open_client: ExternalLink,
   generate_document: FileText,
+  generate_pdf: FileText,
   schedule_reminder: Bell,
   scan_documents: ScanSearch,
   download_document: Download,
@@ -37,7 +39,8 @@ const ACTION_DESCRIPTIONS: Record<string, (data: Record<string, any>) => string>
   send_whatsapp: (d) => `Enviar mensagem via WhatsApp para ${d.phone || "o cliente"}`,
   create_task: (d) => `Criar tarefa: "${d.title || ""}"`,
   open_client: () => `Abrir cadastro do cliente`,
-  generate_document: () => `Abrir gerador de documentos para este caso`,
+  generate_document: () => `Gerar PDF do documento e salvar no caso`,
+  generate_pdf: (d) => `Gerar PDF "${d.document_name || "documento"}" e salvar no caso`,
   schedule_reminder: (d) => `Agendar lembrete: "${d.title || ""}" para ${d.date || "data a definir"}`,
   scan_documents: () => `Escanear documentos pendentes com IA para extrair dados automaticamente`,
   download_document: (d) => `Baixar documento "${d.template || ""}" em ${d.format || "DOCX"}`,
