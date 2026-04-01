@@ -2,10 +2,12 @@ import { useState } from "react";
 import { useUsers, useSetUserRole, useRemoveUserRole, useUserPermissions, useUpdatePermission, type UserPermissions } from "@/hooks/use-users";
 import { useAuth } from "@/hooks/use-auth";
 import { useViewAs } from "@/hooks/use-view-as";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -29,9 +31,20 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Shield, ShieldOff, Users, Loader2, ChevronDown, FolderOpen, UserCircle, FileText, Settings, Eye, PenLine, Briefcase, GraduationCap, Calculator, MonitorSmartphone, ClipboardList, Search } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Shield, ShieldOff, Users, Loader2, ChevronDown, FolderOpen, UserCircle,
+  FileText, Settings, Eye, PenLine, Briefcase, GraduationCap, Calculator,
+  MonitorSmartphone, ClipboardList, Search, Plus, Trash2, Pencil, User,
+} from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const PERMISSION_GROUPS = [
   {
@@ -73,94 +86,46 @@ const PERMISSION_GROUPS = [
 
 type PermissionKeys = "can_view_cases" | "can_edit_cases" | "can_view_clients" | "can_edit_clients" | "can_view_documents" | "can_edit_documents" | "can_access_settings";
 
-interface ProfilePreset {
-  label: string;
-  icon: any;
-  description: string;
+const ALL_PERM_KEYS: PermissionKeys[] = [
+  "can_view_cases", "can_edit_cases", "can_view_clients", "can_edit_clients",
+  "can_view_documents", "can_edit_documents", "can_access_settings",
+];
+
+const ICON_MAP: Record<string, any> = {
+  Briefcase, GraduationCap, Calculator, ClipboardList, Search, User,
+  Shield, Users, FileText, Settings, Eye, PenLine,
+};
+
+interface DBProfile {
+  id: string;
+  name: string;
+  description: string | null;
+  icon: string | null;
   permissions: Record<PermissionKeys, boolean>;
+  is_builtin: boolean;
 }
 
-const PROFILE_PRESETS: ProfilePreset[] = [
-  {
-    label: "Advogado",
-    icon: Briefcase,
-    description: "Acesso total a casos, clientes e documentos",
-    permissions: {
-      can_view_cases: true,
-      can_edit_cases: true,
-      can_view_clients: true,
-      can_edit_clients: true,
-      can_view_documents: true,
-      can_edit_documents: true,
-      can_access_settings: false,
+function useProfiles() {
+  return useQuery({
+    queryKey: ["permission-profiles"],
+    queryFn: async () => {
+      const { data, error } = await (supabase.from("permission_profiles" as any).select("*").order("is_builtin", { ascending: false }).order("name")) as any;
+      if (error) throw error;
+      return (data || []) as DBProfile[];
     },
-  },
-  {
-    label: "Estagiário",
-    icon: GraduationCap,
-    description: "Apenas visualização de casos e documentos",
-    permissions: {
-      can_view_cases: true,
-      can_edit_cases: false,
-      can_view_clients: true,
-      can_edit_clients: false,
-      can_view_documents: true,
-      can_edit_documents: false,
-      can_access_settings: false,
-    },
-  },
-  {
-    label: "Financeiro",
-    icon: Calculator,
-    description: "Acesso a clientes e documentos, sem casos",
-    permissions: {
-      can_view_cases: false,
-      can_edit_cases: false,
-      can_view_clients: true,
-      can_edit_clients: true,
-      can_view_documents: true,
-      can_edit_documents: true,
-      can_access_settings: false,
-    },
-  },
-  {
-    label: "Secretária",
-    icon: ClipboardList,
-    description: "Gerencia clientes e agenda, sem editar casos",
-    permissions: {
-      can_view_cases: true,
-      can_edit_cases: false,
-      can_view_clients: true,
-      can_edit_clients: true,
-      can_view_documents: true,
-      can_edit_documents: false,
-      can_access_settings: false,
-    },
-  },
-  {
-    label: "Perito",
-    icon: Search,
-    description: "Visualiza casos e documentos atribuídos",
-    permissions: {
-      can_view_cases: true,
-      can_edit_cases: false,
-      can_view_clients: false,
-      can_edit_clients: false,
-      can_view_documents: true,
-      can_edit_documents: true,
-      can_access_settings: false,
-    },
-  },
-];
+  });
+}
 
 export default function UsersManagement() {
   const { user: currentUser } = useAuth();
   const { startViewAs } = useViewAs();
   const { data: users, isLoading } = useUsers();
   const { data: allPermissions } = useUserPermissions();
+  const { data: profiles = [] } = useProfiles();
   const setRole = useSetUserRole();
   const removeRole = useRemoveUserRole();
   const updatePermission = useUpdatePermission();
+  const queryClient = useQueryClient();
 
   const [openUsers, setOpenUsers] = useState<Record<string, boolean>>({});
   const [confirmAction, setConfirmAction] = useState<{
@@ -169,6 +134,8 @@ export default function UsersManagement() {
     action: "set" | "remove";
     role?: "admin" | "advogado" | "client";
   } | null>(null);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [editingProfile, setEditingProfile] = useState<DBProfile | null>(null);
 
   const toggleUser = (id: string) =>
     setOpenUsers((p) => ({ ...p, [id]: !p[id] }));
@@ -185,15 +152,14 @@ export default function UsersManagement() {
     }
   };
 
-  const applyPreset = async (userId: string, preset: ProfilePreset) => {
+  const applyProfile = async (userId: string, profile: DBProfile) => {
     try {
-      const keys = Object.keys(preset.permissions) as PermissionKeys[];
       await Promise.all(
-        keys.map((key) =>
-          updatePermission.mutateAsync({ userId, field: key, value: preset.permissions[key] })
+        ALL_PERM_KEYS.map((key) =>
+          updatePermission.mutateAsync({ userId, field: key, value: !!profile.permissions[key] })
         )
       );
-      toast.success(`Perfil "${preset.label}" aplicado com sucesso`);
+      toast.success(`Perfil "${profile.name}" aplicado com sucesso`);
     } catch (e: any) {
       toast.error(e.message || "Erro ao aplicar perfil");
     }
@@ -238,35 +204,76 @@ export default function UsersManagement() {
 
   const countActivePerms = (perms?: UserPermissions) => {
     if (!perms) return 0;
-    return [
-      perms.can_view_cases, perms.can_edit_cases,
-      perms.can_view_clients, perms.can_edit_clients,
-      perms.can_view_documents, perms.can_edit_documents,
-      perms.can_access_settings,
-    ].filter(Boolean).length;
+    return ALL_PERM_KEYS.filter((k) => (perms as any)[k] === true).length;
   };
 
-  const detectPreset = (perms?: UserPermissions): string | null => {
+  const detectProfile = (perms?: UserPermissions): string | null => {
     if (!perms) return null;
-    for (const preset of PROFILE_PRESETS) {
-      const keys = Object.keys(preset.permissions) as PermissionKeys[];
-      const matches = keys.every((k) => (perms as any)[k] === preset.permissions[k]);
-      if (matches) return preset.label;
+    for (const profile of profiles) {
+      const matches = ALL_PERM_KEYS.every((k) => !!(profile.permissions as any)[k] === !!(perms as any)[k]);
+      if (matches) return profile.name;
     }
     return null;
   };
 
+  const deleteProfile = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase.from("permission_profiles" as any).delete().eq("id", id)) as any;
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["permission-profiles"] });
+      toast.success("Perfil excluído");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-          <Users className="w-5 h-5 text-primary" />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+            <Users className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">Gerenciar Usuários</h1>
+            <p className="text-sm text-muted-foreground">Controle de permissões e acessos do sistema</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Gerenciar Usuários</h1>
-          <p className="text-sm text-muted-foreground">Controle de permissões e acessos do sistema</p>
-        </div>
+        <Button size="sm" className="gap-1.5" onClick={() => { setEditingProfile(null); setShowProfileModal(true); }}>
+          <Plus className="w-3.5 h-3.5" />
+          Novo Perfil
+        </Button>
       </div>
+
+      {/* Custom profiles management */}
+      {profiles.some((p) => !p.is_builtin) && (
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Perfis personalizados</p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {profiles.filter((p) => !p.is_builtin).map((profile) => {
+              const IconComp = ICON_MAP[profile.icon || "User"] || User;
+              return (
+                <div key={profile.id} className="flex items-center gap-2 border rounded-lg p-2.5 group">
+                  <IconComp className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium truncate">{profile.name}</p>
+                    <p className="text-[10px] text-muted-foreground truncate">{profile.description}</p>
+                  </div>
+                  <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setEditingProfile(profile); setShowProfileModal(true); }}>
+                      <Pencil className="w-3 h-3" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => deleteProfile.mutate(profile.id)}>
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
@@ -279,7 +286,7 @@ export default function UsersManagement() {
             const isOpen = openUsers[u.user_id] || false;
             const perms = getPerms(u.user_id);
             const activeCount = countActivePerms(perms);
-            const currentPreset = detectPreset(perms);
+            const currentProfileName = detectProfile(perms);
 
             return (
               <Collapsible key={u.user_id} open={isOpen} onOpenChange={() => toggleUser(u.user_id)}>
@@ -300,9 +307,9 @@ export default function UsersManagement() {
                             </div>
                             <div className="flex items-center gap-2 mt-0.5">
                               {getRoleBadge(u.role)}
-                              {currentPreset && (
+                              {currentProfileName && (
                                 <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                                  {currentPreset}
+                                  {currentProfileName}
                                 </Badge>
                               )}
                               <span className="text-[11px] text-muted-foreground">
@@ -327,7 +334,6 @@ export default function UsersManagement() {
                   </CollapsibleTrigger>
                   <CollapsibleContent>
                     <CardContent className="pt-0 space-y-5">
-                      {/* Ver Ambiente button */}
                       {!isSelf && (
                         <div className="flex items-center gap-3 pb-4 border-b">
                           <Button
@@ -345,7 +351,6 @@ export default function UsersManagement() {
                         </div>
                       )}
 
-                      {/* Role selector */}
                       {!isSelf && (
                         <div className="flex items-center gap-3 pb-4 border-b">
                           <Label className="text-xs text-muted-foreground w-24 shrink-0">Tipo de acesso:</Label>
@@ -390,26 +395,27 @@ export default function UsersManagement() {
                         </div>
                       )}
 
-                      {/* Profile presets */}
+                      {/* Profile presets from DB */}
                       {!isSelf && (
                         <div className="space-y-3">
                           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Perfis predefinidos</p>
                           <div className="grid grid-cols-3 gap-2">
-                            {PROFILE_PRESETS.map((preset) => {
-                              const isActive = currentPreset === preset.label;
+                            {profiles.map((profile) => {
+                              const isActive = currentProfileName === profile.name;
+                              const IconComp = ICON_MAP[profile.icon || "User"] || User;
                               return (
                                 <button
-                                  key={preset.label}
-                                  onClick={() => applyPreset(u.user_id, preset)}
+                                  key={profile.id}
+                                  onClick={() => applyProfile(u.user_id, profile)}
                                   className={`flex flex-col items-center gap-1.5 p-3 rounded-lg border text-center transition-colors ${
                                     isActive
                                       ? "border-primary bg-primary/5 ring-1 ring-primary/20"
                                       : "border-border hover:bg-muted/50"
                                   }`}
                                 >
-                                  <preset.icon className={`w-5 h-5 ${isActive ? "text-primary" : "text-muted-foreground"}`} />
-                                  <span className={`text-xs font-medium ${isActive ? "text-primary" : ""}`}>{preset.label}</span>
-                                  <span className="text-[10px] text-muted-foreground leading-tight">{preset.description}</span>
+                                  <IconComp className={`w-5 h-5 ${isActive ? "text-primary" : "text-muted-foreground"}`} />
+                                  <span className={`text-xs font-medium ${isActive ? "text-primary" : ""}`}>{profile.name}</span>
+                                  <span className="text-[10px] text-muted-foreground leading-tight">{profile.description}</span>
                                 </button>
                               );
                             })}
@@ -490,6 +496,131 @@ export default function UsersManagement() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ProfileModal
+        open={showProfileModal}
+        onOpenChange={setShowProfileModal}
+        editing={editingProfile}
+      />
     </div>
+  );
+}
+
+function ProfileModal({ open, onOpenChange, editing }: { open: boolean; onOpenChange: (v: boolean) => void; editing: DBProfile | null }) {
+  const queryClient = useQueryClient();
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [permissions, setPermissions] = useState<Record<PermissionKeys, boolean>>({
+    can_view_cases: false, can_edit_cases: false,
+    can_view_clients: false, can_edit_clients: false,
+    can_view_documents: false, can_edit_documents: false,
+    can_access_settings: false,
+  });
+  const [saving, setSaving] = useState(false);
+
+  // Reset form when opening
+  const handleOpenChange = (v: boolean) => {
+    if (v) {
+      if (editing) {
+        setName(editing.name);
+        setDescription(editing.description || "");
+        setPermissions({ ...permissions, ...editing.permissions });
+      } else {
+        setName("");
+        setDescription("");
+        setPermissions({
+          can_view_cases: false, can_edit_cases: false,
+          can_view_clients: false, can_edit_clients: false,
+          can_view_documents: false, can_edit_documents: false,
+          can_access_settings: false,
+        });
+      }
+    }
+    onOpenChange(v);
+  };
+
+  const handleSave = async () => {
+    if (!name.trim()) {
+      toast.error("Nome do perfil é obrigatório");
+      return;
+    }
+    setSaving(true);
+    try {
+      if (editing) {
+        const { error } = await (supabase.from("permission_profiles" as any).update({
+          name: name.trim(),
+          description: description.trim() || null,
+          permissions,
+        }).eq("id", editing.id)) as any;
+        if (error) throw error;
+        toast.success("Perfil atualizado!");
+      } else {
+        const { error } = await (supabase.from("permission_profiles" as any).insert({
+          name: name.trim(),
+          description: description.trim() || null,
+          icon: "User",
+          permissions,
+          is_builtin: false,
+        })) as any;
+        if (error) throw error;
+        toast.success("Perfil criado!");
+      }
+      queryClient.invalidateQueries({ queryKey: ["permission-profiles"] });
+      onOpenChange(false);
+    } catch (e: any) {
+      toast.error(e.message || "Erro ao salvar perfil");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-sm font-medium">
+            {editing ? "Editar Perfil" : "Novo Perfil de Permissão"}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label className="text-xs">Nome do perfil *</Label>
+            <Input className="h-8 text-xs" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: Paralegal, Assistente..." />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Descrição</Label>
+            <Input className="h-8 text-xs" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Breve descrição do perfil" />
+          </div>
+
+          <div className="space-y-3">
+            <p className="text-xs font-medium text-muted-foreground">Permissões</p>
+            {PERMISSION_GROUPS.map((group) => (
+              <div key={group.label} className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className={`w-6 h-6 rounded flex items-center justify-center ${group.color}`}>
+                    <group.icon className="w-3 h-3" />
+                  </div>
+                  <span className="text-xs font-medium">{group.label}</span>
+                </div>
+                {group.permissions.map((perm) => (
+                  <div key={perm.key} className="flex items-center justify-between pl-8">
+                    <Label className="text-[12px] font-normal">{perm.label}</Label>
+                    <Switch
+                      checked={permissions[perm.key as PermissionKeys]}
+                      onCheckedChange={(val) => setPermissions((p) => ({ ...p, [perm.key]: val }))}
+                    />
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+
+          <Button className="w-full" onClick={handleSave} disabled={saving}>
+            {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+            {editing ? "Salvar alterações" : "Criar perfil"}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
