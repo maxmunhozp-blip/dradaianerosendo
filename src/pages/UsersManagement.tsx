@@ -96,6 +96,21 @@ const ICON_MAP: Record<string, any> = {
   Shield, Users, FileText, Settings, Eye, PenLine,
 };
 
+const ICON_OPTIONS = [
+  { name: "User", icon: User },
+  { name: "Briefcase", icon: Briefcase },
+  { name: "GraduationCap", icon: GraduationCap },
+  { name: "Calculator", icon: Calculator },
+  { name: "ClipboardList", icon: ClipboardList },
+  { name: "Search", icon: Search },
+  { name: "Shield", icon: Shield },
+  { name: "FileText", icon: FileText },
+  { name: "Users", icon: Users },
+  { name: "Eye", icon: Eye },
+  { name: "PenLine", icon: PenLine },
+  { name: "Settings", icon: Settings },
+];
+
 interface DBProfile {
   id: string;
   name: string;
