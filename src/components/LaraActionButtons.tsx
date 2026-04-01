@@ -1018,7 +1018,10 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
               <Download className="w-4 h-4 mr-1" /> Baixar
             </Button>
             <Button onClick={async () => {
-              if (!pdfPreviewBlob || !pdfPreviewMeta) return;
+              if (!pdfPreviewBlob || !pdfPreviewMeta) {
+                toast.error("Erro: PDF não encontrado. Tente gerar novamente.");
+                return;
+              }
               setSavingPdf(true);
               try {
                 const { docName, caseId, action, actionIndex } = pdfPreviewMeta;
