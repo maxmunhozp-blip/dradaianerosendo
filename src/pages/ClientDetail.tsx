@@ -744,7 +744,7 @@ export default function ClientDetail() {
               <div className="p-4">
                 {editingPersonal ? (
                   <div className="space-y-3">
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                       <div><Label className="text-xs">Nome completo</Label><Input value={personalForm.name} onChange={e => setPersonalForm(p => ({ ...p, name: e.target.value }))} className="mt-1" /></div>
                       <div><Label className="text-xs">CPF</Label><Input value={personalForm.cpf} onChange={e => {
                         const d = e.target.value.replace(/\D/g, "").slice(0, 11);
@@ -752,7 +752,7 @@ export default function ClientDetail() {
                       }} placeholder="000.000.000-00" className="mt-1" /></div>
                       <div><Label className="text-xs">RG</Label><Input value={personalForm.rg} onChange={e => setPersonalForm(p => ({ ...p, rg: e.target.value }))} className="mt-1" /></div>
                     </div>
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                       <div><Label className="text-xs">Nacionalidade</Label><Input value={personalForm.nationality} onChange={e => setPersonalForm(p => ({ ...p, nationality: e.target.value }))} className="mt-1" /></div>
                       <div><Label className="text-xs">Estado civil</Label>
                         <Select value={personalForm.marital_status} onValueChange={v => setPersonalForm(p => ({ ...p, marital_status: v }))}>
@@ -764,7 +764,7 @@ export default function ClientDetail() {
                       </div>
                       <div><Label className="text-xs">Profissão</Label><Input value={personalForm.profession} onChange={e => setPersonalForm(p => ({ ...p, profession: e.target.value }))} className="mt-1" /></div>
                     </div>
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                       <div><Label className="text-xs">E-mail</Label><Input value={personalForm.email} onChange={e => setPersonalForm(p => ({ ...p, email: e.target.value }))} className="mt-1" /></div>
                       <div><Label className="text-xs">Telefone</Label><Input value={personalForm.phone} onChange={e => setPersonalForm(p => ({ ...p, phone: e.target.value }))} className="mt-1" /></div>
                       <div><Label className="text-xs">Origem</Label>
