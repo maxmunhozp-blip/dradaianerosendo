@@ -784,14 +784,14 @@ export default function ClientDetail() {
                     </div>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-3 gap-x-6 gap-y-2 text-sm">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2 text-sm">
                     <div><span className="text-muted-foreground">Nome:</span> <span className="text-foreground">{cl.name}</span></div>
                     <div><span className="text-muted-foreground">CPF:</span> <span className="text-foreground">{cl.cpf || "—"}</span></div>
                     <div><span className="text-muted-foreground">RG:</span> <span className="text-foreground">{cl.rg || "—"}</span></div>
                     <div><span className="text-muted-foreground">Nacionalidade:</span> <span className="text-foreground">{cl.nationality || "—"}</span></div>
                     <div><span className="text-muted-foreground">Estado civil:</span> <span className="text-foreground">{cl.marital_status || "—"}</span></div>
                     <div><span className="text-muted-foreground">Profissão:</span> <span className="text-foreground">{cl.profession || "—"}</span></div>
-                    <div><span className="text-muted-foreground">E-mail:</span> <span className="text-foreground">{cl.email || "—"}</span></div>
+                    <div><span className="text-muted-foreground">E-mail:</span> <span className="text-foreground break-all">{cl.email || "—"}</span></div>
                     <div><span className="text-muted-foreground">Telefone:</span> <span className="text-foreground">{cl.phone || "—"}</span></div>
                     <div><span className="text-muted-foreground">Origem:</span> <span className="text-foreground">{cl.origin || "—"}</span></div>
                   </div>
