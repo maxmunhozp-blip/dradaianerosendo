@@ -36,6 +36,7 @@ import NotFound from "./pages/NotFound.tsx";
 import PublicDataRequest from "./pages/PublicDataRequest";
 import LaraSkills from "./pages/LaraSkills";
 import DocumentBranding from "./pages/DocumentBranding";
+import EmailSettings from "./pages/EmailSettings";
 
 const queryClient = new QueryClient();
 
