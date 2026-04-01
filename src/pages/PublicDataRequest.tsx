@@ -85,7 +85,9 @@ export default function PublicDataRequest() {
   const [showManualAddress, setShowManualAddress] = useState(false);
   const [addressConfirmed, setAddressConfirmed] = useState(false);
 
-  const [hasChildren, setHasChildren] = useState<boolean | null>(null);
+  const [hasChildren, setHasChildrenState] = useState<boolean | null>(null);
+  const hasChildrenRef = useRef<boolean | null>(null);
+  const setHasChildren = (val: boolean | null) => { hasChildrenRef.current = val; setHasChildrenState(val); };
   const [childCount, setChildCount] = useState(1);
   const [children, setChildren] = useState<ChildEntry[]>([{ name: "", day: "", month: "", year: "" }]);
 
