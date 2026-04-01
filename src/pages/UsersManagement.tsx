@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useUsers, useSetUserRole, useRemoveUserRole, useUserPermissions, useUpdatePermission, type UserPermissions } from "@/hooks/use-users";
 import { useAuth } from "@/hooks/use-auth";
+import { useViewAs } from "@/hooks/use-view-as";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
