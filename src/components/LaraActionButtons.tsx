@@ -337,21 +337,43 @@ export function LaraActionButtons({ actions, onScanComplete }: { actions: LaraAc
         </div>
       )}
 
-      <Dialog open={!!confirmAction && !scanning} onOpenChange={() => !scanning && setConfirmAction(null)}>
+      <Dialog open={!!confirmAction && !scanning} onOpenChange={() => { if (!scanning) { setConfirmAction(null); setSignerName(""); setSignerEmail(""); setSignerCpf(""); } }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Confirmar ação</DialogTitle>
+            <DialogTitle>{confirmAction?.type === "send_for_signature" ? "Enviar para assinatura" : "Confirmar ação"}</DialogTitle>
             <DialogDescription>
               {confirmAction && (ACTION_DESCRIPTIONS[confirmAction.type]?.(confirmAction.data) || confirmAction.label)}
             </DialogDescription>
           </DialogHeader>
+
+          {/* Signature form fields */}
+          {confirmAction?.type === "send_for_signature" && (
+            <div className="space-y-3 py-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="signer-name">Nome do signatário *</Label>
+                <Input id="signer-name" value={signerName} onChange={e => setSignerName(e.target.value)} placeholder="Nome completo" />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="signer-email">E-mail do signatário *</Label>
+                <Input id="signer-email" type="email" value={signerEmail} onChange={e => setSignerEmail(e.target.value)} placeholder="email@exemplo.com" />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="signer-cpf">CPF (opcional)</Label>
+                <Input id="signer-cpf" value={signerCpf} onChange={e => setSignerCpf(e.target.value)} placeholder="000.000.000-00" />
+              </div>
+            </div>
+          )}
+
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setConfirmAction(null)} disabled={executing}>
+            <Button variant="outline" onClick={() => { setConfirmAction(null); setSignerName(""); setSignerEmail(""); setSignerCpf(""); }} disabled={executing}>
               Cancelar
             </Button>
-            <Button onClick={handleConfirm} disabled={executing}>
+            <Button
+              onClick={handleConfirm}
+              disabled={executing || (confirmAction?.type === "send_for_signature" && (!signerEmail.trim() || !signerName.trim()))}
+            >
               {executing && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
-              Confirmar
+              {confirmAction?.type === "send_for_signature" ? "Enviar para assinatura" : "Confirmar"}
             </Button>
           </DialogFooter>
         </DialogContent>
