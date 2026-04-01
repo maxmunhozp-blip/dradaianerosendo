@@ -152,13 +152,6 @@ export default function EmailSettings() {
             </div>
           </div>
         </div>
-                  className="mt-3 text-xs text-muted-foreground"
-                  dangerouslySetInnerHTML={{ __html: val("email_signature_html") }}
-                />
-              )}
-            </div>
-          </div>
-        </div>
       </div>
     );
   };
