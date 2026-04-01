@@ -107,7 +107,13 @@ export function ClientUnifiedTimeline({ caseIds }: { caseIds: string[] }) {
       const caseTypeMap = new Map((casesData || []).map(c => [c.id, c.case_type]));
 
       // Fetch all sources in parallel
-      const [tlRes, docRes, hearRes, intRes, checkRes] = await Promise.all([
+      const [msgRes, tlRes, docRes, hearRes, intRes, checkRes] = await Promise.all([
+        supabase
+          .from("messages")
+          .select("id, case_id, content, role, created_at")
+          .in("case_id", caseIds)
+          .order("created_at", { ascending: false })
+          .limit(200),
         supabase
           .from("case_timeline")
           .select("id, case_id, title, description, type, status, event_date")
@@ -137,8 +143,23 @@ export function ClientUnifiedTimeline({ caseIds }: { caseIds: string[] }) {
 
       const unified: TimelineEvent[] = [];
 
+      // Messages (LARA chat)
+      for (const m of (msgRes.data || []) as any[]) {
+        const roleLabel = m.role === "assistant" ? "LARA" : m.role === "user" ? "Advogado" : m.role;
+        unified.push({
+          id: `msg-${m.id}`,
+          case_id: m.case_id,
+          title: `💬 ${roleLabel}`,
+          description: (m.content || "").substring(0, 120),
+          type: "mensagem",
+          status: "concluído",
+          event_date: m.created_at,
+          case_type: caseTypeMap.get(m.case_id) || "",
+        });
+      }
+
       // Timeline entries
-      for (const e of tlRes.data || []) {
+      for (const e of (tlRes.data || []) as any[]) {
         unified.push({
           id: `tl-${e.id}`,
           case_id: e.case_id,
@@ -152,7 +173,7 @@ export function ClientUnifiedTimeline({ caseIds }: { caseIds: string[] }) {
       }
 
       // Documents
-      for (const d of docRes.data || []) {
+      for (const d of (docRes.data || []) as any[]) {
         const sigLabel = d.signature_status === "signed" ? " (assinado)" :
                          d.signature_status === "sent" ? " (aguardando assinatura)" : "";
         unified.push({
@@ -168,7 +189,7 @@ export function ClientUnifiedTimeline({ caseIds }: { caseIds: string[] }) {
       }
 
       // Hearings
-      for (const h of hearRes.data || []) {
+      for (const h of (hearRes.data || []) as any[]) {
         unified.push({
           id: `hear-${h.id}`,
           case_id: h.case_id,
@@ -182,7 +203,7 @@ export function ClientUnifiedTimeline({ caseIds }: { caseIds: string[] }) {
       }
 
       // Intimações
-      for (const i of intRes.data || []) {
+      for (const i of (intRes.data || []) as any[]) {
         unified.push({
           id: `int-${i.id}`,
           case_id: i.case_id || "",
