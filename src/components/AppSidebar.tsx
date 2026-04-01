@@ -40,6 +40,7 @@ const navItems = [
   { title: "Templates", url: "/templates", icon: FileStack },
   { title: "Usuários", url: "/users", icon: ShieldCheck },
   { title: "Configurações", url: "/settings", icon: Settings },
+  { title: "LARA Skills", url: "/settings/lara-skills", icon: Bot },
 ];
 
 export function AppSidebar() {
