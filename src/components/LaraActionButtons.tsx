@@ -605,47 +605,12 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent, all
 
         case "generate_document":
         case "generate_pdf": {
-          // Try current message first, then search previous assistant messages for legal document content
-          let rawText = messageContent || "";
           const docName = confirmAction.data.document_name || confirmAction.data.template || "Documento";
           const caseId = confirmAction.data.case_id;
+          const cleanText = resolveDocumentDraft(messageContent, allMessages);
 
-          // If current message doesn't contain a legal document, search backwards in allMessages
-          const currentExtracted = extractLegalDocumentContent(rawText);
-          const currentHasDoc = currentExtracted.length > 100;
-          if (!currentHasDoc && allMessages && allMessages.length > 0) {
-            // First try extractLegalDocumentContent, then fall back to longest non-confirmation assistant message
-            let found = false;
-            for (let i = allMessages.length - 1; i >= 0; i--) {
-              const msg = allMessages[i];
-              if (msg.role === "assistant") {
-                const extracted = extractLegalDocumentContent(msg.content);
-                if (extracted.length > 100) {
-                  rawText = msg.content;
-                  found = true;
-                  break;
-                }
-              }
-            }
-            if (!found) {
-              // Fallback: find longest assistant message that isn't a short confirmation
-              const confirmPattern = /acionando|gerando|compreendido|vou gerar|entendido|certo!/i;
-              const candidates = (allMessages || [])
-                .filter(m => m.role === "assistant" && m.content.trim().length > 200 && !confirmPattern.test(m.content.substring(0, 80)));
-              if (candidates.length > 0) {
-                rawText = candidates.reduce((a, b) => a.content.length > b.content.length ? a : b).content;
-              }
-            }
-          }
-
-          if (!rawText.trim()) { toast.error("Conteúdo do documento não encontrado"); break; }
+          if (!cleanText) { toast.error("Texto do documento não encontrado na conversa"); break; }
           if (!caseId) { toast.error("Caso não identificado"); break; }
-
-          const cleanText = extractLegalDocumentContent(rawText)
-            .replace(/#{1,6}\s/g, "")
-            .replace(/\*\*(.*?)\*\*/g, "$1")
-            .replace(/\*(.*?)\*/g, "$1")
-            .trim();
 
           // Always open editor — let user fill in missing fields manually
           const idx = allActions.indexOf(confirmAction);
@@ -680,45 +645,14 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent, all
           }
 
           if (needsEditor) {
-            // Document doesn't exist or has no file — open editor first
-            let rawText = messageContent || "";
             const caseId = confirmAction.data.case_id || "";
             const docName = confirmAction.data.document_name || "Documento";
+            const cleanText = resolveDocumentDraft(messageContent, allMessages);
 
-            const hasDoc = extractLegalDocumentContent(rawText).length > 100;
-            if (!hasDoc && allMessages && allMessages.length > 0) {
-              let found = false;
-              for (let i = allMessages.length - 1; i >= 0; i--) {
-                const msg = allMessages[i];
-                if (msg.role === "assistant") {
-                  const extracted = extractLegalDocumentContent(msg.content);
-                  if (extracted.length > 100) {
-                    rawText = msg.content;
-                    found = true;
-                    break;
-                  }
-                }
-              }
-              if (!found) {
-                const confirmPattern = /acionando|gerando|compreendido|vou gerar|entendido|certo!/i;
-                const candidates = (allMessages || [])
-                  .filter(m => m.role === "assistant" && m.content.trim().length > 200 && !confirmPattern.test(m.content.substring(0, 80)));
-                if (candidates.length > 0) {
-                  rawText = candidates.reduce((a, b) => a.content.length > b.content.length ? a : b).content;
-                }
-              }
-            }
-
-            if (!rawText.trim()) {
-              toast.error("Conteúdo do documento não encontrado. Gere o PDF primeiro usando 'Gerar PDF'.");
+            if (!cleanText) {
+              toast.error("Texto do documento não encontrado na conversa. Gere o documento novamente.");
               break;
             }
-
-            const cleanText = extractLegalDocumentContent(rawText)
-              .replace(/#{1,6}\s/g, "")
-              .replace(/\*\*(.*?)\*\*/g, "$1")
-              .replace(/\*(.*?)\*/g, "$1")
-              .trim();
 
             const idx = allActions.indexOf(confirmAction);
             setEditableText(cleanText);
