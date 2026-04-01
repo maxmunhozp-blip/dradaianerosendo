@@ -18,6 +18,46 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import jsPDF from "jspdf";
 
+/**
+ * Extract ONLY the legal document content from an AI message.
+ * Strips conversational text (greetings, explanations) and keeps only the formal document.
+ * Looks for known legal document headings as start markers.
+ */
+function extractLegalDocumentContent(rawContent: string): string {
+  // Known legal document start markers (case-insensitive)
+  const docStartPatterns = [
+    /^#{1,3}\s*(PROCURAÇÃO|CONTRATO|DECLARAÇÃO|PETIÇÃO|REQUERIMENTO|TERMO|ACORDO|NOTIFICAÇÃO|CERTIDÃO|MANDADO|ATO|OFÍCIO|PARECER|MEMORIAL|RECURSO|CONTESTAÇÃO)/im,
+    /^(PROCURAÇÃO|CONTRATO|DECLARAÇÃO|PETIÇÃO|REQUERIMENTO|TERMO|ACORDO|NOTIFICAÇÃO|CERTIDÃO|MANDADO|ATO|OFÍCIO|PARECER|MEMORIAL|RECURSO|CONTESTAÇÃO)/im,
+    /^\*\*\s*(PROCURAÇÃO|CONTRATO|DECLARAÇÃO|PETIÇÃO|REQUERIMENTO|TERMO|ACORDO|NOTIFICAÇÃO|CERTIDÃO|MANDADO|ATO|OFÍCIO|PARECER|MEMORIAL|RECURSO|CONTESTAÇÃO)/im,
+  ];
+
+  // Remove ACTIONS blocks first
+  let text = rawContent
+    .replace(/ACTIONS_START[\s\S]*?ACTIONS_END/g, "")
+    .replace(/```[\s\S]*?```/g, "")
+    .trim();
+
+  // Try to find the start of the legal document
+  for (const pattern of docStartPatterns) {
+    const match = text.match(pattern);
+    if (match && match.index !== undefined) {
+      // Found a legal document heading — take everything from there
+      text = text.substring(match.index);
+      break;
+    }
+  }
+
+  // Also try a horizontal rule (---) as separator between conversation and document
+  if (text.match(/^[^#\*\n]*\n---\n/s)) {
+    const hrIndex = text.indexOf("\n---\n");
+    if (hrIndex !== -1) {
+      text = text.substring(hrIndex + 5).trim();
+    }
+  }
+
+  return text.trim();
+}
+
 /** Remove accents and special chars from file names for storage compatibility */
 function sanitizeFileName(name: string): string {
   return name
