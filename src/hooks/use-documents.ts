@@ -74,6 +74,30 @@ export function useUpdateDocument() {
   });
 }
 
+export function useDeleteDocument() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, caseId, fileUrl }: { id: string; caseId: string; fileUrl: string | null }) => {
+      // Delete file from storage if exists
+      if (fileUrl) {
+        const marker = "/object/public/case-documents/";
+        const idx = fileUrl.indexOf(marker);
+        if (idx !== -1) {
+          const path = fileUrl.substring(idx + marker.length);
+          await supabase.storage.from("case-documents").remove([path]);
+        }
+      }
+      const { error } = await supabase.from("documents").delete().eq("id", id);
+      if (error) throw error;
+      return caseId;
+    },
+    onSuccess: (caseId) => {
+      qc.invalidateQueries({ queryKey: ["documents", caseId] });
+      qc.invalidateQueries({ queryKey: ["documents"] });
+    },
+  });
+}
+
 export function useUploadDocument() {
   return useMutation({
     mutationFn: async ({ file, caseId }: { file: File; caseId: string }) => {
