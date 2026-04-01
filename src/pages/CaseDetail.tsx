@@ -54,6 +54,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import JSZip from "jszip";
 const statusSteps = ["documentacao", "montagem", "protocolo", "andamento", "encerrado"];
 
 export default function CaseDetail() {
