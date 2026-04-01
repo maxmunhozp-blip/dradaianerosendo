@@ -821,7 +821,7 @@ Quando o cliente quiser falar com o escritório ou tiver urgência, oriente-o a 
       );
     }
 
-    const { messages, caseId, attachments, isPortalMode } = await req.json();
+    const { messages, caseId, attachments, isPortalMode, clientUserId } = await req.json();
 
     if (!messages || !Array.isArray(messages)) {
       return new Response(
