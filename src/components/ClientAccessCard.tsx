@@ -68,8 +68,9 @@ export function ClientAccessCard({
     generate();
   }, [expanded, token, clientId]);
 
+  const publishedOrigin = "https://dradaianerosendo.lovable.app";
   const portalUrl = token
-    ? `${window.location.origin}/portal?token=${token}`
+    ? `${publishedOrigin}/portal?token=${token}`
     : null;
 
   const firstName = clientName.split(" ")[0];
