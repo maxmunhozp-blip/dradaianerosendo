@@ -29,7 +29,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Shield, ShieldOff, Users, Loader2, ChevronDown, FolderOpen, UserCircle, FileText, Settings, Eye, PenLine, Briefcase, GraduationCap, Calculator, MonitorSmartphone } from "lucide-react";
+import { Shield, ShieldOff, Users, Loader2, ChevronDown, FolderOpen, UserCircle, FileText, Settings, Eye, PenLine, Briefcase, GraduationCap, Calculator, MonitorSmartphone, ClipboardList, Search } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 
@@ -118,6 +118,34 @@ const PROFILE_PRESETS: ProfilePreset[] = [
       can_edit_cases: false,
       can_view_clients: true,
       can_edit_clients: true,
+      can_view_documents: true,
+      can_edit_documents: true,
+      can_access_settings: false,
+    },
+  },
+  {
+    label: "Secretária",
+    icon: ClipboardList,
+    description: "Gerencia clientes e agenda, sem editar casos",
+    permissions: {
+      can_view_cases: true,
+      can_edit_cases: false,
+      can_view_clients: true,
+      can_edit_clients: true,
+      can_view_documents: true,
+      can_edit_documents: false,
+      can_access_settings: false,
+    },
+  },
+  {
+    label: "Perito",
+    icon: Search,
+    description: "Visualiza casos e documentos atribuídos",
+    permissions: {
+      can_view_cases: true,
+      can_edit_cases: false,
+      can_view_clients: false,
+      can_edit_clients: false,
       can_view_documents: true,
       can_edit_documents: true,
       can_access_settings: false,
