@@ -965,25 +965,30 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
             }}>
               <MessageSquare className="w-4 h-4 mr-1" /> Enviar via WhatsApp
             </Button>
-            <Button variant="outline" size="sm" onClick={() => {
+            <Button variant="outline" size="sm" onClick={async () => {
               if (!pdfPreviewBlob || !pdfPreviewMeta) return;
-              const clientEmail = clientInfo ? null : null; // fetched separately below
               const clientNameShort = (clientInfo?.name || pdfPreviewMeta.action?.data?.client_name || "").split(" ")[0];
               const docName = pdfPreviewMeta.docName || "documento";
+              const caseId = pdfPreviewMeta.caseId;
 
-              // Download PDF first
-              const a = document.createElement("a");
-              a.href = pdfPreviewUrl!;
-              a.download = `${docName.replace(/\s+/g, "_")}.pdf`;
-              a.click();
+              // Upload PDF to get a public URL for the email link
+              const fileName = `${caseId}/${Date.now()}_${sanitizeFileName(docName)}_email.pdf`;
+              const { error: upErr } = await supabase.storage
+                .from("case-documents")
+                .upload(fileName, pdfPreviewBlob, { contentType: "application/pdf" });
+              
+              let pdfLink = "";
+              if (!upErr) {
+                const { data: urlData } = supabase.storage.from("case-documents").getPublicUrl(fileName);
+                pdfLink = urlData.publicUrl;
+              }
 
-              // Build mailto with subject and body
-              const subject = encodeURIComponent(`${docName} - Para sua análise e assinatura`);
-              const body = encodeURIComponent(
-                `Olá ${clientNameShort},\n\nSegue em anexo o documento "${docName}" para sua análise e assinatura.\n\nPor favor, revise e entre em contato caso tenha dúvidas.\n\nAtenciosamente,\nDra. Daiane Rosendo`
+              setEmailTo(clientInfo?.email || "");
+              setEmailSubject(`${docName} - Para sua análise e assinatura`);
+              setEmailBody(
+                `Olá ${clientNameShort},\n\nSegue o documento "${docName}" para sua análise e assinatura.\n\n${pdfLink ? `Link para download: ${pdfLink}\n\n` : ""}Por favor, revise e entre em contato caso tenha dúvidas.\n\nAtenciosamente`
               );
-              window.open(`mailto:?subject=${subject}&body=${body}`, "_self");
-              toast.success("PDF baixado — anexe ao e-mail que será aberto");
+              setEmailDialogOpen(true);
             }}>
               <Mail className="w-4 h-4 mr-1" /> Enviar por e-mail
             </Button>
