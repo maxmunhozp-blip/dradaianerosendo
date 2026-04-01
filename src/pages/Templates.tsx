@@ -25,6 +25,7 @@ import { FileText, Loader2, Copy, RefreshCw, Sparkles, Download, FileDown, Stamp
 const FORMAT_INSTRUCTIONS = `
 
 INSTRUÇÕES DE FORMATAÇÃO OBRIGATÓRIAS:
+REGRA ABSOLUTA: NÃO faça perguntas, NÃO peça confirmação, NÃO liste dados faltantes. Gere o documento COMPLETO IMEDIATAMENTE com os dados disponíveis. Onde faltar dado, use "___" (sublinhado). NUNCA retorne JSON.
 Você DEVE formatar o documento seguindo rigorosamente o padrão forense brasileiro:
 
 1. **Cabeçalho**: Use "# TÍTULO DO DOCUMENTO" centralizado em caixa alta (ex: # EXCELENTÍSSIMO SENHOR DOUTOR JUIZ DE DIREITO DA ___ VARA DE FAMÍLIA DA COMARCA DE ___)
