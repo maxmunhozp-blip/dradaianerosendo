@@ -638,7 +638,7 @@ Deno.serve(async (req: Request) => {
 
     // Fetch all context in parallel (including LexML if needed)
     const [officeContext, caseContext, settings, lexmlContext, intimacoesContext] = await Promise.all([
-      fetchOfficeContext(supabase),
+      fetchOfficeContext(supabase, !!caseId),
       caseId ? fetchCaseContext(supabase, caseId) : Promise.resolve(""),
       fetchSettings(supabase),
       legalQuery ? fetchLexMLContext(legalQuery, supabaseUrl) : Promise.resolve(""),
