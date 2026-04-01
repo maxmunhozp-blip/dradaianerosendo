@@ -16,7 +16,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { ProcessTimeline } from "@/components/ProcessTimeline";
 import { DetailSkeleton } from "@/components/Skeletons";
 import { CaseTimeline } from "@/components/CaseTimeline";
-import { ArrowLeft, Upload, Plus, FileText, ClipboardList, FolderOpen, FileDown, Scale, PanelRightClose, PanelRightOpen, CalendarDays, Clock, MapPin, MessageSquare, Pencil, Trash2, Send } from "lucide-react";
+import { ArrowLeft, Upload, Plus, FileText, ClipboardList, FolderOpen, FileDown, Scale, PanelRightClose, PanelRightOpen, CalendarDays, Clock, MapPin, MessageSquare, Pencil, Trash2, Send, PackageOpen, Loader2, Download } from "lucide-react";
 import { useHearingsByCase } from "@/hooks/use-hearings";
 import { HearingModal } from "@/components/HearingModal";
 import { Badge } from "@/components/ui/badge";
