@@ -518,6 +518,18 @@ export default function Settings() {
     setLoading(false);
   };
 
+  const saveSetting = async (key: string) => {
+    const value = val(key).trim();
+    if (!value) throw new Error("Valor vazio");
+
+    const { error } = await (supabase.from("settings" as any) as any).upsert(
+      { key, value, updated_at: new Date().toISOString() },
+      { onConflict: "key" }
+    );
+
+    if (error) throw error;
+  };
+
   const saveAll = async () => {
     if (!validate()) {
       toast.error("Corrija os campos destacados antes de salvar.");
