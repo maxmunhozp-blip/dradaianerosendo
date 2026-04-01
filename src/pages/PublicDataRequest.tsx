@@ -98,6 +98,12 @@ export default function PublicDataRequest() {
   const [skipCpf, setSkipCpf] = useState(false);
   const [cpfError, setCpfError] = useState(false);
 
+  // Simple fields
+  const [maritalStatus, setMaritalStatus] = useState("");
+  const [profession, setProfession] = useState("");
+  const [rg, setRg] = useState("");
+  const [nationality, setNationality] = useState("");
+
   const [submitting, setSubmitting] = useState(false);
 
   const numberRef = useRef<HTMLInputElement>(null);
