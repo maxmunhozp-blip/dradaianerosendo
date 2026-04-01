@@ -97,6 +97,23 @@ export default function ClientDetail() {
   const [scanSummary, setScanSummary] = useState<{ total: number; auto: number; review: number } | null>(null);
   const queryClient = useQueryClient();
 
+  // Fetch portal token
+  const { data: portalToken } = useQuery({
+    queryKey: ["portal-token", id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("client_sessions")
+        .select("token, expires_at")
+        .eq("client_id", id!)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (data && new Date(data.expires_at) > new Date()) return data.token as string;
+      return null;
+    },
+    enabled: !!id,
+  });
+
   // Fetch all documents for this client's cases
   const caseIds = cases.map((c: any) => c.id);
   const { data: allDocs = [] } = useQuery({
