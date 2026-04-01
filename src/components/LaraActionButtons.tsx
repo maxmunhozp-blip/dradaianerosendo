@@ -186,7 +186,12 @@ export function LaraActionButtons({ actions, onScanComplete }: { actions: LaraAc
           break;
 
         case "generate_document":
-          navigate(`/cases/${confirmAction.data.case_id}`);
+          navigate(`/templates`);
+          toast.info("Selecione o caso e tipo de documento na página de templates");
+          break;
+
+        case "download_document":
+          navigate(`/templates`);
           break;
 
         case "schedule_reminder":
