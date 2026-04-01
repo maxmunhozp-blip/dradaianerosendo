@@ -108,8 +108,13 @@ export default function ClientDetail() {
 
   const uploadedDocs = allDocs.filter((d: any) => d.file_url);
   const doneDocs = uploadedDocs.filter((d: any) => d.extraction_status === "done" && hasExtractedData(d));
-  const failedDocs = uploadedDocs.filter((d: any) => d.extraction_status === "failed" || (d.extraction_status === "done" && !hasExtractedData(d)));
-  const pendingDocs = uploadedDocs.filter((d: any) => !d.extraction_status || d.extraction_status === "pending");
+  const failedDocs = uploadedDocs.filter((d: any) =>
+    d.extraction_status === "failed" ||
+    (d.extraction_status === "done" && !hasExtractedData(d))
+  );
+  const pendingDocs = uploadedDocs.filter((d: any) =>
+    !d.extraction_status || d.extraction_status === "pending" || d.extraction_status === "processing"
+  );
   const allScanned = uploadedDocs.length > 0 && doneDocs.length === uploadedDocs.length;
   const canScan = !scanning && (!allScanned || failedDocs.length > 0 || pendingDocs.length > 0);
 
@@ -126,17 +131,19 @@ export default function ClientDetail() {
       const doc = docsToScan[i];
       setScanProgress(`Escaneando documento ${i + 1} de ${docsToScan.length}...`);
       try {
-        const { data, error } = await supabase.functions.invoke("process-document", {
-          body: {
-            document_id: doc.id,
-            case_id: doc.case_id,
-            client_id: id,
-            file_url: doc.file_url,
-            file_name: doc.name,
-          },
-        });
-        if (error || !data?.success) {
-          // Mark as failed
+        const result = await Promise.race([
+          supabase.functions.invoke("process-document", {
+            body: {
+              document_id: doc.id,
+              case_id: doc.case_id,
+              client_id: id,
+              file_url: doc.file_url,
+              file_name: doc.name,
+            },
+          }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 45000)),
+        ]) as any;
+        if (result?.error || !result?.data?.success) {
           await supabase.from("documents").update({ extraction_status: "failed" }).eq("id", doc.id);
         } else {
           success++;
