@@ -43,7 +43,7 @@ export function ProtectedRoute() {
       )?.[1];
 
     if (requiredPerm && !(perms as any)[requiredPerm]) {
-      return <Navigate to="/" replace />;
+      return <Navigate to="/dashboard" replace />;
     }
   }
 
