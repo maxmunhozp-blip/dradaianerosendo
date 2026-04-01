@@ -63,13 +63,12 @@ const App = () => (
               </Route>
             </Route>
 
-            {/* Client portal */}
-            <Route element={<PortalProtectedRoute />}>
-              <Route element={<PortalLayout />}>
-                <Route path="/portal" element={<PortalDashboard />} />
-                <Route path="/portal/dashboard" element={<PortalDashboard />} />
-                <Route path="/portal/documents" element={<PortalDocuments />} />
-              </Route>
+            {/* Client portal — magic link (no auth) */}
+            <Route element={<ClientPortalLayout />}>
+              <Route path="/portal" element={<PortalHome />} />
+              <Route path="/portal/docs" element={<PortalDocs />} />
+              <Route path="/portal/lara" element={<PortalLara />} />
+              <Route path="/portal/perfil" element={<PortalProfile />} />
             </Route>
 
             <Route path="*" element={<NotFound />} />
