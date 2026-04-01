@@ -355,8 +355,8 @@ REGRAS CRÍTICAS:
     const highConfidence = classified.filter((s) => s.confidence === "high");
 
     for (const s of highConfidence) {
-      // Skip if same value already exists
-      if (s.current_value && s.current_value.trim().toLowerCase() === s.suggested_value.toLowerCase()) {
+      // Skip if same value already exists (normalize strips CPF/RG formatting)
+      if (s.current_value && normalize(s.current_value) === normalize(s.suggested_value)) {
         autoApplied++;
         continue;
       }
