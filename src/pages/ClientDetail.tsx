@@ -644,79 +644,92 @@ export default function ClientDetail() {
       )}
 
       {/* Scan + Extraction Suggestions */}
+      {/* Scan & Extraction — collapsible */}
       {uploadedDocs.length > 0 && (
-        <div className="mb-3 space-y-2">
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleScanAll}
-              disabled={!canScan}
-              className={`gap-2 ${allScanned ? "border-green-500 text-green-700" : failedDocs.length > 0 ? "border-amber-500 text-amber-700" : ""}`}
-            >
-              {scanning ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : allScanned ? (
-                <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
-              ) : (
-                <ScanSearch className="w-3.5 h-3.5" />
-              )}
-              {scanning
-                ? scanProgress
-                : allScanned
-                ? "Escaneamento concluído"
-                : failedDocs.length > 0
-                ? `Reescanear documentos com falha (${failedDocs.length})`
-                : `Escanear documentos com IA (${docsToScan.length})`}
-            </Button>
-            {allScanned && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleRescanAll}
-                disabled={scanning}
-                className="gap-1.5 text-xs text-muted-foreground hover:text-foreground"
-              >
-                <ScanSearch className="w-3 h-3" />
-                Reescanear todos
-              </Button>
-            )}
-          </div>
-          {scanning && scanDocList.length > 0 && (
-            <ExtractionProgress
-              documents={scanDocList}
-              currentIndex={scanCurrentIndex}
-              results={scanResults}
+        <Collapsible open={scanOpen || scanning} onOpenChange={setScanOpen}>
+          <div className="border border-border rounded-lg overflow-hidden mb-3">
+            <SectionHeader
+              icon={ScanSearch}
+              title={`Escaneamento de Documentos${allScanned ? " ✓" : ""}`}
+              open={scanOpen || scanning}
+              onToggle={() => setScanOpen(v => !v)}
             />
-          )}
-          {!scanning && (
-            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-              {uploadedDocs.map((doc: any) => {
-                const isDone = doc.extraction_status === "done" && hasExtractedData(doc);
-                const isFailed = doc.extraction_status === "failed" || (doc.extraction_status === "done" && !hasExtractedData(doc));
-                return (
-                  <button
-                    key={doc.id}
-                    onClick={() => handleRescanSingle(doc)}
-                    className="flex items-center gap-1 hover:underline cursor-pointer"
-                    title={isDone ? "Clique para reescanear" : isFailed ? "Clique para tentar novamente" : "Aguardando escaneamento"}
+            <CollapsibleContent>
+              <div className="p-4 space-y-2">
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleScanAll}
+                    disabled={!canScan}
+                    className={`gap-2 ${allScanned ? "border-green-500 text-green-700" : failedDocs.length > 0 ? "border-amber-500 text-amber-700" : ""}`}
                   >
-                    {isDone ? (
-                      <CheckCircle2 className="w-3 h-3 text-green-600" />
-                    ) : isFailed ? (
-                      <XCircle className="w-3 h-3 text-destructive" />
+                    {scanning ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : allScanned ? (
+                      <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
                     ) : (
-                      <Clock className="w-3 h-3 text-muted-foreground" />
+                      <ScanSearch className="w-3.5 h-3.5" />
                     )}
-                    <span className={isDone ? "text-green-700" : isFailed ? "text-destructive" : ""}>
-                      {doc.name.length > 25 ? doc.name.slice(0, 22) + "..." : doc.name}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
+                    {scanning
+                      ? scanProgress
+                      : allScanned
+                      ? "Escaneamento concluído"
+                      : failedDocs.length > 0
+                      ? `Reescanear documentos com falha (${failedDocs.length})`
+                      : `Escanear documentos com IA (${docsToScan.length})`}
+                  </Button>
+                  {allScanned && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleRescanAll}
+                      disabled={scanning}
+                      className="gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+                    >
+                      <ScanSearch className="w-3 h-3" />
+                      Reescanear todos
+                    </Button>
+                  )}
+                </div>
+                {scanning && scanDocList.length > 0 && (
+                  <ExtractionProgress
+                    documents={scanDocList}
+                    currentIndex={scanCurrentIndex}
+                    results={scanResults}
+                  />
+                )}
+                {!scanning && (
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                    {uploadedDocs.map((doc: any) => {
+                      const isDone = doc.extraction_status === "done" && hasExtractedData(doc);
+                      const isFailed = doc.extraction_status === "failed" || (doc.extraction_status === "done" && !hasExtractedData(doc));
+                      return (
+                        <button
+                          key={doc.id}
+                          onClick={() => handleRescanSingle(doc)}
+                          className="flex items-center gap-1 hover:underline cursor-pointer"
+                          title={isDone ? "Clique para reescanear" : isFailed ? "Clique para tentar novamente" : "Aguardando escaneamento"}
+                        >
+                          {isDone ? (
+                            <CheckCircle2 className="w-3 h-3 text-green-600" />
+                          ) : isFailed ? (
+                            <XCircle className="w-3 h-3 text-destructive" />
+                          ) : (
+                            <Clock className="w-3 h-3 text-muted-foreground" />
+                          )}
+                          <span className={isDone ? "text-green-700" : isFailed ? "text-destructive" : ""}>
+                            {doc.name.length > 25 ? doc.name.slice(0, 22) + "..." : doc.name}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </CollapsibleContent>
+          </div>
+        </Collapsible>
       )}
       {/* Scan summary banner with button to open review */}
       {scanSummary && scanSummary.review > 0 && !showReviewPanel && (
