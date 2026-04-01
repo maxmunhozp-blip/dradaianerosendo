@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, Paperclip, FileText, Image, X, Loader2, MessageSquare, CheckCircle2, Scale, Save, ClipboardList, AlertTriangle, ChevronDown, ChevronUp } from "lucide-react";
+import { Send, Paperclip, FileText, Image, X, Loader2, MessageSquare, CheckCircle2, Scale, Save, ClipboardList, AlertTriangle, ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import ReactMarkdown from "react-markdown";
