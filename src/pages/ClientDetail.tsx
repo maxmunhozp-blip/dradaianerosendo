@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/collapsible";
 import {
   ArrowLeft, Phone, Mail, Plus, FolderOpen, Send, Loader2,
-  Pencil, Trash2, Save, X, ChevronDown, ChevronRight, MapPin, Users, UserX, Baby,
+  Pencil, Trash2, Save, X, ChevronDown, ChevronRight, MapPin, Users, UserX, Baby, ExternalLink,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
