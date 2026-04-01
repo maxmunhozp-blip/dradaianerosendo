@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Send, Copy, Check, Loader2 } from "lucide-react";
-import { whatsappLink } from "@/lib/utils";
+import WhatsAppButton from "@/components/ui/WhatsAppButton";
 
 interface FieldOption {
   key: string;

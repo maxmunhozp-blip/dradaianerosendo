@@ -37,7 +37,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { whatsappLink } from "@/lib/utils";
+import WhatsAppButton from "@/components/ui/WhatsAppButton";
 
 interface Child {
   name: string;

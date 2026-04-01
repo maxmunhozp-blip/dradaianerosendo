@@ -4,7 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 import { ShieldCheck, Lock, Clock, AlertCircle, CheckCircle, ChevronLeft, Minus, Plus, MessageSquare, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Toaster as Sonner } from "@/components/ui/sonner";
-import { whatsappLink } from "@/lib/utils";
+import WhatsAppButton from "@/components/ui/WhatsAppButton";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
