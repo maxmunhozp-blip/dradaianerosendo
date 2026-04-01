@@ -178,7 +178,7 @@ function SaveDataBlock({ action, clientId, caseId }: { action: SaveDataAction; c
 
 export function LaraChat({
   messages, onSend, isLoading = false, className, pendingCommand, onCommandConsumed,
-  clientId, caseId,
+  clientId, caseId, auditContent, auditLoading,
 }: {
   messages: ChatMessage[];
   onSend: (content: string, attachments: ChatAttachment[]) => void;
@@ -188,9 +188,12 @@ export function LaraChat({
   onCommandConsumed?: () => void;
   clientId?: string;
   caseId?: string;
+  auditContent?: string | null;
+  auditLoading?: boolean;
 }) {
   const [input, setInput] = useState("");
   const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
+  const [auditOpen, setAuditOpen] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
