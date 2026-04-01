@@ -1239,6 +1239,9 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
                   toast.success("E-mail enviado com sucesso!");
                   setEmailDialogOpen(false);
                   setEmailTo("");
+                  setEmailCc("");
+                  setEmailBcc("");
+                  setShowCcBcc(false);
                   setEmailSubject("");
                   setEmailBody("");
                 } catch (e: any) {
