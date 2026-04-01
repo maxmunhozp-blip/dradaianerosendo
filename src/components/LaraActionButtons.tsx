@@ -1171,9 +1171,38 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
               </div>
             )}
             <div className="space-y-1.5">
-              <Label htmlFor="email-to">Para *</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="email-to">Para *</Label>
+                {!showCcBcc && (
+                  <button
+                    type="button"
+                    onClick={() => setShowCcBcc(true)}
+                    className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    + Enviar cópia (CC/BCC)
+                  </button>
+                )}
+              </div>
               <Input id="email-to" type="email" value={emailTo} onChange={e => setEmailTo(e.target.value)} placeholder="email@exemplo.com" />
             </div>
+            {showCcBcc && (
+              <>
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <Label htmlFor="email-cc" className="text-xs">Cópia (CC)</Label>
+                    <span className="text-[10px] text-muted-foreground">— receberá o e-mail e todos verão</span>
+                  </div>
+                  <Input id="email-cc" type="email" value={emailCc} onChange={e => setEmailCc(e.target.value)} placeholder="copia@exemplo.com" />
+                </div>
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <Label htmlFor="email-bcc" className="text-xs">Cópia oculta (BCC)</Label>
+                    <span className="text-[10px] text-muted-foreground">— receberá o e-mail sem os outros saberem</span>
+                  </div>
+                  <Input id="email-bcc" type="email" value={emailBcc} onChange={e => setEmailBcc(e.target.value)} placeholder="oculto@exemplo.com" />
+                </div>
+              </>
+            )}
             <div className="space-y-1.5">
               <Label htmlFor="email-subject">Assunto</Label>
               <Input id="email-subject" value={emailSubject} onChange={e => setEmailSubject(e.target.value)} />
