@@ -316,6 +316,15 @@ export default function CaseDetail() {
           clientEmail={(caseData as any).clients?.email || null}
         />
 
+        <RequestDataModal
+          open={showRequestData}
+          onOpenChange={setShowRequestData}
+          caseId={id!}
+          clientId={caseData.client_id}
+          clientData={(caseData as any).clients || {}}
+          caseData={caseData as Record<string, unknown>}
+        />
+
         <PeticaoModal
           open={showPeticao}
           onOpenChange={setShowPeticao}
