@@ -619,14 +619,143 @@ export default function Templates() {
           </CardHeader>
           <CardContent>
             {generatedContent ? (
-              previewMode === "pdf" && pdfBlobUrl ? (
-                <div className="h-[calc(100vh-280px)] rounded-lg overflow-hidden border border-border bg-muted/30">
-                  <iframe
-                    src={pdfBlobUrl}
-                    className="w-full h-full"
-                    title="Pré-visualização do PDF"
-                  />
-                </div>
+              previewMode === "pdf" ? (
+                <ScrollArea className="h-[calc(100vh-280px)]">
+                  <div className="flex flex-col items-center gap-6 py-4">
+                    {/* A4 page simulation */}
+                    <div
+                      className="bg-white shadow-lg border border-border"
+                      style={{
+                        width: "595px", // A4 at 72dpi
+                        minHeight: "842px",
+                        padding: `${branding?.margin_top || 30}px ${branding?.margin_right || 20}px ${branding?.margin_bottom || 25}px ${branding?.margin_left || 30}px`,
+                        fontFamily: branding?.font_family || "Arial",
+                        fontSize: `${branding?.font_size_body || 12}px`,
+                        color: "#1A202C",
+                        lineHeight: 1.6,
+                      }}
+                    >
+                      {/* Header */}
+                      {useLetterhead && branding?.header_text && (
+                        <div className="mb-4">
+                          {(branding.header_text as string).split("\n").map((line, i) => (
+                            <p
+                              key={i}
+                              style={{
+                                color: branding.primary_color || "#1E3A5F",
+                                fontWeight: i === 0 ? "bold" : "normal",
+                                fontSize: i === 0 ? `${branding.font_size_body || 12}px` : `${(branding.font_size_body || 12) - 1}px`,
+                                margin: 0,
+                                lineHeight: 1.4,
+                              }}
+                            >
+                              {line}
+                            </p>
+                          ))}
+                          <div
+                            style={{
+                              borderBottom: `2px solid ${branding.secondary_color || "#2B9E8F"}`,
+                              marginTop: "6px",
+                              marginBottom: "16px",
+                            }}
+                          />
+                        </div>
+                      )}
+
+                      {/* Logo */}
+                      {useLetterhead && branding?.logo_url && (
+                        <div className="mb-4 flex justify-start">
+                          <img
+                            src={branding.logo_url as string}
+                            alt="Logo"
+                            style={{ maxHeight: "60px", objectFit: "contain" }}
+                          />
+                        </div>
+                      )}
+
+                      {/* Document content rendered as styled HTML */}
+                      <div
+                        className="prose prose-sm max-w-none"
+                        style={{ fontFamily: branding?.font_family || "Arial" }}
+                      >
+                        <ReactMarkdown
+                          components={{
+                            h1: ({ children }) => (
+                              <h1
+                                style={{
+                                  textAlign: "center",
+                                  fontSize: `${(branding?.font_size_heading || 14) + 2}px`,
+                                  fontWeight: "bold",
+                                  color: branding?.primary_color || "#1E3A5F",
+                                  textTransform: "uppercase",
+                                  margin: "16px 0 12px",
+                                }}
+                              >
+                                {children}
+                              </h1>
+                            ),
+                            h2: ({ children }) => (
+                              <h2
+                                style={{
+                                  fontSize: `${branding?.font_size_heading || 14}px`,
+                                  fontWeight: "bold",
+                                  color: branding?.primary_color || "#1E3A5F",
+                                  textTransform: "uppercase",
+                                  margin: "14px 0 8px",
+                                }}
+                              >
+                                {children}
+                              </h2>
+                            ),
+                            h3: ({ children }) => (
+                              <h3
+                                style={{
+                                  fontSize: `${(branding?.font_size_body || 12) + 1}px`,
+                                  fontWeight: "bold",
+                                  color: branding?.primary_color || "#1E3A5F",
+                                  margin: "10px 0 6px",
+                                }}
+                              >
+                                {children}
+                              </h3>
+                            ),
+                            p: ({ children }) => (
+                              <p
+                                style={{
+                                  fontSize: `${branding?.font_size_body || 12}px`,
+                                  textAlign: "justify",
+                                  margin: "0 0 8px",
+                                  lineHeight: 1.6,
+                                }}
+                              >
+                                {children}
+                              </p>
+                            ),
+                          }}
+                        >
+                          {generatedContent}
+                        </ReactMarkdown>
+                      </div>
+
+                      {/* Footer */}
+                      {useLetterhead && branding?.footer_text && (
+                        <div className="mt-auto pt-6">
+                          <div
+                            style={{
+                              borderTop: `1px solid ${branding.secondary_color || "#2B9E8F"}`,
+                              paddingTop: "8px",
+                              textAlign: "center",
+                              fontSize: `${(branding.font_size_body || 12) - 2}px`,
+                              color: "#718096",
+                            }}
+                          >
+                            {branding.footer_text as string}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </ScrollArea>
               ) : (
                 <ScrollArea className="h-[calc(100vh-280px)]">
                   <div
