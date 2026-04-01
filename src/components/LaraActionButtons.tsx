@@ -816,8 +816,17 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
               <FileText className="w-4 h-4" />
               Editar — {editMeta?.docName}
             </DialogTitle>
-            <DialogDescription>Edite o texto antes de gerar o PDF.</DialogDescription>
+            <DialogDescription>
+              Revise e edite o texto. Campos com <span className="font-semibold text-amber-600">[PREENCHER]</span> precisam ser preenchidos antes de gerar o PDF.
+            </DialogDescription>
           </DialogHeader>
+          {/* Placeholder warning banner */}
+          {editableText && /\[PREENCHER[^\]]*\]/i.test(editableText) && (
+            <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-800 rounded-md px-3 py-2 text-xs">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>Este documento contém campos <strong>[PREENCHER]</strong> que precisam ser preenchidos. Use Ctrl+H ou edite diretamente no texto.</span>
+            </div>
+          )}
           <RichTextEditor
             ref={editorRef}
             initialContent={editableText}
@@ -835,13 +844,23 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
               if (!editMeta) return;
               const html = editorRef.current?.getHTML() || "";
               if (!html.trim()) return;
+
+              // Validate placeholders only at PDF generation time
+              const textContent = html.replace(/<[^>]*>/g, "");
+              const placeholderPatterns = [
+                /\[PREENCHER[^\]]*\]/i,
+                /_{3,}/,
+                /\[.*não cadastrado.*\]/i,
+                /\[.*não informado.*\]/i,
+              ];
+              const hasPlaceholders = placeholderPatterns.some(p => p.test(textContent));
+              if (hasPlaceholders) {
+                toast.error("Ainda há campos a preencher no documento. Revise os campos marcados com [PREENCHER] ou ___ antes de gerar o PDF.", { duration: 6000 });
+                return;
+              }
+
               const pdfBlob = generatePdfFromHtml(html);
               const previewUrl = URL.createObjectURL(pdfBlob);
-
-
-
-
-              // Also store for save flow
               setPdfPreviewBlob(pdfBlob);
               setPdfPreviewUrl(previewUrl);
               setPdfPreviewMeta(editMeta);
