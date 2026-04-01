@@ -45,7 +45,7 @@ export function useLaraChat(caseId?: string) {
   }, [caseId]);
 
   const sendMessage = useCallback(
-    async (content: string, attachments: ChatAttachment[]) => {
+    async (content: string, attachments: ChatAttachment[], options?: { isPortalMode?: boolean }) => {
       const { display, api } = expandCommand(content);
 
       const userMsg: ChatMessage = {
