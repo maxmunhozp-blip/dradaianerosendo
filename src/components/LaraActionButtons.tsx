@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Loader2, MessageSquare, ClipboardList, ExternalLink, FileText, Bell, ScanSearch, CheckCircle2, XCircle, Download, PenLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import {
   Dialog,
@@ -52,6 +54,11 @@ export function LaraActionButtons({ actions, onScanComplete }: { actions: LaraAc
   const [confirmAction, setConfirmAction] = useState<LaraAction | null>(null);
   const [executing, setExecuting] = useState(false);
   const [executed, setExecuted] = useState<Set<number>>(new Set());
+
+  // Signature form state
+  const [signerName, setSignerName] = useState("");
+  const [signerEmail, setSignerEmail] = useState("");
+  const [signerCpf, setSignerCpf] = useState("");
 
   // Scan state
   const [scanning, setScanning] = useState(false);
@@ -198,9 +205,10 @@ export function LaraActionButtons({ actions, onScanComplete }: { actions: LaraAc
           break;
 
         case "send_for_signature": {
-          const { document_id, signers, client_phone } = confirmAction.data;
-          if (!document_id || !signers?.length) {
-            toast.error("Dados insuficientes para enviar para assinatura");
+          const { document_id, client_phone } = confirmAction.data;
+          const signers = [{ name: signerName.trim(), email: signerEmail.trim(), cpf: signerCpf.trim() || undefined }];
+          if (!document_id) {
+            toast.error("Documento não identificado");
             break;
           }
           const { data: sigResult, error: sigError } = await supabase.functions.invoke("send-for-signature", {
@@ -259,7 +267,18 @@ export function LaraActionButtons({ actions, onScanComplete }: { actions: LaraAc
           return (
             <button
               key={i}
-              onClick={() => !isDone && !scanning && setConfirmAction(action)}
+              onClick={() => {
+                if (!isDone && !scanning) {
+                  // Pre-fill signer data for signature actions
+                  if (action.type === "send_for_signature") {
+                    const signer = action.data.signers?.[0];
+                    setSignerName(signer?.name || action.data.client_name || "");
+                    setSignerEmail(signer?.email || "");
+                    setSignerCpf(signer?.cpf || "");
+                  }
+                  setConfirmAction(action);
+                }
+              }}
               disabled={isDone || scanning}
               className="flex items-center gap-1.5 px-4 h-10 rounded-full text-sm font-semibold transition-colors"
               style={{
@@ -319,21 +338,43 @@ export function LaraActionButtons({ actions, onScanComplete }: { actions: LaraAc
         </div>
       )}
 
-      <Dialog open={!!confirmAction && !scanning} onOpenChange={() => !scanning && setConfirmAction(null)}>
+      <Dialog open={!!confirmAction && !scanning} onOpenChange={() => { if (!scanning) { setConfirmAction(null); setSignerName(""); setSignerEmail(""); setSignerCpf(""); } }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Confirmar ação</DialogTitle>
+            <DialogTitle>{confirmAction?.type === "send_for_signature" ? "Enviar para assinatura" : "Confirmar ação"}</DialogTitle>
             <DialogDescription>
               {confirmAction && (ACTION_DESCRIPTIONS[confirmAction.type]?.(confirmAction.data) || confirmAction.label)}
             </DialogDescription>
           </DialogHeader>
+
+          {/* Signature form fields */}
+          {confirmAction?.type === "send_for_signature" && (
+            <div className="space-y-3 py-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="signer-name">Nome do signatário *</Label>
+                <Input id="signer-name" value={signerName} onChange={e => setSignerName(e.target.value)} placeholder="Nome completo" />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="signer-email">E-mail do signatário *</Label>
+                <Input id="signer-email" type="email" value={signerEmail} onChange={e => setSignerEmail(e.target.value)} placeholder="email@exemplo.com" />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="signer-cpf">CPF (opcional)</Label>
+                <Input id="signer-cpf" value={signerCpf} onChange={e => setSignerCpf(e.target.value)} placeholder="000.000.000-00" />
+              </div>
+            </div>
+          )}
+
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setConfirmAction(null)} disabled={executing}>
+            <Button variant="outline" onClick={() => { setConfirmAction(null); setSignerName(""); setSignerEmail(""); setSignerCpf(""); }} disabled={executing}>
               Cancelar
             </Button>
-            <Button onClick={handleConfirm} disabled={executing}>
+            <Button
+              onClick={handleConfirm}
+              disabled={executing || (confirmAction?.type === "send_for_signature" && (!signerEmail.trim() || !signerName.trim()))}
+            >
               {executing && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
-              Confirmar
+              {confirmAction?.type === "send_for_signature" ? "Enviar para assinatura" : "Confirmar"}
             </Button>
           </DialogFooter>
         </DialogContent>
