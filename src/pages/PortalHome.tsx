@@ -205,7 +205,7 @@ export default function PortalHome() {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
         {[
           { icon: FileText, label: "Enviar documento", action: () => navigate("/portal/docs") },
-          { icon: MessageSquare, label: "Falar com escritório", action: () => window.open(whatsappLink(whatsappSetting || "5500000000000"), "_blank") },
+          { icon: MessageSquare, label: "Falar com escritório", action: () => { const clean = (whatsappSetting || "5500000000000").replace(/\D/g, ""); const number = clean.startsWith("55") ? clean : `55${clean}`; window.open(`https://wa.me/${number}?text=${encodeURIComponent("Olá! Preciso falar com o escritório.")}`, "_blank", "noopener,noreferrer"); } },
           { icon: Clock, label: "Ver meu processo", action: () => document.getElementById("portal-timeline")?.scrollIntoView({ behavior: "smooth" }) },
           { icon: Download, label: "Minha procuração", action: () => {
             if (procuracaoDoc?.file_url) window.open(procuracaoDoc.file_url, "_blank");
