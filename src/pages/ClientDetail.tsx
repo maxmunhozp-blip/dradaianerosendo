@@ -360,6 +360,8 @@ export default function ClientDetail() {
   const [addressOpen, setAddressOpen] = useState(false);
   const [childrenOpen, setChildrenOpen] = useState(false);
   const [opposingOpen, setOpposingOpen] = useState(false);
+  const [casesOpen, setCasesOpen] = useState(true);
+  const [notesOpen, setNotesOpen] = useState(false);
 
   // Edit states per section
   const [editingPersonal, setEditingPersonal] = useState(false);
