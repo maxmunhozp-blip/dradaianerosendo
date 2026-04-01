@@ -1,12 +1,16 @@
-import { CheckCircle, ChevronRight, X, ArrowRight, AlertTriangle } from "lucide-react";
+import { useState } from "react";
+import { CheckCircle, ChevronRight, X, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { fieldLabels } from "@/hooks/use-extraction";
 
 interface AssignOption {
   label: string;
   value: string;
 }
 
-interface Suggestion {
+export interface ReviewSuggestion {
   id: string;
   documentId: string;
   documentName: string;
@@ -14,17 +18,19 @@ interface Suggestion {
   field_path: string;
   value: string;
   currentValue?: string | null;
-  confidence: "high" | "medium" | "low";
+  confidence: "high" | "medium" | "conflict";
   conflict: boolean;
   assignOptions?: AssignOption[];
+  case_id: string;
+  client_id: string;
 }
 
 interface ExtractionReviewPanelProps {
-  suggestions: Suggestion[];
-  onAccept: (target: string) => void;
-  onReject: (target: string) => void;
-  onAssign: (id: string, destination: string) => void;
+  suggestions: ReviewSuggestion[];
+  clientName: string;
+  opposingName: string;
   onClose: () => void;
+  onComplete: () => void;
 }
 
 function ConflictCard({
@@ -32,7 +38,7 @@ function ConflictCard({
   onAccept,
   onReject,
 }: {
-  suggestion: Suggestion;
+  suggestion: ReviewSuggestion;
   onAccept: (id: string) => void;
   onReject: (id: string) => void;
 }) {
@@ -70,7 +76,7 @@ function AssignmentCard({
   onAssign,
   onReject,
 }: {
-  suggestion: Suggestion;
+  suggestion: ReviewSuggestion;
   onAssign: (id: string, destination: string) => void;
   onReject: (id: string) => void;
 }) {
@@ -117,10 +123,135 @@ function AssignmentCard({
   );
 }
 
-const ExtractionReviewPanel = ({ suggestions, onAccept, onReject, onAssign, onClose }: ExtractionReviewPanelProps) => {
+// Apply a single suggestion to the correct DB table
+async function applySuggestionToDB(s: ReviewSuggestion, targetOverride?: string) {
+  const [table, field] = s.field_path.split(".");
+
+  // If target override changes destination
+  if (targetOverride === "skip") {
+    await supabase.from("extraction_suggestions").update({ status: "rejected" }).eq("id", s.id);
+    return;
+  }
+
+  let actualTable = table;
+  let actualField = field;
+
+  // If user assigns a generic field to a specific target
+  if (targetOverride === "client" && table === "cases") {
+    // Map opposing fields to client equivalents
+    const remap: Record<string, string> = {
+      opposing_party_name: "name",
+      opposing_party_cpf: "cpf",
+      opposing_party_address: "address_street",
+    };
+    actualTable = "clients";
+    actualField = remap[field] || field;
+  } else if (targetOverride === "opposing" && table === "clients") {
+    const remap: Record<string, string> = {
+      name: "opposing_party_name",
+      cpf: "opposing_party_cpf",
+    };
+    actualTable = "cases";
+    actualField = remap[field] || field;
+  }
+
+  if (actualField === "children_add") {
+    const childData = JSON.parse(s.value);
+    const { data: caseData } = await supabase.from("cases").select("children").eq("id", s.case_id).single();
+    const current = (caseData?.children as any[]) || [];
+    const exists = current.some((c: any) => (c.name || "").toLowerCase() === (childData.name || "").toLowerCase());
+    if (!exists) {
+      await supabase.from("cases").update({ children: [...current, childData] } as any).eq("id", s.case_id);
+    }
+  } else if (actualTable === "clients") {
+    await supabase.from("clients").update({ [actualField]: s.value } as any).eq("id", s.client_id);
+  } else if (actualTable === "cases") {
+    await supabase.from("cases").update({ [actualField]: s.value } as any).eq("id", s.case_id);
+  }
+
+  await supabase.from("extraction_suggestions").update({ status: "accepted" }).eq("id", s.id);
+}
+
+const ExtractionReviewPanel = ({
+  suggestions: initialSuggestions,
+  clientName,
+  opposingName,
+  onClose,
+  onComplete,
+}: ExtractionReviewPanelProps) => {
+  const [suggestions, setSuggestions] = useState(initialSuggestions);
+  const [applying, setApplying] = useState(false);
+
   const auto = suggestions.filter((s) => s.confidence === "high" && !s.conflict);
-  const review = suggestions.filter((s) => s.confidence === "medium" || s.confidence === "low");
-  const conflicts = suggestions.filter((s) => s.conflict);
+  const review = suggestions.filter((s) => s.confidence === "medium");
+  const conflicts = suggestions.filter((s) => s.conflict || s.confidence === "conflict");
+
+  const handleAcceptConflict = async (id: string) => {
+    const s = suggestions.find((x) => x.id === id);
+    if (!s) return;
+    try {
+      await applySuggestionToDB(s);
+      setSuggestions((prev) => prev.filter((x) => x.id !== id));
+      toast.success(`"${s.fieldLabel}" atualizado`);
+    } catch {
+      toast.error("Erro ao aplicar");
+    }
+  };
+
+  const handleReject = async (target: string) => {
+    if (target === "all") {
+      // Reject all pending
+      const pending = [...review, ...conflicts];
+      for (const s of pending) {
+        await supabase.from("extraction_suggestions").update({ status: "rejected" }).eq("id", s.id);
+      }
+      toast.info("Todas as sugestões descartadas");
+      onComplete();
+      return;
+    }
+    // Single rejection
+    await supabase.from("extraction_suggestions").update({ status: "rejected" }).eq("id", target);
+    setSuggestions((prev) => prev.filter((x) => x.id !== target));
+    toast.info("Sugestão ignorada");
+  };
+
+  const handleAssign = async (id: string, destination: string) => {
+    const s = suggestions.find((x) => x.id === id);
+    if (!s) return;
+    try {
+      await applySuggestionToDB(s, destination);
+      setSuggestions((prev) => prev.filter((x) => x.id !== id));
+      if (destination !== "skip") {
+        toast.success(`"${s.fieldLabel}" aplicado`);
+      }
+    } catch {
+      toast.error("Erro ao aplicar");
+    }
+  };
+
+  const handleConfirmAll = async () => {
+    setApplying(true);
+    try {
+      // Apply remaining review items to their default destination
+      const pending = [...review, ...conflicts];
+      for (const s of pending) {
+        await applySuggestionToDB(s);
+      }
+      toast.success(`${pending.length} campo(s) aplicados`);
+      onComplete();
+    } catch {
+      toast.error("Erro ao aplicar");
+    } finally {
+      setApplying(false);
+    }
+  };
+
+  const needsReview = review.length > 0 || conflicts.length > 0;
+
+  if (!needsReview && auto.length === 0) {
+    onClose();
+    return null;
+  }
 
   return (
     <div className="fixed inset-0 bg-foreground/60 backdrop-blur-sm z-50 flex items-center justify-center p-6">
@@ -134,18 +265,22 @@ const ExtractionReviewPanel = ({ suggestions, onAccept, onReject, onAssign, onCl
             </Button>
           </div>
           <p className="text-muted-foreground text-sm mt-1">
-            Encontrei <strong className="text-foreground">{suggestions.length} informações</strong> em{" "}
-            <strong className="text-foreground">{new Set(suggestions.map((s) => s.documentId)).size} documentos</strong>
+            Encontrei <strong className="text-foreground">{initialSuggestions.length} informações</strong> em{" "}
+            <strong className="text-foreground">
+              {new Set(initialSuggestions.map((s) => s.documentId)).size} documentos
+            </strong>
           </p>
           <div className="flex gap-3 mt-4">
             <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 rounded-full">
               <div className="w-2 h-2 rounded-full bg-green-700" />
               <span className="text-xs font-bold text-green-700">{auto.length} aplicados</span>
             </div>
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 rounded-full">
-              <div className="w-2 h-2 rounded-full bg-amber-600" />
-              <span className="text-xs font-bold text-amber-600">{review.length} para confirmar</span>
-            </div>
+            {review.length > 0 && (
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 rounded-full">
+                <div className="w-2 h-2 rounded-full bg-amber-600" />
+                <span className="text-xs font-bold text-amber-600">{review.length} para confirmar</span>
+              </div>
+            )}
             {conflicts.length > 0 && (
               <div className="flex items-center gap-2 px-3 py-1.5 bg-destructive/10 rounded-full">
                 <div className="w-2 h-2 rounded-full bg-destructive" />
@@ -157,17 +292,6 @@ const ExtractionReviewPanel = ({ suggestions, onAccept, onReject, onAssign, onCl
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {review.length > 0 && (
-            <section>
-              <h3 className="text-sm font-bold text-amber-600 uppercase tracking-wider mb-3">Confirmar destino</h3>
-              <div className="space-y-3">
-                {review.map((s) => (
-                  <AssignmentCard key={s.id} suggestion={s} onAssign={onAssign} onReject={onReject} />
-                ))}
-              </div>
-            </section>
-          )}
-
           {conflicts.length > 0 && (
             <section>
               <h3 className="text-sm font-bold text-destructive uppercase tracking-wider mb-3">
@@ -175,7 +299,18 @@ const ExtractionReviewPanel = ({ suggestions, onAccept, onReject, onAssign, onCl
               </h3>
               <div className="space-y-3">
                 {conflicts.map((s) => (
-                  <ConflictCard key={s.id} suggestion={s} onAccept={onAccept} onReject={onReject} />
+                  <ConflictCard key={s.id} suggestion={s} onAccept={handleAcceptConflict} onReject={handleReject} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {review.length > 0 && (
+            <section>
+              <h3 className="text-sm font-bold text-amber-600 uppercase tracking-wider mb-3">Confirmar destino</h3>
+              <div className="space-y-3">
+                {review.map((s) => (
+                  <AssignmentCard key={s.id} suggestion={s} onAssign={handleAssign} onReject={handleReject} />
                 ))}
               </div>
             </section>
@@ -205,12 +340,26 @@ const ExtractionReviewPanel = ({ suggestions, onAccept, onReject, onAssign, onCl
         </div>
 
         {/* Footer */}
-        <div className="p-6 border-t border-border flex justify-between items-center">
-          <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" onClick={() => onReject("all")}>
-            Descartar tudo
-          </Button>
-          <Button onClick={() => onAccept("pending")}>Confirmar e aplicar</Button>
-        </div>
+        {needsReview && (
+          <div className="p-6 border-t border-border flex justify-between items-center">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground hover:text-destructive"
+              onClick={() => handleReject("all")}
+            >
+              Descartar tudo
+            </Button>
+            <Button onClick={handleConfirmAll} disabled={applying}>
+              {applying ? "Aplicando..." : "Confirmar e aplicar"}
+            </Button>
+          </div>
+        )}
+        {!needsReview && (
+          <div className="p-6 border-t border-border flex justify-end">
+            <Button onClick={onClose}>Fechar</Button>
+          </div>
+        )}
       </div>
     </div>
   );
