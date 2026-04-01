@@ -18,7 +18,7 @@ import Documents from "@/pages/Documents";
 import Agenda from "@/pages/Agenda";
 import PortalHome from "@/pages/PortalHome";
 import PortalDocs from "@/pages/PortalDocs";
-import PortalLara from "@/pages/PortalLara";
+import PortalChat from "@/pages/PortalChat";
 import PortalProfile from "@/pages/PortalProfile";
 import PortalLogin from "@/pages/PortalLogin";
 import Login from "@/pages/Login";
