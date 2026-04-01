@@ -57,7 +57,7 @@ export default function PortalAssistente() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Init message
+  // Init message — hidden from UI
   useEffect(() => {
     if (caseId && messages.length === 0 && !isLoading) {
       sendMessage("__PORTAL_INIT__", [], { isPortalMode: true });

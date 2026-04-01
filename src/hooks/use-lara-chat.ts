@@ -47,6 +47,7 @@ export function useLaraChat(caseId?: string) {
   const sendMessage = useCallback(
     async (content: string, attachments: ChatAttachment[], options?: { isPortalMode?: boolean }) => {
       const { display, api } = expandCommand(content);
+      const isHidden = content.startsWith("__") && content.endsWith("__");
 
       const userMsg: ChatMessage = {
         id: `user-${Date.now()}`,
@@ -55,7 +56,9 @@ export function useLaraChat(caseId?: string) {
         attachments: attachments.length > 0 ? attachments : undefined,
       };
 
-      setMessages((prev) => [...prev, userMsg]);
+      if (!isHidden) {
+        setMessages((prev) => [...prev, userMsg]);
+      }
       setIsLoading(true);
 
       let assistantContent = "";
