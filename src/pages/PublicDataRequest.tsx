@@ -316,11 +316,17 @@ export default function PublicDataRequest() {
         headers: { "Content-Type": "application/json", apikey: supabaseAnonKey },
         body: JSON.stringify({ token, data: buildFormData() }),
       });
-      if (!res.ok) throw new Error("fail");
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || "fail");
+      }
       localStorage.removeItem(`lexai_wizard_${token}`);
       setPageState("completed");
     } catch {
-      toast.error("Parece que a internet falhou. Seus dados estão salvos — tente de novo quando tiver sinal.");
+      toast.error("Não conseguimos salvar. Tente novamente.", {
+        action: { label: "Tentar de novo", onClick: () => handleSubmit() },
+        duration: 10000,
+      });
     } finally {
       setSubmitting(false);
     }
@@ -577,7 +583,21 @@ export default function PublicDataRequest() {
                     key={String(opt.val)}
                     onClick={() => {
                       setHasChildren(opt.val);
-                      setTimeout(() => goNext(), 800);
+                      setTimeout(() => {
+                        // Navigate directly based on selection, don't rely on goNext skip logic
+                        if (opt.val === true) {
+                          // Go to children_data step
+                          const childrenDataIdx = steps.indexOf("children_data");
+                          if (childrenDataIdx >= 0) {
+                            setCurrentStep(childrenDataIdx + 1);
+                          } else {
+                            goNext();
+                          }
+                        } else {
+                          // Skip children_data, go to next non-children step
+                          goNext();
+                        }
+                      }, 800);
                     }}
                     style={{
                       minHeight: 80, border: `2px solid ${hasChildren === opt.val ? "#1E3A5F" : "#E5E7EB"}`,
