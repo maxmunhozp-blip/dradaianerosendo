@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { RequestDataModal } from "@/components/RequestDataModal";
+import { ClientAccessCard } from "@/components/ClientAccessCard";
 import { ExtractionSuggestions } from "@/components/ExtractionSuggestions";
 import ExtractionProgress from "@/components/ExtractionProgress";
 import ExtractionReviewPanel, { type ReviewSuggestion } from "@/components/ExtractionReviewPanel";
