@@ -736,7 +736,7 @@ export default function ClientDetail() {
           </Dialog>
         </div>
         {cases.length === 0 ? (
-          <EmptyState icon={FolderOpen} title="Nenhum caso registrado" description="Crie o primeiro caso para este cliente." actionLabel="Novo caso" onAction={() => setCaseDialogOpen(true)} />
+          <EmptyState icon={FolderOpen} actionLabel="Novo caso" onAction={() => setCaseDialogOpen(true)} />
         ) : (
           <div className="border border-border rounded-lg divide-y divide-border">
             {cases.map(c => (

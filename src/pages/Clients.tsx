@@ -215,8 +215,6 @@ export default function Clients() {
         <div className="border border-border rounded-lg">
           <EmptyState
             icon={Users}
-            title="Nenhum cliente cadastrado"
-            description="Cadastre seu primeiro cliente para começar a gerenciar seus casos."
             actionLabel="Cadastrar cliente"
             onAction={() => setDialogOpen(true)}
           />
@@ -226,7 +224,6 @@ export default function Clients() {
           <EmptyState
             icon={Search}
             title="Nenhum resultado"
-            description="Nenhum cliente encontrado com os filtros aplicados."
           />
         </div>
       ) : (

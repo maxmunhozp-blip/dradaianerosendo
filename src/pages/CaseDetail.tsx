@@ -550,8 +550,6 @@ export default function CaseDetail() {
                 {documents.length === 0 ? (
                   <EmptyState
                     icon={FileText}
-                    title="Nenhum documento"
-                    description="Envie o primeiro documento para este caso."
                     actionLabel="Enviar documento"
                     onAction={() => fileInputRef.current?.click()}
                   />
@@ -579,8 +577,6 @@ export default function CaseDetail() {
                 {checklist.length === 0 && (
                   <EmptyState
                     icon={ClipboardList}
-                    title="Checklist vazio"
-                    description="Adicione itens ao checklist deste caso."
                   />
                 )}
                 {checklist.map((item) => (
@@ -619,8 +615,6 @@ export default function CaseDetail() {
                 {hearings.length === 0 ? (
                   <EmptyState
                     icon={CalendarDays}
-                    title="Nenhuma data"
-                    description="Adicione audiências e prazos para este caso."
                     actionLabel="Adicionar data"
                     onAction={() => setShowHearingModal(true)}
                   />
