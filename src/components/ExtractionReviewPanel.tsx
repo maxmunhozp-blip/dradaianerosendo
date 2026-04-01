@@ -1,6 +1,11 @@
 import { CheckCircle, ChevronRight, X, ArrowRight, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+interface AssignOption {
+  label: string;
+  value: string;
+}
+
 interface Suggestion {
   id: string;
   documentId: string;
@@ -11,6 +16,7 @@ interface Suggestion {
   currentValue?: string | null;
   confidence: "high" | "medium" | "low";
   conflict: boolean;
+  assignOptions?: AssignOption[];
 }
 
 interface ExtractionReviewPanelProps {
