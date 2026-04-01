@@ -129,6 +129,13 @@ Deno.serve(async (req: Request) => {
     userPrompt += `\nDADOS DO CLIENTE:\n`;
     userPrompt += `- Nome: ${clientData.name}\n`;
     if (clientData.cpf) userPrompt += `- CPF: ${clientData.cpf}\n`;
+    if (clientData.rg) userPrompt += `- RG: ${clientData.rg}\n`;
+    if (clientData.nationality) userPrompt += `- Nacionalidade: ${clientData.nationality}\n`;
+    if (clientData.marital_status) userPrompt += `- Estado civil: ${clientData.marital_status}\n`;
+    if (clientData.profession) userPrompt += `- Profissão: ${clientData.profession}\n`;
+    if (clientData.address_street) {
+      userPrompt += `- Endereço: ${clientData.address_street}, nº ${clientData.address_number || "S/N"} — ${clientData.address_city || ""}/${clientData.address_state || ""} CEP ${clientData.address_zip || ""}\n`;
+    }
     if (clientData.email) userPrompt += `- E-mail: ${clientData.email}\n`;
     if (clientData.phone) userPrompt += `- Telefone: ${clientData.phone}\n`;
 

@@ -394,7 +394,7 @@ async function fetchOfficeContext(supabase: any, hasCaseId: boolean): Promise<st
   // 3. Fetch ALL documents, ALL checklist items, ALL hearings (not filtered by status)
   const [docsResult, checklistResult, hearingsResult] = await Promise.all([
     caseIds.length > 0
-      ? supabase.from("documents").select("id, name, category, status, case_id, created_at, extraction_status").in("case_id", caseIds)
+      ? supabase.from("documents").select("id, name, category, status, case_id, created_at, extraction_status, extracted_data").in("case_id", caseIds)
       : { data: [] },
     caseIds.length > 0
       ? supabase.from("checklist_items").select("id, label, done, case_id, required_by").in("case_id", caseIds)
@@ -467,6 +467,18 @@ async function fetchOfficeContext(supabase: any, hasCaseId: boolean): Promise<st
       if (docsAprovados.length > 0) ctx += `\n  Aprovados: ${docsAprovados.map((d: any) => d.name).join(", ")}`;
       if (docsSolicitados.length > 0) ctx += `\n  Pendentes (solicitados): ${docsSolicitados.map((d: any) => d.name).join(", ")}`;
       if (docs.length === 0) ctx += " Nenhum";
+      // Include extracted data from scanned documents
+      const docsWithExtraction = docs.filter((d: any) => d.extraction_status === "done" && d.extracted_data && Object.keys(d.extracted_data).length > 0);
+      if (docsWithExtraction.length > 0) {
+        ctx += `\n- Dados extraídos de documentos:`;
+        for (const d of docsWithExtraction) {
+          const fields = Object.entries(d.extracted_data as Record<string, unknown>)
+            .filter(([_, v]) => v !== null && v !== "")
+            .map(([k, v]) => `${k}: ${v}`)
+            .join(", ");
+          if (fields) ctx += `\n  ${d.name}: ${fields}`;
+        }
+      }
       ctx += `\n- Checklist (${checklist.length}): ${checklist.length > 0 ? checklist.map((c: any) => `${c.label} (${c.done ? "concluído" : "PENDENTE"})`).join(", ") : "Nenhum"}`;
       ctx += `\n- Audiências (${hearings.length}): ${hearings.length > 0 ? hearings.map((h: any) => `${h.title} em ${h.date} (${h.status})`).join(", ") : "Nenhuma"}`;
       ctx += `\n- Dados faltantes no cadastro: ${missingFields.length > 0 ? missingFields.join(", ") : "Nenhum — cadastro completo"}`;
