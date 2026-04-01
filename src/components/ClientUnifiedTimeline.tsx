@@ -107,7 +107,7 @@ export function ClientUnifiedTimeline({ caseIds }: { caseIds: string[] }) {
       const caseTypeMap = new Map((casesData || []).map(c => [c.id, c.case_type]));
 
       // Fetch all sources in parallel
-      const [tlRes, docRes, hearRes, intRes, checkRes] = await Promise.all([
+      const [msgRes, tlRes, docRes, hearRes, intRes, checkRes] = await Promise.all([
         supabase
           .from("messages")
           .select("id, case_id, content, role, created_at")
@@ -144,7 +144,7 @@ export function ClientUnifiedTimeline({ caseIds }: { caseIds: string[] }) {
       const unified: TimelineEvent[] = [];
 
       // Messages (LARA chat)
-      for (const m of (tlRes.data || []) as any[]) {
+      for (const m of (msgRes.data || []) as any[]) {
         const roleLabel = m.role === "assistant" ? "LARA" : m.role === "user" ? "Advogado" : m.role;
         unified.push({
           id: `msg-${m.id}`,
@@ -159,7 +159,7 @@ export function ClientUnifiedTimeline({ caseIds }: { caseIds: string[] }) {
       }
 
       // Timeline entries
-      for (const e of (docRes.data || []) as any[]) {
+      for (const e of (tlRes.data || []) as any[]) {
         unified.push({
           id: `tl-${e.id}`,
           case_id: e.case_id,
@@ -173,7 +173,7 @@ export function ClientUnifiedTimeline({ caseIds }: { caseIds: string[] }) {
       }
 
       // Documents
-      for (const d of (hearRes.data || []) as any[]) {
+      for (const d of (docRes.data || []) as any[]) {
         const sigLabel = d.signature_status === "signed" ? " (assinado)" :
                          d.signature_status === "sent" ? " (aguardando assinatura)" : "";
         unified.push({
@@ -189,7 +189,7 @@ export function ClientUnifiedTimeline({ caseIds }: { caseIds: string[] }) {
       }
 
       // Hearings
-      for (const h of (intRes.data || []) as any[]) {
+      for (const h of (hearRes.data || []) as any[]) {
         unified.push({
           id: `hear-${h.id}`,
           case_id: h.case_id,
@@ -203,7 +203,7 @@ export function ClientUnifiedTimeline({ caseIds }: { caseIds: string[] }) {
       }
 
       // Intimações
-      for (const i of (checkRes.data || []) as any[]) {
+      for (const i of (intRes.data || []) as any[]) {
         unified.push({
           id: `int-${i.id}`,
           case_id: i.case_id || "",
