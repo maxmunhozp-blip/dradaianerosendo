@@ -77,6 +77,7 @@ export function useLaraChat(caseId?: string) {
       await streamLaraChat({
         messages: apiMessages,
         caseId,
+        isPortalMode: options?.isPortalMode,
         onDelta: (text) => {
           assistantContent += text;
           setMessages((prev) => {
