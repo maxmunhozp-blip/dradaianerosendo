@@ -48,6 +48,7 @@ const navItems: NavItem[] = [
   { title: "LARA", url: "/lara", icon: Bot },
   { title: "Templates", url: "/templates", icon: FileStack, permission: "can_edit_documents" },
   { title: "Formatação", url: "/settings/document-branding", icon: Palette, permission: "can_access_settings" },
+  { title: "E-mails", url: "/settings/emails", icon: Mail, permission: "can_access_settings" },
   { title: "Usuários", url: "/users", icon: ShieldCheck, permission: "can_access_settings" },
   { title: "Configurações", url: "/settings", icon: Settings, permission: "can_access_settings" },
   { title: "LARA Skills", url: "/settings/lara-skills", icon: Bot, permission: "can_access_settings" },
