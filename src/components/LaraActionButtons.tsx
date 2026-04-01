@@ -462,6 +462,24 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
             .replace(/\*(.*?)\*/g, "$1")
             .trim();
 
+          // CRITICAL: Block generation if document contains placeholders or missing data
+          const placeholderPatterns = [
+            /\[PREENCHER[^\]]*\]/i,
+            /\[preencher[^\]]*\]/i,
+            /_{3,}/,                          // Three or more underscores (blank fields)
+            /\(endereço[^)]*\)/i,             // (endereço do escritório) etc
+            /a definir/i,
+            /\[.*não cadastrado.*\]/i,
+            /\[.*não informado.*\]/i,
+            /\[.*faltando.*\]/i,
+          ];
+
+          const foundPlaceholders = placeholderPatterns.filter(p => p.test(cleanText));
+          if (foundPlaceholders.length > 0) {
+            toast.error("Documento contém dados incompletos! Peça à LARA para coletar os dados faltantes antes de gerar o PDF.", { duration: 6000 });
+            break;
+          }
+
           const idx = allActions.indexOf(confirmAction);
           setEditableText(cleanText);
           setEditMeta({ docName, caseId, action: confirmAction, actionIndex: idx });
