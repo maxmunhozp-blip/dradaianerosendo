@@ -348,7 +348,16 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
   const [pdfPreviewBlob, setPdfPreviewBlob] = useState<Blob | null>(null);
   const [pdfPreviewMeta, setPdfPreviewMeta] = useState<{ docName: string; caseId: string; action: LaraAction; actionIndex: number } | null>(null);
   const [savingPdf, setSavingPdf] = useState(false);
-  const [clientInfo, setClientInfo] = useState<{ phone: string; name: string } | null>(null);
+  const [clientInfo, setClientInfo] = useState<{ phone: string; name: string; email: string } | null>(null);
+
+  // Email send state
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [emailAccounts, setEmailAccounts] = useState<{ id: string; email: string; label: string }[]>([]);
+  const [selectedAccountId, setSelectedAccountId] = useState("");
+  const [emailTo, setEmailTo] = useState("");
+  const [emailSubject, setEmailSubject] = useState("");
+  const [emailBody, setEmailBody] = useState("");
+  const [sendingEmail, setSendingEmail] = useState(false);
 
   // Text editor state (before PDF generation)
   const [editingText, setEditingText] = useState(false);
