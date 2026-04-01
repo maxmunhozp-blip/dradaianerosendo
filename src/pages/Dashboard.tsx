@@ -1,3 +1,4 @@
+import { useRef, useEffect } from "react";
 import { Users, Plus, Bot, CalendarDays, Clock, MapPin, Bell, AlertTriangle, PenLine, CheckCircle2, Clock4, FolderOpen, Plug, PlugZap, Mail, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AnimatedCounter } from "@/components/AnimatedCounter";
@@ -9,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { useUpcomingHearings } from "@/hooks/use-hearings";
+import { toast } from "sonner";
 import { useUrgentIntimacoes } from "@/hooks/use-intimacoes";
 import { format, differenceInHours, differenceInDays } from "date-fns";
 
@@ -91,6 +93,8 @@ export default function Dashboard() {
 }
 
 function IntegrationStatusBar() {
+  const prevStatusRef = useRef<{ zapSign?: boolean; whatsapp?: boolean; email?: boolean } | null>(null);
+
   const { data, isLoading } = useQuery({
     queryKey: ["integrations-status"],
     queryFn: async () => {
@@ -127,9 +131,31 @@ function IntegrationStatusBar() {
 
       return { zapSignConnected, whatsappConnected, emailConnected, emailCount };
     },
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
+    staleTime: 60 * 1000,
+    refetchInterval: 2 * 60 * 1000,
+    refetchOnWindowFocus: true,
   });
+
+  useEffect(() => {
+    if (!data) return;
+    const prev = prevStatusRef.current;
+    if (prev !== null) {
+      if (prev.zapSign === true && !data.zapSignConnected) {
+        toast.error("ZapSign desconectado", { description: "A integração com ZapSign perdeu a conexão." });
+      }
+      if (prev.whatsapp === true && !data.whatsappConnected) {
+        toast.error("WhatsApp desconectado", { description: "A integração com WhatsApp perdeu a conexão." });
+      }
+      if (prev.email === true && !data.emailConnected) {
+        toast.error("E-mail desconectado", { description: "Nenhuma conta de e-mail conectada." });
+      }
+    }
+    prevStatusRef.current = {
+      zapSign: data.zapSignConnected,
+      whatsapp: data.whatsappConnected,
+      email: data.emailConnected,
+    };
+  }, [data]);
 
   const integrations = [
     {
