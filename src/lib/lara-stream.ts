@@ -8,6 +8,7 @@ export interface ChatAttachment {
 export interface StreamChatOptions {
   messages: { role: string; content: string; attachments?: ChatAttachment[] }[];
   caseId?: string;
+  isPortalMode?: boolean;
   onDelta: (text: string) => void;
   onDone: () => void;
   onError: (error: string) => void;
@@ -18,6 +19,7 @@ const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/lara-chat`;
 export async function streamLaraChat({
   messages,
   caseId,
+  isPortalMode,
   onDelta,
   onDone,
   onError,
@@ -29,7 +31,7 @@ export async function streamLaraChat({
         "Content-Type": "application/json",
         Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
       },
-      body: JSON.stringify({ messages, caseId: caseId || null }),
+      body: JSON.stringify({ messages, caseId: caseId || null, ...(isPortalMode ? { isPortalMode: true } : {}) }),
     });
 
     if (!resp.ok) {
