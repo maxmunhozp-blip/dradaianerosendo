@@ -744,6 +744,11 @@ Use seu conhecimento jurídico para complementar os dados do LexML com explicaç
       });
     }
 
+    // Determine max_tokens based on document commands
+    const lastContent = lastMsg?.content?.toLowerCase() || "";
+    const isDocumentCommand = lastContent.includes("/peticao") || lastContent.includes("/procuracao") || lastContent.includes("/contrato");
+    const maxTokens = isDocumentCommand ? 8192 : 4096;
+
     // Call Lovable AI Gateway with streaming
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -754,6 +759,7 @@ Use seu conhecimento jurídico para complementar os dados do LexML com explicaç
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: aiMessages,
+        max_tokens: maxTokens,
         stream: true,
       }),
     });
