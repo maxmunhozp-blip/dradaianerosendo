@@ -60,19 +60,10 @@ const STATUS_COLORS: Record<string, string> = {
   novo: "text-amber-500",
 };
 
-function formatDate(dateStr: string) {
+function formatDateFull(dateStr: string) {
   const d = new Date(dateStr);
-  const now = new Date();
-  const diff = now.getTime() - d.getTime();
-  const mins = Math.floor(diff / 60000);
-  const hours = Math.floor(diff / 3600000);
-  const days = Math.floor(diff / 86400000);
-
-  if (mins < 1) return "agora";
-  if (mins < 60) return `há ${mins}min`;
-  if (hours < 24) return `há ${hours}h`;
-  if (days < 7) return `há ${days}d`;
-  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
+  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" }) +
+    " " + d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 }
 
 const MANUAL_TYPES = [
