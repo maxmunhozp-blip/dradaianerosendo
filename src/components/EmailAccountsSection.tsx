@@ -1,8 +1,20 @@
 import { useState, useEffect } from "react";
-import { Mail, Plus, RefreshCw, Trash2, Loader2, CheckCircle2, XCircle, Server, Eye, EyeOff, Pencil, Settings2 } from "lucide-react";
+import {
+  Mail,
+  Plus,
+  RefreshCw,
+  Trash2,
+  Loader2,
+  CheckCircle2,
+  XCircle,
+  Server,
+  Eye,
+  EyeOff,
+  Pencil,
+  Settings2,
+} from "lucide-react";
 import { SyncConfigModal, type SyncConfig } from "@/components/SyncConfigModal";
 import { Button } from "@/components/ui/button";
-import { lovable } from "@/integrations/lovable/index";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -89,16 +101,12 @@ function useDeleteEmailAccount() {
 function useSyncAccount() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ accountId, provider }: { accountId: string; provider: string }) => {
-      // Reset status to "sincronizando" before syncing
+    mutationFn: async ({ accountId }: { accountId: string; provider: string }) => {
       await (supabase.from("email_accounts") as any)
         .update({ status: "sincronizando" })
         .eq("id", accountId);
 
-      // All IMAP-based accounts (including Gmail with app password) use sync-imap
       const funcName = "sync-imap";
-
-      // Add a 25s timeout to prevent infinite loading
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 25000);
 
@@ -111,7 +119,6 @@ function useSyncAccount() {
         return data;
       } catch (err: any) {
         clearTimeout(timeout);
-        // On timeout, update status back
         await (supabase.from("email_accounts") as any)
           .update({ status: "conectado" })
           .eq("id", accountId);
@@ -136,7 +143,6 @@ function useSyncAccount() {
   });
 }
 
-// Keep backward compatible export
 function useSyncGmail() {
   const qc = useQueryClient();
   return useMutation({
@@ -190,7 +196,6 @@ export default function EmailAccountsSection() {
   const [editPlatform, setEditPlatform] = useState("Todos");
   const [showEditPassword, setShowEditPassword] = useState(false);
 
-  // Hostinger fields
   const [hostEmail, setHostEmail] = useState("");
   const [hostPassword, setHostPassword] = useState("");
   const [imapHost, setImapHost] = useState("imap.hostinger.com");
@@ -198,17 +203,14 @@ export default function EmailAccountsSection() {
   const [smtpHost, setSmtpHost] = useState("smtp.hostinger.com");
   const [smtpPort, setSmtpPort] = useState("465");
 
-  // Edit SMTP fields
   const [editSmtpHost, setEditSmtpHost] = useState("");
   const [editSmtpPort, setEditSmtpPort] = useState("");
 
-  // Sync config modal
   const [syncConfigOpen, setSyncConfigOpen] = useState(false);
   const [syncConfigAccount, setSyncConfigAccount] = useState<EmailAccount | null>(null);
   const [syncConfigSaving, setSyncConfigSaving] = useState(false);
 
   const handleSyncClick = (account: EmailAccount) => {
-    // If not configured yet, show config modal first
     if (!account.sync_configured) {
       setSyncConfigAccount(account);
       setSyncConfigOpen(true);
@@ -233,13 +235,11 @@ export default function EmailAccountsSection() {
         })
         .eq("id", syncConfigAccount.id);
       if (error) throw error;
-      
+
       toast.success("Configuração salva! Iniciando sincronização...");
       setSyncConfigOpen(false);
       setSyncConfigAccount(null);
       qc.invalidateQueries({ queryKey: ["email-accounts"] });
-      
-      // Start sync after saving config
       syncMutation.mutate({ accountId: syncConfigAccount.id, provider: syncConfigAccount.provider });
     } catch (err: any) {
       toast.error("Erro ao salvar configuração: " + err.message);
@@ -262,8 +262,14 @@ export default function EmailAccountsSection() {
   };
 
   const handleTestConnection = async () => {
-    if (!hostEmail.trim()) { toast.error("Informe o e-mail"); return; }
-    if (!hostPassword.trim()) { toast.error("Informe a senha"); return; }
+    if (!hostEmail.trim()) {
+      toast.error("Informe o e-mail");
+      return;
+    }
+    if (!hostPassword.trim()) {
+      toast.error("Informe a senha");
+      return;
+    }
     setTesting(true);
     setTestResult(null);
     const isGmail = providerTab === "gmail";
@@ -290,14 +296,29 @@ export default function EmailAccountsSection() {
     }
   };
 
-  // Handle OAuth redirect (robust callback finalization)
   useEffect(() => {
+    const parsePending = (pendingRaw: string) => {
+      try {
+        const parsed = JSON.parse(pendingRaw);
+        return parsed && typeof parsed === "object" ? parsed : null;
+      } catch {
+        localStorage.removeItem("pending_email_account");
+        return null;
+      }
+    };
+
     const saveGmailAccount = async (session: any, pendingRaw: string) => {
       localStorage.removeItem("pending_email_account");
 
-      const { label, platform } = JSON.parse(pendingRaw);
+      const pending = parsePending(pendingRaw);
+      if (!pending) {
+        setOauthStep(null);
+        return;
+      }
+
+      const { label, platform } = pending as { label?: string; platform?: string };
       const providerToken = session?.provider_token as string | undefined;
-      if (!providerToken) {
+      if (!providerToken || !label || !platform) {
         setOauthStep(null);
         return;
       }
@@ -420,27 +441,42 @@ export default function EmailAccountsSection() {
       JSON.stringify({ label: newLabel, platform: newPlatform })
     );
 
-    const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin + "/settings",
-      extraParams: {
-        access_type: "offline",
-        prompt: "select_account",
-      },
-    });
+    try {
+      const { lovable } = await import("@/integrations/lovable/index");
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: window.location.origin + "/settings",
+        extraParams: {
+          access_type: "offline",
+          prompt: "select_account",
+        },
+      });
 
-    const error = result?.error;
-
-    if (error) {
-      toast.error("Erro ao iniciar OAuth: " + error.message);
+      const error = result?.error;
+      if (error) {
+        toast.error("Erro ao iniciar OAuth: " + error.message);
+        localStorage.removeItem("pending_email_account");
+      }
+    } catch (err: any) {
+      toast.error("Erro ao iniciar OAuth: " + (err?.message || "falha inesperada"));
       localStorage.removeItem("pending_email_account");
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   };
 
   const handleConnectHostinger = async () => {
-    if (!newLabel.trim()) { toast.error("Informe um nome para a conta"); return; }
-    if (!hostEmail.trim()) { toast.error("Informe o e-mail"); return; }
-    if (!hostPassword.trim()) { toast.error("Informe a senha"); return; }
+    if (!newLabel.trim()) {
+      toast.error("Informe um nome para a conta");
+      return;
+    }
+    if (!hostEmail.trim()) {
+      toast.error("Informe o e-mail");
+      return;
+    }
+    if (!hostPassword.trim()) {
+      toast.error("Informe a senha");
+      return;
+    }
 
     setSaving(true);
     const isGmail = providerTab === "gmail";
@@ -449,7 +485,6 @@ export default function EmailAccountsSection() {
     const resolvedSmtpHost = isGmail ? "smtp.gmail.com" : smtpHost;
     const resolvedSmtpPort = isGmail ? 465 : parseInt(smtpPort);
     try {
-      // Test IMAP connection
       const { data, error } = await supabase.functions.invoke("test-imap", {
         body: {
           host: resolvedImapHost,
@@ -462,7 +497,6 @@ export default function EmailAccountsSection() {
       if (error) throw error;
       if (!data?.success) throw new Error(data?.error || "Falha na conexão IMAP");
 
-      // Save account
       const { error: insertError } = await (supabase.from("email_accounts") as any).insert({
         label: newLabel,
         email: hostEmail,
@@ -517,7 +551,6 @@ export default function EmailAccountsSection() {
         updates.smtp_host = editSmtpHost;
         updates.smtp_port = parseInt(editSmtpPort);
 
-        // If password changed, test and update
         if (editPassword.trim()) {
           const { data, error } = await supabase.functions.invoke("test-imap", {
             body: {
@@ -558,11 +591,16 @@ export default function EmailAccountsSection() {
           <span>{oauthStep}</span>
         </div>
       )}
+
       <div className="flex items-center justify-between">
-        <p className="text-xs text-muted-foreground">
-          {accounts.length} conta(s) configurada(s)
-        </p>
-        <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) resetForm(); }}>
+        <p className="text-xs text-muted-foreground">{accounts.length} conta(s) configurada(s)</p>
+        <Dialog
+          open={dialogOpen}
+          onOpenChange={(v) => {
+            setDialogOpen(v);
+            if (!v) resetForm();
+          }}
+        >
           <DialogTrigger asChild>
             <Button size="sm" variant="outline" className="text-amber-600 border-amber-300 hover:bg-amber-50">
               <Plus className="w-3.5 h-3.5 mr-1" />
@@ -577,7 +615,6 @@ export default function EmailAccountsSection() {
               </DialogDescription>
             </DialogHeader>
 
-            {/* Provider selector */}
             <div className="grid grid-cols-2 gap-3 py-2">
               <button
                 type="button"
@@ -636,7 +673,9 @@ export default function EmailAccountsSection() {
                   </SelectTrigger>
                   <SelectContent>
                     {PLATFORMS.map((p) => (
-                      <SelectItem key={p} value={p}>{p}</SelectItem>
+                      <SelectItem key={p} value={p}>
+                        {p}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -646,10 +685,21 @@ export default function EmailAccountsSection() {
                 <div className="bg-amber-50 border border-amber-200 rounded-md p-3 text-xs text-amber-800">
                   <p className="font-semibold mb-1">⚠ Gmail requer "Senha de App"</p>
                   <p>1. Ative a <strong>verificação em 2 etapas</strong> na sua conta Google</p>
-                  <p>2. Acesse <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer" className="underline font-medium">myaccount.google.com/apppasswords</a></p>
+                  <p>
+                    2. Acesse{" "}
+                    <a
+                      href="https://myaccount.google.com/apppasswords"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline font-medium"
+                    >
+                      myaccount.google.com/apppasswords
+                    </a>
+                  </p>
                   <p>3. Crie uma senha de app e cole no campo abaixo (com ou sem espaços — o sistema remove automaticamente)</p>
                 </div>
               )}
+
               <div className="space-y-2">
                 <Label className="text-xs">E-mail</Label>
                 <Input
@@ -678,46 +728,50 @@ export default function EmailAccountsSection() {
                   </button>
                 </div>
               </div>
+
               {providerTab !== "gmail" && hostEmail.toLowerCase().includes("@gmail.com") && (
                 <div className="bg-blue-50 border border-blue-200 rounded-md p-3 text-xs text-blue-800 flex items-center gap-2">
                   <Mail className="w-4 h-4 shrink-0" />
-                  <span>Este parece ser um e-mail Gmail. <button type="button" className="underline font-semibold" onClick={() => { setProviderTab("gmail"); setImapHost("imap.gmail.com"); setImapPort("993"); setSmtpHost("smtp.gmail.com"); setSmtpPort("465"); }}>Clique aqui para usar a aba Gmail</button> (auto-configura IMAP/SMTP).</span>
+                  <span>
+                    Este parece ser um e-mail Gmail.{" "}
+                    <button
+                      type="button"
+                      className="underline font-semibold"
+                      onClick={() => {
+                        setProviderTab("gmail");
+                        setImapHost("imap.gmail.com");
+                        setImapPort("993");
+                        setSmtpHost("smtp.gmail.com");
+                        setSmtpPort("465");
+                      }}
+                    >
+                      Clique aqui para usar a aba Gmail
+                    </button>{" "}
+                    (auto-configura IMAP/SMTP).
+                  </span>
                 </div>
               )}
+
               {providerTab !== "gmail" && (
                 <>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-2">
                       <Label className="text-xs">IMAP Host</Label>
-                      <Input
-                        value={imapHost}
-                        onChange={(e) => setImapHost(e.target.value)}
-                      />
+                      <Input value={imapHost} onChange={(e) => setImapHost(e.target.value)} />
                     </div>
                     <div className="space-y-2">
                       <Label className="text-xs">IMAP Porta</Label>
-                      <Input
-                        type="number"
-                        value={imapPort}
-                        onChange={(e) => setImapPort(e.target.value)}
-                      />
+                      <Input type="number" value={imapPort} onChange={(e) => setImapPort(e.target.value)} />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-2">
                       <Label className="text-xs">SMTP Host</Label>
-                      <Input
-                        value={smtpHost}
-                        onChange={(e) => setSmtpHost(e.target.value)}
-                      />
+                      <Input value={smtpHost} onChange={(e) => setSmtpHost(e.target.value)} />
                     </div>
                     <div className="space-y-2">
                       <Label className="text-xs">SMTP Porta</Label>
-                      <Input
-                        type="number"
-                        value={smtpPort}
-                        onChange={(e) => setSmtpPort(e.target.value)}
-                      />
+                      <Input type="number" value={smtpPort} onChange={(e) => setSmtpPort(e.target.value)} />
                     </div>
                   </div>
                 </>
@@ -725,9 +779,17 @@ export default function EmailAccountsSection() {
             </div>
 
             {testResult && (
-              <div className={`flex items-center gap-2 text-xs px-3 py-2 rounded-md ${testResult === "success" ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-700 border border-red-200"}`}>
+              <div
+                className={`flex items-center gap-2 text-xs px-3 py-2 rounded-md ${
+                  testResult === "success"
+                    ? "bg-green-50 text-green-700 border border-green-200"
+                    : "bg-red-50 text-red-700 border border-red-200"
+                }`}
+              >
                 {testResult === "success" ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
-                {testResult === "success" ? "Conexão IMAP válida! Pode salvar a conta." : "Falha na conexão. Verifique as credenciais."}
+                {testResult === "success"
+                  ? "Conexão IMAP válida! Pode salvar a conta."
+                  : "Falha na conexão. Verifique as credenciais."}
               </div>
             )}
 
@@ -760,10 +822,7 @@ export default function EmailAccountsSection() {
       ) : (
         <div className="space-y-2">
           {accounts.map((account) => (
-            <div
-              key={account.id}
-              className="flex items-center justify-between border rounded-lg px-3 py-2.5"
-            >
+            <div key={account.id} className="flex items-center justify-between border rounded-lg px-3 py-2.5">
               <div className="flex items-center gap-3 min-w-0">
                 {account.provider === "hostinger" ? (
                   <Server className="w-4 h-4 text-purple-500 shrink-0" />
@@ -798,7 +857,11 @@ export default function EmailAccountsSection() {
                     Conectado
                   </Badge>
                 ) : (
-                  <Badge variant="destructive" className="text-[10px]" title={account.status === "erro" && (account as any).sync_error_message ? (account as any).sync_error_message : undefined}>
+                  <Badge
+                    variant="destructive"
+                    className="text-[10px]"
+                    title={account.status === "erro" && (account as any).sync_error_message ? (account as any).sync_error_message : undefined}
+                  >
                     <XCircle className="w-3 h-3 mr-0.5" />
                     {account.status === "erro" ? "Erro" : "Desconectado"}
                   </Badge>
@@ -861,14 +924,17 @@ export default function EmailAccountsSection() {
         </ol>
       </div>
 
-      {/* Edit Dialog */}
-      <Dialog open={editDialogOpen} onOpenChange={(v) => { setEditDialogOpen(v); if (!v) setEditingAccount(null); }}>
+      <Dialog
+        open={editDialogOpen}
+        onOpenChange={(v) => {
+          setEditDialogOpen(v);
+          if (!v) setEditingAccount(null);
+        }}
+      >
         <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Editar conta</DialogTitle>
-            <DialogDescription>
-              {editingAccount?.email}
-            </DialogDescription>
+            <DialogDescription>{editingAccount?.email}</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1">
@@ -878,9 +944,15 @@ export default function EmailAccountsSection() {
             <div className="space-y-1">
               <Label className="text-xs">Plataforma</Label>
               <Select value={editPlatform} onValueChange={setEditPlatform}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
-                  {PLATFORMS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                  {PLATFORMS.map((p) => (
+                    <SelectItem key={p} value={p}>
+                      {p}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -930,7 +1002,9 @@ export default function EmailAccountsSection() {
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+              Cancelar
+            </Button>
             <Button onClick={handleSaveEdit} disabled={saving} className="bg-amber-600 hover:bg-amber-700">
               {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Pencil className="w-4 h-4 mr-1" />}
               Salvar alterações
@@ -939,7 +1013,6 @@ export default function EmailAccountsSection() {
         </DialogContent>
       </Dialog>
 
-      {/* Sync Config Modal */}
       <SyncConfigModal
         open={syncConfigOpen}
         onOpenChange={setSyncConfigOpen}
@@ -947,18 +1020,22 @@ export default function EmailAccountsSection() {
         saving={syncConfigSaving}
         provider={syncConfigAccount?.provider}
         accountEmail={syncConfigAccount?.email}
-        initialConfig={syncConfigAccount ? {
-          sync_limit: syncConfigAccount.sync_limit ?? 100,
-          sync_subject_filters: syncConfigAccount.sync_subject_filters ?? [],
-          sync_judicial_only: syncConfigAccount.sync_judicial_only ?? true,
-          sync_extra_senders: syncConfigAccount.sync_extra_senders ?? "",
-          sync_attachments: syncConfigAccount.sync_attachments ?? false,
-          sync_attachments_pdf_only: syncConfigAccount.sync_attachments_pdf_only ?? true,
-          sync_period_days: syncConfigAccount.sync_period_days ?? 30,
-          sync_import_all: syncConfigAccount.sync_import_all ?? false,
-          sync_financial: (syncConfigAccount as any).sync_financial ?? false,
-          sync_extra_domains: (syncConfigAccount as any).sync_extra_domains ?? "",
-        } : undefined}
+        initialConfig={
+          syncConfigAccount
+            ? {
+                sync_limit: syncConfigAccount.sync_limit ?? 100,
+                sync_subject_filters: syncConfigAccount.sync_subject_filters ?? [],
+                sync_judicial_only: syncConfigAccount.sync_judicial_only ?? true,
+                sync_extra_senders: syncConfigAccount.sync_extra_senders ?? "",
+                sync_attachments: syncConfigAccount.sync_attachments ?? false,
+                sync_attachments_pdf_only: syncConfigAccount.sync_attachments_pdf_only ?? true,
+                sync_period_days: syncConfigAccount.sync_period_days ?? 30,
+                sync_import_all: syncConfigAccount.sync_import_all ?? false,
+                sync_financial: (syncConfigAccount as any).sync_financial ?? false,
+                sync_extra_domains: (syncConfigAccount as any).sync_extra_domains ?? "",
+              }
+            : undefined
+        }
       />
     </div>
   );
