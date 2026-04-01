@@ -634,7 +634,7 @@ ${childrenStr}
 ### Documentos e dados extraídos (${docs.length})
 ${docs.length > 0
     ? docs.map((d: any) => {
-        let line = `- ${d.name} [${d.category}] — Status: ${d.status} (enviado por: ${d.uploaded_by}) | Extração: ${d.extraction_status || "pending"}`;
+        let line = `- ${d.name} (ID: ${d.id}) [${d.category}] — Status: ${d.status} (enviado por: ${d.uploaded_by}) | Extração: ${d.extraction_status || "pending"} | Assinatura: ${d.signature_status || "nenhuma"} | Arquivo: ${d.file_url ? "sim" : "não"}`;
         if (d.extraction_status === "done" && d.extracted_data && Object.keys(d.extracted_data).length > 0) {
           line += `\n  Dados extraídos: ${JSON.stringify(d.extracted_data)}`;
         }
