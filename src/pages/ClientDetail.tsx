@@ -611,11 +611,18 @@ export default function ClientDetail() {
             {cl.email && <span className="flex items-center gap-1"><Mail className="w-3 h-3" />{cl.email}</span>}
           </div>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" onClick={() => setDeleteOpen(true)}>
-            <Trash2 className="w-3.5 h-3.5 mr-1.5" />Excluir
-          </Button>
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8">
+              <MoreHorizontal className="w-4 h-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setDeleteOpen(true)}>
+              <Trash2 className="w-3.5 h-3.5 mr-2" />Excluir cliente
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <ClientAccessCard
