@@ -414,6 +414,11 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
         case "send_for_signature": {
           let { document_id, client_phone } = confirmAction.data;
           const signers = [{ name: signerName.trim(), email: signerEmail.trim(), cpf: signerCpf.trim() || undefined }];
+          // Open WhatsApp window synchronously to avoid popup blocker
+          let waWindowRef: Window | null = null;
+          if (client_phone) {
+            waWindowRef = window.open("about:blank", "_blank");
+          }
           if (!document_id) {
             toast.error("Documento não identificado");
             break;
@@ -500,9 +505,12 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
             const whatsMsg = `Olá ${firstSigner.name}! Segue o link para assinar o documento "${docName}":\n\n${firstSigner.sign_url}\n\nÉ só clicar no link, rolar até o final e assinar.`;
             const encodedMsg = encodeURIComponent(whatsMsg);
             const phone = client_phone.replace(/\D/g, "");
-            window.open(`https://wa.me/${phone}?text=${encodedMsg}`, "_blank");
+            if (waWindowRef) {
+              waWindowRef.location.href = `https://wa.me/${phone}?text=${encodedMsg}`;
+            }
             toast.success("Link de assinatura gerado e WhatsApp aberto!");
           } else {
+            if (waWindowRef) waWindowRef.close();
             toast.success("Documento enviado para assinatura com sucesso!");
           }
           break;
@@ -775,15 +783,20 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
                 toast.error("Telefone do cliente não encontrado");
                 return;
               }
-              // Download first so client can attach
+              // Open WhatsApp window SYNCHRONOUSLY to avoid popup blocker
+              const cleanPhone = phone.replace(/\D/g, "");
+              const whatsNum = cleanPhone.startsWith("55") ? cleanPhone : "55" + cleanPhone;
+              const msg = encodeURIComponent(`Olá ${clientNameShort}! Segue em anexo o documento "${docName}" para sua análise e assinatura.`);
+              const waWindow = window.open("about:blank", "_blank");
+              // Download PDF
               const a = document.createElement("a");
               a.href = pdfPreviewUrl!;
               a.download = `${docName.replace(/\s+/g, "_")}.pdf`;
               a.click();
-              // Open WhatsApp
-              const cleanPhone = phone.replace(/\D/g, "");
-              const msg = encodeURIComponent(`Olá ${clientNameShort}! Segue em anexo o documento "${docName}" para sua análise e assinatura.`);
-              window.open(`https://wa.me/${cleanPhone}?text=${msg}`, "_blank");
+              // Redirect the already-opened window to WhatsApp
+              if (waWindow) {
+                waWindow.location.href = `https://wa.me/${whatsNum}?text=${msg}`;
+              }
               toast.success("PDF baixado — anexe no WhatsApp");
             }}>
               <Send className="w-4 h-4 mr-1" /> Enviar ao cliente
