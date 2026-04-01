@@ -355,6 +355,9 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
   const [emailAccounts, setEmailAccounts] = useState<{ id: string; email: string; label: string }[]>([]);
   const [selectedAccountId, setSelectedAccountId] = useState("");
   const [emailTo, setEmailTo] = useState("");
+  const [emailCc, setEmailCc] = useState("");
+  const [emailBcc, setEmailBcc] = useState("");
+  const [showCcBcc, setShowCcBcc] = useState(false);
   const [emailSubject, setEmailSubject] = useState("");
   const [emailBody, setEmailBody] = useState("");
   const [sendingEmail, setSendingEmail] = useState(false);
