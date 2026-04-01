@@ -23,6 +23,7 @@ import { format, differenceInHours, isBefore } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { GenerateDocumentsModal } from "@/components/GenerateDocumentsModal";
 import { PeticaoModal } from "@/components/PeticaoModal";
+import { RequestDataModal } from "@/components/RequestDataModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
