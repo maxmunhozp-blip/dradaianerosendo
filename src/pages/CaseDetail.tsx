@@ -577,8 +577,6 @@ export default function CaseDetail() {
                 {checklist.length === 0 && (
                   <EmptyState
                     icon={ClipboardList}
-                    title="Checklist vazio"
-                    description="Adicione itens ao checklist deste caso."
                   />
                 )}
                 {checklist.map((item) => (
