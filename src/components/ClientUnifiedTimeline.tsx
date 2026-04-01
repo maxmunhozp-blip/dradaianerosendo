@@ -207,7 +207,7 @@ export function ClientUnifiedTimeline({ caseIds }: { caseIds: string[] }) {
         unified.push({
           id: `int-${i.id}`,
           case_id: i.case_id || "",
-          title: `⚠️ ${i.raw_email_subject || "Intimação"}`,
+          title: i.raw_email_subject || "Intimação",
           description: i.ai_summary || "",
           type: "intimacao",
           status: i.status,
