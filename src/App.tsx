@@ -40,6 +40,7 @@ const App = () => (
             {/* Public */}
             <Route path="/login" element={<Login />} />
             <Route path="/portal/login" element={<PortalLogin />} />
+            <Route path="/dados/:token" element={<PublicDataRequest />} />
 
             {/* Protected admin routes */}
             <Route element={<ProtectedRoute />}>
