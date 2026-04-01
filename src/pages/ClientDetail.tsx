@@ -158,8 +158,8 @@ export default function ClientDetail() {
     // Invalidate all related queries to refresh UI
     queryClient.invalidateQueries({ queryKey: ["extraction-suggestions", id] });
     queryClient.invalidateQueries({ queryKey: ["client-all-docs", id] });
-    queryClient.invalidateQueries({ queryKey: ["client", id] });
-    queryClient.invalidateQueries({ queryKey: ["cases-by-client", id] });
+    queryClient.invalidateQueries({ queryKey: ["clients", id] });
+    queryClient.invalidateQueries({ queryKey: ["clients"] });
     toast.success(`Escaneamento concluído (${success}/${docsToScan.length}) — verifique os dados preenchidos acima.`);
   };
 
