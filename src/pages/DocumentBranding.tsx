@@ -526,11 +526,95 @@ export default function DocumentBranding() {
 
         {/* ASSINATURA EMAIL */}
         <TabsContent value="email" className="space-y-4 mt-4">
+          {/* Pre-defined templates */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm">Assinatura de E-mail</CardTitle>
+              <CardTitle className="text-sm">Modelos Prontos</CardTitle>
               <CardDescription className="text-xs">
-                HTML que será usado como assinatura nos e-mails enviados pelo sistema
+                Escolha um modelo e personalize com seus dados
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {/* Minimalista */}
+                <button
+                  type="button"
+                  className="border rounded-lg p-3 text-left hover:border-primary/50 hover:bg-muted/30 transition-colors group"
+                  onClick={() => set("email_signature_html", `<div style="font-family: Arial, sans-serif; font-size: 12px; color: #333;">
+  <p style="margin:0 0 2px;"><strong>Dra. Daiane Rosendo</strong></p>
+  <p style="margin:0; font-size:11px; color:#666;">OAB/AM 12345 · (92) 99999-9999</p>
+</div>`)}
+                >
+                  <div className="text-[10px] font-medium text-muted-foreground mb-2 uppercase tracking-wide">Minimalista</div>
+                  <div className="border rounded p-2 bg-white text-[10px] leading-tight">
+                    <p style={{ margin: 0, fontWeight: "bold" }}>Dra. Daiane Rosendo</p>
+                    <p style={{ margin: 0, color: "#666" }}>OAB/AM 12345 · (92) 99999-9999</p>
+                  </div>
+                </button>
+
+                {/* Completo */}
+                <button
+                  type="button"
+                  className="border rounded-lg p-3 text-left hover:border-primary/50 hover:bg-muted/30 transition-colors group"
+                  onClick={() => set("email_signature_html", `<div style="font-family: Arial, sans-serif; font-size: 12px; color: #333; border-top: 2px solid ${config.primary_color}; padding-top: 10px; margin-top: 10px;">
+  <p style="margin:0 0 2px;"><strong style="color:${config.primary_color};">Dra. Daiane Rosendo</strong></p>
+  <p style="margin:0 0 2px; font-size:11px;">Advocacia & Assessoria Jurídica</p>
+  <p style="margin:0 0 2px; font-size:11px; color:#666;">OAB/AM 12345</p>
+  <p style="margin:8px 0 0; font-size:11px; color:#666;">📞 (92) 99999-9999</p>
+  <p style="margin:0; font-size:11px; color:#666;">✉️ contato@escritorio.com</p>
+  <p style="margin:0; font-size:11px; color:#666;">📍 Rua Example, 123 — Manaus/AM</p>
+</div>`)}
+                >
+                  <div className="text-[10px] font-medium text-muted-foreground mb-2 uppercase tracking-wide">Completo</div>
+                  <div className="border rounded p-2 bg-white text-[10px] leading-tight">
+                    <div style={{ borderTop: `2px solid ${config.primary_color}`, paddingTop: 4 }}>
+                      <p style={{ margin: 0, fontWeight: "bold", color: config.primary_color }}>Dra. Daiane Rosendo</p>
+                      <p style={{ margin: 0, fontSize: 9 }}>Advocacia & Assessoria</p>
+                      <p style={{ margin: "3px 0 0", fontSize: 9, color: "#666" }}>📞 (92) 99999-9999</p>
+                      <p style={{ margin: 0, fontSize: 9, color: "#666" }}>📍 Rua Example, 123</p>
+                    </div>
+                  </div>
+                </button>
+
+                {/* Com Logo */}
+                <button
+                  type="button"
+                  className="border rounded-lg p-3 text-left hover:border-primary/50 hover:bg-muted/30 transition-colors group"
+                  onClick={() => set("email_signature_html", `<table cellpadding="0" cellspacing="0" style="font-family: Arial, sans-serif; font-size: 12px; color: #333;">
+  <tr>
+    <td style="padding-right: 12px; vertical-align: top;">
+      ${config.logo_url ? `<img src="${config.logo_url}" alt="Logo" width="60" height="60" style="border-radius:6px;" />` : `<div style="width:60px;height:60px;background:${config.primary_color};border-radius:6px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:bold;font-size:18px;">DR</div>`}
+    </td>
+    <td style="border-left: 2px solid ${config.secondary_color}; padding-left: 12px; vertical-align: top;">
+      <p style="margin:0 0 2px;"><strong style="color:${config.primary_color};">Dra. Daiane Rosendo</strong></p>
+      <p style="margin:0 0 2px; font-size:11px;">OAB/AM 12345</p>
+      <p style="margin:6px 0 0; font-size:11px; color:#666;">📞 (92) 99999-9999 · ✉️ contato@escritorio.com</p>
+      <p style="margin:0; font-size:11px; color:#666;">📍 Rua Example, 123 — Manaus/AM</p>
+    </td>
+  </tr>
+</table>`)}
+                >
+                  <div className="text-[10px] font-medium text-muted-foreground mb-2 uppercase tracking-wide">Com Logo</div>
+                  <div className="border rounded p-2 bg-white text-[10px] leading-tight">
+                    <div className="flex gap-2">
+                      <div className="w-8 h-8 rounded flex-shrink-0 flex items-center justify-center text-white text-[8px] font-bold" style={{ background: config.primary_color }}>DR</div>
+                      <div style={{ borderLeft: `2px solid ${config.secondary_color}`, paddingLeft: 6 }}>
+                        <p style={{ margin: 0, fontWeight: "bold", color: config.primary_color }}>Dra. Daiane Rosendo</p>
+                        <p style={{ margin: 0, fontSize: 9 }}>OAB/AM 12345</p>
+                        <p style={{ margin: "2px 0 0", fontSize: 9, color: "#666" }}>📞 (92) 99999-9999</p>
+                      </div>
+                    </div>
+                  </div>
+                </button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm">Editor de Assinatura</CardTitle>
+              <CardDescription className="text-xs">
+                Edite o HTML diretamente ou use um modelo acima como ponto de partida
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
