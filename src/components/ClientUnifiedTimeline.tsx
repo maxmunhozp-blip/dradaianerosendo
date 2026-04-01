@@ -149,7 +149,7 @@ export function ClientUnifiedTimeline({ caseIds }: { caseIds: string[] }) {
         unified.push({
           id: `msg-${m.id}`,
           case_id: m.case_id,
-          title: `💬 ${roleLabel}`,
+          title: roleLabel,
           description: (m.content || "").substring(0, 120),
           type: "mensagem",
           status: "concluído",
