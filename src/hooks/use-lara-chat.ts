@@ -45,7 +45,7 @@ export function useLaraChat(caseId?: string) {
   }, [caseId]);
 
   const sendMessage = useCallback(
-    async (content: string, attachments: ChatAttachment[], options?: { isPortalMode?: boolean }) => {
+    async (content: string, attachments: ChatAttachment[], options?: { isPortalMode?: boolean; clientId?: string }) => {
       const { display, api } = expandCommand(content);
       const isHidden = content.startsWith("__") && content.endsWith("__");
 
