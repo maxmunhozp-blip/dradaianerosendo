@@ -571,6 +571,8 @@ export default function CaseDetail() {
             isLoading={chatLoading}
             clientId={(caseData as any)?.client_id}
             caseId={id}
+            auditContent={auditContent}
+            auditLoading={auditLoading}
           />
         </div>
       )}
