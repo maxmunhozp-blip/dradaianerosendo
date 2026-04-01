@@ -70,6 +70,7 @@ export default function CaseDetail() {
   const deleteCase = useDeleteCase();
   const createDoc = useCreateDocument();
   const uploadDoc = useUploadDocument();
+  const processDocument = useProcessDocument();
   const createChecklistItem = useCreateChecklistItem();
   const toggleChecklistItem = useToggleChecklistItem();
   const deleteChecklistItem = useDeleteChecklistItem();
