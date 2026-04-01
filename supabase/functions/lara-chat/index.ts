@@ -583,10 +583,21 @@ ${opposingStr}
 ### Filhos/Menores
 ${childrenStr}
 
-### Todos os documentos do caso (${docs.length})
+### Documentos e dados extraídos (${docs.length})
 ${docs.length > 0
-    ? docs.map((d: any) => `- ${d.name} [${d.category}] — Status: ${d.status} (enviado por: ${d.uploaded_by})`).join("\n")
+    ? docs.map((d: any) => {
+        let line = `- ${d.name} [${d.category}] — Status: ${d.status} (enviado por: ${d.uploaded_by}) | Extração: ${d.extraction_status || "pending"}`;
+        if (d.extraction_status === "done" && d.extracted_data && Object.keys(d.extracted_data).length > 0) {
+          line += `\n  Dados extraídos: ${JSON.stringify(d.extracted_data)}`;
+        }
+        return line;
+      }).join("\n")
     : "Nenhum documento cadastrado."}
+
+### Sugestões de dados pendentes de confirmação (${(extractionSuggestions || []).length})
+${(extractionSuggestions || []).length > 0
+    ? (extractionSuggestions || []).map((s: any) => `- Campo: ${s.field_path} → Valor sugerido: "${s.suggested_value}" (valor atual: ${s.current_value || "vazio"}) — aguardando confirmação da advogada`).join("\n")
+    : "Nenhuma sugestão pendente."}
 
 ### Checklist completo (${checklist.length} itens)
 ${checklist.length > 0
