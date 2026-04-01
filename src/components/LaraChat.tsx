@@ -273,7 +273,7 @@ export function LaraChat({
             <Scale className="w-3 h-3" />Verificado via LexML
           </div>
         )}
-        {laraActions.length > 0 && !msg.isStreaming && <LaraActionButtons actions={laraActions} onScanComplete={(summary) => handleQuickSend(summary)} />}
+        {laraActions.length > 0 && !msg.isStreaming && <LaraActionButtons actions={laraActions} onScanComplete={(summary) => handleQuickSend(summary)} messageContent={cleanContent} />}
         {whatsappActions.length > 0 && !msg.isStreaming && <WhatsAppActionBlock actions={whatsappActions} />}
         {wizardChoice && !msg.isStreaming && <WizardChoiceBlock choice={wizardChoice} onSend={handleQuickSend} />}
         {saveDataAction && !msg.isStreaming && <SaveDataBlock action={saveDataAction} clientId={clientId} caseId={caseId} />}
