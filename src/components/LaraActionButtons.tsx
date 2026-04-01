@@ -18,36 +18,38 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import jsPDF from "jspdf";
 
+const LEGAL_DOC_START_PATTERNS = [
+  /^#{1,3}\s*(PROCURAÇÃO|CONTRATO|DECLARAÇÃO|PETIÇÃO|REQUERIMENTO|TERMO|ACORDO|NOTIFICAÇÃO|CERTIDÃO|MANDADO|ATO|OFÍCIO|PARECER|MEMORIAL|RECURSO|CONTESTAÇÃO)/im,
+  /^(PROCURAÇÃO|CONTRATO|DECLARAÇÃO|PETIÇÃO|REQUERIMENTO|TERMO|ACORDO|NOTIFICAÇÃO|CERTIDÃO|MANDADO|ATO|OFÍCIO|PARECER|MEMORIAL|RECURSO|CONTESTAÇÃO)/im,
+  /^\*\*\s*(PROCURAÇÃO|CONTRATO|DECLARAÇÃO|PETIÇÃO|REQUERIMENTO|TERMO|ACORDO|NOTIFICAÇÃO|CERTIDÃO|MANDADO|ATO|OFÍCIO|PARECER|MEMORIAL|RECURSO|CONTESTAÇÃO)/im,
+] as const;
+
+const LEGAL_DOC_BODY_HINTS = /(outorgante|outorgado|outorga|procuraç|advogad|petiç|contrat|cláusul|foro|rg\b|cpf\b|residente|domiciliad|qualificaç|poderes|pelo presente instrumento)/i;
+const OPERATIONAL_MESSAGE_PATTERN = /(acionando|gerando|vou gerar|em seguida|o sistema ir[aá]|link de assinatura|assinatura eletr[ôo]nica|compreendido|entendido|aguarde|estou acionando)/i;
+
+function stripLaraMetaBlocks(rawContent: string): string {
+  return rawContent
+    .replace(/ACTIONS_START[\s\S]*?ACTIONS_END/g, "")
+    .replace(/```[\s\S]*?```/g, "")
+    .trim();
+}
+
 /**
  * Extract ONLY the legal document content from an AI message.
  * Strips conversational text (greetings, explanations) and keeps only the formal document.
  * Looks for known legal document headings as start markers.
  */
 function extractLegalDocumentContent(rawContent: string): string {
-  // Known legal document start markers (case-insensitive)
-  const docStartPatterns = [
-    /^#{1,3}\s*(PROCURAÇÃO|CONTRATO|DECLARAÇÃO|PETIÇÃO|REQUERIMENTO|TERMO|ACORDO|NOTIFICAÇÃO|CERTIDÃO|MANDADO|ATO|OFÍCIO|PARECER|MEMORIAL|RECURSO|CONTESTAÇÃO)/im,
-    /^(PROCURAÇÃO|CONTRATO|DECLARAÇÃO|PETIÇÃO|REQUERIMENTO|TERMO|ACORDO|NOTIFICAÇÃO|CERTIDÃO|MANDADO|ATO|OFÍCIO|PARECER|MEMORIAL|RECURSO|CONTESTAÇÃO)/im,
-    /^\*\*\s*(PROCURAÇÃO|CONTRATO|DECLARAÇÃO|PETIÇÃO|REQUERIMENTO|TERMO|ACORDO|NOTIFICAÇÃO|CERTIDÃO|MANDADO|ATO|OFÍCIO|PARECER|MEMORIAL|RECURSO|CONTESTAÇÃO)/im,
-  ];
+  let text = stripLaraMetaBlocks(rawContent);
 
-  // Remove ACTIONS blocks first
-  let text = rawContent
-    .replace(/ACTIONS_START[\s\S]*?ACTIONS_END/g, "")
-    .replace(/```[\s\S]*?```/g, "")
-    .trim();
-
-  // Try to find the start of the legal document
-  for (const pattern of docStartPatterns) {
+  for (const pattern of LEGAL_DOC_START_PATTERNS) {
     const match = text.match(pattern);
     if (match && match.index !== undefined) {
-      // Found a legal document heading — take everything from there
       text = text.substring(match.index);
       break;
     }
   }
 
-  // Also try a horizontal rule (---) as separator between conversation and document
   if (text.match(/^[^#\*\n]*\n---\n/s)) {
     const hrIndex = text.indexOf("\n---\n");
     if (hrIndex !== -1) {
@@ -56,6 +58,69 @@ function extractLegalDocumentContent(rawContent: string): string {
   }
 
   return text.trim();
+}
+
+function normalizeDocumentText(rawContent: string): string {
+  return extractLegalDocumentContent(rawContent)
+    .replace(/#{1,6}\s/g, "")
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/\*(.*?)\*/g, "$1")
+    .trim();
+}
+
+function isLikelyLegalDocument(rawContent: string): boolean {
+  const text = extractLegalDocumentContent(rawContent);
+  if (!text || text.length < 180) return false;
+
+  const opening = text.slice(0, 220);
+  const paragraphCount = text.split(/\n\s*\n|\n/).filter((line) => line.trim().length > 0).length;
+  const hasHeading = LEGAL_DOC_START_PATTERNS.some((pattern) => pattern.test(text));
+  const hasLegalHints = LEGAL_DOC_BODY_HINTS.test(text);
+  const looksOperational = OPERATIONAL_MESSAGE_PATTERN.test(opening) && text.length < 500;
+
+  return !looksOperational && (hasHeading || (hasLegalHints && paragraphCount >= 3 && text.length > 280));
+}
+
+function resolveDocumentDraft(messageContent?: string, allMessages?: { role: string; content: string }[]): string {
+  const candidates: string[] = [];
+  const seen = new Set<string>();
+
+  if (messageContent?.trim()) candidates.push(messageContent);
+  for (let i = (allMessages?.length || 0) - 1; i >= 0; i--) {
+    const msg = allMessages?.[i];
+    if (msg?.role === "assistant" && msg.content?.trim()) {
+      candidates.push(msg.content);
+    }
+  }
+
+  let bestText = "";
+  let bestScore = -Infinity;
+
+  for (const candidate of candidates) {
+    const raw = candidate.trim();
+    if (!raw || seen.has(raw)) continue;
+    seen.add(raw);
+
+    const extracted = extractLegalDocumentContent(raw);
+    const normalized = normalizeDocumentText(raw);
+    if (!normalized) continue;
+
+    let score = 0;
+    if (isLikelyLegalDocument(raw)) score += 10;
+    if (LEGAL_DOC_START_PATTERNS.some((pattern) => pattern.test(extracted))) score += 4;
+    if (LEGAL_DOC_BODY_HINTS.test(extracted)) score += 2;
+    if (extracted.length > 500) score += 3;
+    if (extracted.length > 1000) score += 2;
+    if (OPERATIONAL_MESSAGE_PATTERN.test(extracted.slice(0, 220))) score -= 12;
+    if (messageContent && raw === messageContent.trim()) score += 1;
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestText = normalized;
+    }
+  }
+
+  return bestScore >= 6 ? bestText : "";
 }
 
 /** Remove accents and special chars from file names for storage compatibility */
@@ -540,47 +605,12 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent, all
 
         case "generate_document":
         case "generate_pdf": {
-          // Try current message first, then search previous assistant messages for legal document content
-          let rawText = messageContent || "";
           const docName = confirmAction.data.document_name || confirmAction.data.template || "Documento";
           const caseId = confirmAction.data.case_id;
+          const cleanText = resolveDocumentDraft(messageContent, allMessages);
 
-          // If current message doesn't contain a legal document, search backwards in allMessages
-          const currentExtracted = extractLegalDocumentContent(rawText);
-          const currentHasDoc = currentExtracted.length > 100;
-          if (!currentHasDoc && allMessages && allMessages.length > 0) {
-            // First try extractLegalDocumentContent, then fall back to longest non-confirmation assistant message
-            let found = false;
-            for (let i = allMessages.length - 1; i >= 0; i--) {
-              const msg = allMessages[i];
-              if (msg.role === "assistant") {
-                const extracted = extractLegalDocumentContent(msg.content);
-                if (extracted.length > 100) {
-                  rawText = msg.content;
-                  found = true;
-                  break;
-                }
-              }
-            }
-            if (!found) {
-              // Fallback: find longest assistant message that isn't a short confirmation
-              const confirmPattern = /acionando|gerando|compreendido|vou gerar|entendido|certo!/i;
-              const candidates = (allMessages || [])
-                .filter(m => m.role === "assistant" && m.content.trim().length > 200 && !confirmPattern.test(m.content.substring(0, 80)));
-              if (candidates.length > 0) {
-                rawText = candidates.reduce((a, b) => a.content.length > b.content.length ? a : b).content;
-              }
-            }
-          }
-
-          if (!rawText.trim()) { toast.error("Conteúdo do documento não encontrado"); break; }
+          if (!cleanText) { toast.error("Texto do documento não encontrado na conversa"); break; }
           if (!caseId) { toast.error("Caso não identificado"); break; }
-
-          const cleanText = extractLegalDocumentContent(rawText)
-            .replace(/#{1,6}\s/g, "")
-            .replace(/\*\*(.*?)\*\*/g, "$1")
-            .replace(/\*(.*?)\*/g, "$1")
-            .trim();
 
           // Always open editor — let user fill in missing fields manually
           const idx = allActions.indexOf(confirmAction);
@@ -615,45 +645,14 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent, all
           }
 
           if (needsEditor) {
-            // Document doesn't exist or has no file — open editor first
-            let rawText = messageContent || "";
             const caseId = confirmAction.data.case_id || "";
             const docName = confirmAction.data.document_name || "Documento";
+            const cleanText = resolveDocumentDraft(messageContent, allMessages);
 
-            const hasDoc = extractLegalDocumentContent(rawText).length > 100;
-            if (!hasDoc && allMessages && allMessages.length > 0) {
-              let found = false;
-              for (let i = allMessages.length - 1; i >= 0; i--) {
-                const msg = allMessages[i];
-                if (msg.role === "assistant") {
-                  const extracted = extractLegalDocumentContent(msg.content);
-                  if (extracted.length > 100) {
-                    rawText = msg.content;
-                    found = true;
-                    break;
-                  }
-                }
-              }
-              if (!found) {
-                const confirmPattern = /acionando|gerando|compreendido|vou gerar|entendido|certo!/i;
-                const candidates = (allMessages || [])
-                  .filter(m => m.role === "assistant" && m.content.trim().length > 200 && !confirmPattern.test(m.content.substring(0, 80)));
-                if (candidates.length > 0) {
-                  rawText = candidates.reduce((a, b) => a.content.length > b.content.length ? a : b).content;
-                }
-              }
-            }
-
-            if (!rawText.trim()) {
-              toast.error("Conteúdo do documento não encontrado. Gere o PDF primeiro usando 'Gerar PDF'.");
+            if (!cleanText) {
+              toast.error("Texto do documento não encontrado na conversa. Gere o documento novamente.");
               break;
             }
-
-            const cleanText = extractLegalDocumentContent(rawText)
-              .replace(/#{1,6}\s/g, "")
-              .replace(/\*\*(.*?)\*\*/g, "$1")
-              .replace(/\*(.*?)\*/g, "$1")
-              .trim();
 
             const idx = allActions.indexOf(confirmAction);
             setEditableText(cleanText);
