@@ -580,11 +580,6 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
         case "send_for_signature": {
           let { document_id, client_phone } = confirmAction.data;
           const signers = [{ name: signerName.trim(), email: signerEmail.trim(), cpf: signerCpf.trim() || undefined }];
-          // Open WhatsApp window synchronously to avoid popup blocker
-          let waWindowRef: Window | null = null;
-          if (client_phone) {
-            waWindowRef = window.open("about:blank", "_blank");
-          }
           if (!document_id) {
             toast.error("Documento não identificado");
             break;
@@ -669,12 +664,9 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
             const whatsMsg = `Olá ${firstSigner.name}! Segue o link para assinar o documento "${docName}":\n\n${firstSigner.sign_url}\n\nÉ só clicar no link, rolar até o final e assinar.`;
             const encodedMsg = encodeURIComponent(whatsMsg);
             const phone = client_phone.replace(/\D/g, "");
-            if (waWindowRef) {
-              waWindowRef.location.href = `https://wa.me/${phone}?text=${encodedMsg}`;
-            }
+            window.open(`https://wa.me/${phone}?text=${encodedMsg}`, "_blank", "noopener,noreferrer");
             toast.success("Link de assinatura gerado e WhatsApp aberto!");
           } else {
-            if (waWindowRef) waWindowRef.close();
             toast.success("Documento enviado para assinatura com sucesso!");
           }
           break;
