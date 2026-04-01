@@ -247,7 +247,7 @@ export type Database = {
           completed_at: string | null
           created_at: string
           expires_at: string
-          fields_requested: Json
+          fields_requested: string[] | null
           id: string
           status: string
           token: string
@@ -258,7 +258,7 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           expires_at?: string
-          fields_requested?: Json
+          fields_requested?: string[] | null
           id?: string
           status?: string
           token?: string
@@ -269,7 +269,7 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           expires_at?: string
-          fields_requested?: Json
+          fields_requested?: string[] | null
           id?: string
           status?: string
           token?: string

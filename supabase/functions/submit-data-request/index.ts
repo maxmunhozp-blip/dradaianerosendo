@@ -70,6 +70,18 @@ Deno.serve(async (req) => {
     if (formData.opposing_party_address) caseUpdate.opposing_party_address = formData.opposing_party_address;
     if (formData.children) caseUpdate.children = formData.children;
 
+    // Track which fields were completed
+    const fieldsCompleted: string[] = [];
+    if (Object.keys(clientUpdate).length > 0) {
+      if (clientUpdate.address_street) fieldsCompleted.push("address");
+      if (clientUpdate.rg) fieldsCompleted.push("rg");
+      if (clientUpdate.marital_status) fieldsCompleted.push("marital_status");
+      if (clientUpdate.profession) fieldsCompleted.push("profession");
+      if (clientUpdate.nationality) fieldsCompleted.push("nationality");
+    }
+    if (formData.children) fieldsCompleted.push("children");
+    if (formData.opposing_party_name) fieldsCompleted.push("opposing_party");
+
     // Update client
     if (Object.keys(clientUpdate).length > 0) {
       const { error } = await supabaseAdmin
@@ -88,10 +100,19 @@ Deno.serve(async (req) => {
       if (error) throw error;
     }
 
-    // Mark request as completed
+    // Determine status
+    const requestedFields = request.fields_requested || [];
+    const allCompleted = requestedFields.every((f: string) => fieldsCompleted.includes(f));
+    const newStatus = allCompleted ? "completed" : fieldsCompleted.length > 0 ? "partial" : "pending";
+
+    // Mark request as completed/partial
     const { error: updateError } = await supabaseAdmin
       .from("data_requests")
-      .update({ status: "completed", completed_at: new Date().toISOString() })
+      .update({
+        status: newStatus,
+        fields_completed: fieldsCompleted,
+        completed_at: newStatus === "completed" ? new Date().toISOString() : null,
+      })
       .eq("id", request.id);
 
     if (updateError) throw updateError;
