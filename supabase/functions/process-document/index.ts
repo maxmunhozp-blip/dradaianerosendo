@@ -345,7 +345,9 @@ REGRAS CRÍTICAS:
     }));
 
     if (suggestionsToInsert.length > 0) {
-      await sb.from("extraction_suggestions").insert(suggestionsToInsert);
+      for (const s of suggestionsToInsert) {
+        await sb.from("extraction_suggestions").upsert(s, { onConflict: "field_path,case_id", ignoreDuplicates: false });
+      }
     }
 
     // Auto-apply ONLY high_confidence
