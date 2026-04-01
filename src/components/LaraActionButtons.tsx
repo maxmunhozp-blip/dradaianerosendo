@@ -348,7 +348,16 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
   const [pdfPreviewBlob, setPdfPreviewBlob] = useState<Blob | null>(null);
   const [pdfPreviewMeta, setPdfPreviewMeta] = useState<{ docName: string; caseId: string; action: LaraAction; actionIndex: number } | null>(null);
   const [savingPdf, setSavingPdf] = useState(false);
-  const [clientInfo, setClientInfo] = useState<{ phone: string; name: string } | null>(null);
+  const [clientInfo, setClientInfo] = useState<{ phone: string; name: string; email: string } | null>(null);
+
+  // Email send state
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [emailAccounts, setEmailAccounts] = useState<{ id: string; email: string; label: string }[]>([]);
+  const [selectedAccountId, setSelectedAccountId] = useState("");
+  const [emailTo, setEmailTo] = useState("");
+  const [emailSubject, setEmailSubject] = useState("");
+  const [emailBody, setEmailBody] = useState("");
+  const [sendingEmail, setSendingEmail] = useState(false);
 
   // Text editor state (before PDF generation)
   const [editingText, setEditingText] = useState(false);
@@ -365,21 +374,32 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
   const [scanProgress, setScanProgress] = useState(0);
   const [scanTotal, setScanTotal] = useState(0);
 
-  // Fetch client phone/name when preview meta is set
+  // Fetch client phone/name/email when preview meta is set
   useEffect(() => {
     if (!pdfPreviewMeta?.caseId) { setClientInfo(null); return; }
     (async () => {
       const { data } = await supabase
         .from("cases")
-        .select("client_id, clients(name, phone)")
+        .select("client_id, clients(name, phone, email)")
         .eq("id", pdfPreviewMeta.caseId)
         .single();
       if (data && (data as any).clients) {
         const c = (data as any).clients;
-        setClientInfo({ phone: c.phone || "", name: c.name || "" });
+        setClientInfo({ phone: c.phone || "", name: c.name || "", email: c.email || "" });
       }
     })();
   }, [pdfPreviewMeta?.caseId]);
+
+  // Fetch email accounts
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from("email_accounts").select("id, email, label").eq("status", "active");
+      if (data && data.length > 0) {
+        setEmailAccounts(data);
+        setSelectedAccountId(data[0].id);
+      }
+    })();
+  }, []);
 
   const allActions = [...actions, ...dynamicActions];
 
@@ -945,25 +965,30 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
             }}>
               <MessageSquare className="w-4 h-4 mr-1" /> Enviar via WhatsApp
             </Button>
-            <Button variant="outline" size="sm" onClick={() => {
+            <Button variant="outline" size="sm" onClick={async () => {
               if (!pdfPreviewBlob || !pdfPreviewMeta) return;
-              const clientEmail = clientInfo ? null : null; // fetched separately below
               const clientNameShort = (clientInfo?.name || pdfPreviewMeta.action?.data?.client_name || "").split(" ")[0];
               const docName = pdfPreviewMeta.docName || "documento";
+              const caseId = pdfPreviewMeta.caseId;
 
-              // Download PDF first
-              const a = document.createElement("a");
-              a.href = pdfPreviewUrl!;
-              a.download = `${docName.replace(/\s+/g, "_")}.pdf`;
-              a.click();
+              // Upload PDF to get a public URL for the email link
+              const fileName = `${caseId}/${Date.now()}_${sanitizeFileName(docName)}_email.pdf`;
+              const { error: upErr } = await supabase.storage
+                .from("case-documents")
+                .upload(fileName, pdfPreviewBlob, { contentType: "application/pdf" });
+              
+              let pdfLink = "";
+              if (!upErr) {
+                const { data: urlData } = supabase.storage.from("case-documents").getPublicUrl(fileName);
+                pdfLink = urlData.publicUrl;
+              }
 
-              // Build mailto with subject and body
-              const subject = encodeURIComponent(`${docName} - Para sua análise e assinatura`);
-              const body = encodeURIComponent(
-                `Olá ${clientNameShort},\n\nSegue em anexo o documento "${docName}" para sua análise e assinatura.\n\nPor favor, revise e entre em contato caso tenha dúvidas.\n\nAtenciosamente,\nDra. Daiane Rosendo`
+              setEmailTo(clientInfo?.email || "");
+              setEmailSubject(`${docName} - Para sua análise e assinatura`);
+              setEmailBody(
+                `Olá ${clientNameShort},\n\nSegue o documento "${docName}" para sua análise e assinatura.\n\n${pdfLink ? `Link para download: ${pdfLink}\n\n` : ""}Por favor, revise e entre em contato caso tenha dúvidas.\n\nAtenciosamente`
               );
-              window.open(`mailto:?subject=${subject}&body=${body}`, "_self");
-              toast.success("PDF baixado — anexe ao e-mail que será aberto");
+              setEmailDialogOpen(true);
             }}>
               <Mail className="w-4 h-4 mr-1" /> Enviar por e-mail
             </Button>
@@ -1039,6 +1064,97 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
             }} disabled={savingPdf}>
               {savingPdf && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
               <Save className="w-4 h-4 mr-1" /> Salvar no caso
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Email Send Dialog */}
+      <Dialog open={emailDialogOpen} onOpenChange={(open) => {
+        if (!open) { setEmailDialogOpen(false); setEmailTo(""); setEmailSubject(""); setEmailBody(""); }
+      }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="w-4 h-4" />
+              Enviar documento por e-mail
+            </DialogTitle>
+            <DialogDescription>O documento será enviado via SMTP pela conta de e-mail configurada.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            {emailAccounts.length > 1 && (
+              <div className="space-y-1.5">
+                <Label>Conta de envio</Label>
+                <select
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={selectedAccountId}
+                  onChange={e => setSelectedAccountId(e.target.value)}
+                >
+                  {emailAccounts.map(acc => (
+                    <option key={acc.id} value={acc.id}>{acc.label} ({acc.email})</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {emailAccounts.length === 1 && (
+              <div className="text-xs text-muted-foreground">
+                Enviando de: <span className="font-medium text-foreground">{emailAccounts[0].email}</span>
+              </div>
+            )}
+            {emailAccounts.length === 0 && (
+              <div className="text-sm text-destructive">
+                Nenhuma conta de e-mail configurada. Configure uma conta em Administrador → E-mails.
+              </div>
+            )}
+            <div className="space-y-1.5">
+              <Label htmlFor="email-to">Para *</Label>
+              <Input id="email-to" type="email" value={emailTo} onChange={e => setEmailTo(e.target.value)} placeholder="email@exemplo.com" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="email-subject">Assunto</Label>
+              <Input id="email-subject" value={emailSubject} onChange={e => setEmailSubject(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="email-body">Mensagem</Label>
+              <textarea
+                id="email-body"
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[120px] resize-y"
+                value={emailBody}
+                onChange={e => setEmailBody(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setEmailDialogOpen(false)} disabled={sendingEmail}>Cancelar</Button>
+            <Button
+              disabled={sendingEmail || !emailTo.trim() || !selectedAccountId || emailAccounts.length === 0}
+              onClick={async () => {
+                setSendingEmail(true);
+                try {
+                  const { data, error } = await supabase.functions.invoke("send-email", {
+                    body: {
+                      account_id: selectedAccountId,
+                      to: emailTo.trim(),
+                      subject: emailSubject,
+                      body: emailBody,
+                    },
+                  });
+                  if (error) throw new Error(error.message);
+                  if (data?.error) throw new Error(data.error);
+                  toast.success("E-mail enviado com sucesso!");
+                  setEmailDialogOpen(false);
+                  setEmailTo("");
+                  setEmailSubject("");
+                  setEmailBody("");
+                } catch (e: any) {
+                  toast.error("Erro ao enviar e-mail: " + (e.message || "erro desconhecido"));
+                } finally {
+                  setSendingEmail(false);
+                }
+              }}
+            >
+              {sendingEmail && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
+              <Send className="w-4 h-4 mr-1" /> Enviar
             </Button>
           </DialogFooter>
         </DialogContent>
