@@ -75,8 +75,26 @@ function formatDate(dateStr: string) {
   return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
 }
 
+const MANUAL_TYPES = [
+  { value: "manual", label: "Movimentação geral" },
+  { value: "documento", label: "Documento" },
+  { value: "audiencia", label: "Audiência" },
+  { value: "peticao", label: "Petição" },
+  { value: "timeline", label: "Atualização" },
+];
+
+const MANUAL_STATUSES = [
+  { value: "atualização_recebida", label: "Atualização recebida" },
+  { value: "concluído", label: "Concluído" },
+  { value: "pendente", label: "Pendente" },
+  { value: "atenção_necessária", label: "Atenção necessária" },
+];
+
 export function ClientUnifiedTimeline({ caseIds }: { caseIds: string[] }) {
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const qc = useQueryClient();
+
   const { data: events = [], isLoading } = useQuery({
     queryKey: ["client-unified-timeline", caseIds],
     queryFn: async () => {
