@@ -335,6 +335,15 @@ export function DocumentRow({ doc, clientName, clientEmail, clientCpf, clientPho
               >
                 <Download className="w-3.5 h-3.5" />
               </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                title="Enviar por e-mail"
+                onClick={(e) => { e.stopPropagation(); openEmailDialog(); }}
+              >
+                <Mail className="w-3.5 h-3.5" />
+              </Button>
             </>
           )}
           {doc.file_url && doc.file_url !== "" && (!doc.signature_status || doc.signature_status === "none") && (
