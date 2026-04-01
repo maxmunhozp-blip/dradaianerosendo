@@ -86,7 +86,7 @@ export function RequestDataModal({ open, onOpenChange, caseId, clientId, clientD
     }
   };
 
-  const whatsappMessage = `Olá ${firstName}! Para darmos andamento ao seu processo, precisamos de algumas informações rápidas. Acesse o link abaixo — são apenas ${selected.size} passos e leva menos de 3 minutos:\n\n${generatedUrl || "[link]"}\n\nQualquer dúvida, estou à disposição! 🤝\nDra. Daiane Rosendo`;
+  const whatsappMessage = `Olá ${firstName}! Para dar continuidade ao seu processo, preciso de algumas informações. Clique no link abaixo para preencher com segurança (menos de 3 minutos):\n\n${generatedUrl || "[link]"}\n\nQualquer dúvida, estou à disposição! 🤝\nDra. Daiane Rosendo`;
 
   const handleWhatsApp = () => {
     if (!phone) { toast.error("Cliente sem telefone cadastrado"); return; }
