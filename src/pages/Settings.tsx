@@ -284,6 +284,7 @@ function SignatureSettings({ value, onChange, onSave }: { value: string; onChang
   const [showToken, setShowToken] = useState(false);
   const [testing, setTesting] = useState(false);
   const [savingToken, setSavingToken] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<"idle" | "ok" | "error">("idle");
 
   const saveToken = async () => {
     if (!value.trim()) {
@@ -307,19 +308,24 @@ function SignatureSettings({ value, onChange, onSave }: { value: string; onChang
       return;
     }
     setTesting(true);
+    setConnectionStatus("idle");
     try {
       const { data, error } = await supabase.functions.invoke("test-zapsign", {
         body: { token: value },
       });
       if (error) {
+        setConnectionStatus("error");
         toast.error(error.message || "Erro ao conectar com ZapSign.");
       } else if (data?.success) {
+        setConnectionStatus("ok");
         await onSave();
         toast.success("Conexão OK! Token válido e salvo.");
       } else {
+        setConnectionStatus("error");
         toast.error(data?.error || "Token inválido. Verifique e tente novamente.");
       }
     } catch (err: any) {
+      setConnectionStatus("error");
       toast.error(err?.message || "Erro ao conectar com ZapSign.");
     } finally {
       setTesting(false);
@@ -336,7 +342,7 @@ function SignatureSettings({ value, onChange, onSave }: { value: string; onChang
               type={showToken ? "text" : "password"}
               placeholder="Seu token ZapSign"
               value={value}
-              onChange={(e) => onChange(e.target.value)}
+              onChange={(e) => { onChange(e.target.value); setConnectionStatus("idle"); }}
               className="pr-9"
             />
             <Button
@@ -349,15 +355,37 @@ function SignatureSettings({ value, onChange, onSave }: { value: string; onChang
             </Button>
           </div>
         </div>
-        <div className="bg-amber-50 border border-amber-200 rounded-md p-2.5 space-y-1">
-          <p className="text-[11px] font-medium text-amber-800">⚠️ Use o Token da API, NÃO o token do Webhook!</p>
-          <p className="text-[11px] text-amber-700">
-            No ZapSign: <span className="font-medium">Configurações → Integrações → ZapSign API → Access Token</span>
+
+        {/* Status-aware hint */}
+        {connectionStatus === "ok" ? (
+          <div className="bg-emerald-50 border border-emerald-200 rounded-md p-2.5 flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <p className="text-[11px] font-medium text-emerald-700">Conexão verificada com sucesso! Token válido.</p>
+          </div>
+        ) : connectionStatus === "error" ? (
+          <div className="bg-destructive/5 border border-destructive/20 rounded-md p-2.5 space-y-1">
+            <p className="text-[11px] font-medium text-destructive">Token inválido ou erro na conexão.</p>
+            <p className="text-[11px] text-muted-foreground">
+              No ZapSign: <span className="font-medium">Configurações → Integrações → ZapSign API → Access Token</span>
+            </p>
+            <p className="text-[10px] text-muted-foreground">
+              Use o Token da API, não o token do Webhook.
+            </p>
+          </div>
+        ) : value.trim() ? (
+          <p className="text-[10px] text-muted-foreground">
+            Clique em "Testar conexão" para verificar se o token está correto.
           </p>
-          <p className="text-[10px] text-amber-600">
-            O token do Webhook (em Integrações → Webhooks) serve apenas para receber notificações e não funciona aqui.
-          </p>
-        </div>
+        ) : (
+          <div className="bg-muted/50 border border-border rounded-md p-2.5 space-y-1">
+            <p className="text-[11px] text-muted-foreground">
+              No ZapSign: <span className="font-medium">Configurações → Integrações → ZapSign API → Access Token</span>
+            </p>
+            <p className="text-[10px] text-muted-foreground">
+              Use o Token da API, não o token do Webhook (em Integrações → Webhooks).
+            </p>
+          </div>
+        )}
       </div>
 
       <div className="flex items-center gap-2">
