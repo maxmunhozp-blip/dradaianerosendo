@@ -89,6 +89,7 @@ const App = () => {
       <Toaster />
       <Sonner />
       <AuthProvider>
+        <ViewAsProvider>
         <BrowserRouter>
           <Routes>
             {/* Public */}
