@@ -938,30 +938,38 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
             }}>
               Descartar
             </Button>
-            <Button variant="outline" size="sm" onClick={() => {
+            <Button variant="outline" size="sm" onClick={async () => {
               if (!pdfPreviewBlob || !pdfPreviewMeta) return;
               const phone = clientInfo?.phone || pdfPreviewMeta.action?.data?.client_phone || "";
               const clientNameShort = (clientInfo?.name || pdfPreviewMeta.action?.data?.client_name || "").split(" ")[0];
               const docName = pdfPreviewMeta.docName || "documento";
+              const caseId = pdfPreviewMeta.caseId;
               if (!phone) {
                 toast.error("Telefone do cliente não encontrado");
                 return;
               }
-              // Open WhatsApp window SYNCHRONOUSLY to avoid popup blocker
               const cleanPhone = phone.replace(/\D/g, "");
               const whatsNum = cleanPhone.startsWith("55") ? cleanPhone : "55" + cleanPhone;
-              const msg = encodeURIComponent(`Olá ${clientNameShort}! Segue em anexo o documento "${docName}" para sua análise e assinatura.`);
-              const waWindow = window.open("about:blank", "_blank");
-              // Download PDF
-              const a = document.createElement("a");
-              a.href = pdfPreviewUrl!;
-              a.download = `${docName.replace(/\s+/g, "_")}.pdf`;
-              a.click();
-              // Redirect the already-opened window to WhatsApp
-              if (waWindow) {
-                waWindow.location.href = `https://wa.me/${whatsNum}?text=${msg}`;
-              }
-              toast.success("PDF baixado — anexe no WhatsApp");
+
+              // Upload PDF to get a public link to include in the message
+              let pdfLink = "";
+              try {
+                const fileName = `${caseId}/${Date.now()}_${sanitizeFileName(docName)}_wa.pdf`;
+                const { error: upErr } = await supabase.storage
+                  .from("case-documents")
+                  .upload(fileName, pdfPreviewBlob, { contentType: "application/pdf" });
+                if (!upErr) {
+                  const { data: urlData } = supabase.storage.from("case-documents").getPublicUrl(fileName);
+                  pdfLink = urlData.publicUrl;
+                }
+              } catch (_) { /* ignore upload errors */ }
+
+              const msg = encodeURIComponent(
+                `Olá ${clientNameShort}! Segue o documento "${docName}" para sua análise e assinatura.${pdfLink ? `\n\n📄 ${pdfLink}` : ""}`
+              );
+
+              // Use location.href to avoid popup blockers
+              window.location.href = `https://wa.me/${whatsNum}?text=${msg}`;
             }}>
               <MessageSquare className="w-4 h-4 mr-1" /> Enviar via WhatsApp
             </Button>
