@@ -968,8 +968,7 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
                 `Olá ${clientNameShort}! Segue o documento "${docName}" para sua análise e assinatura.${pdfLink ? `\n\n📄 ${pdfLink}` : ""}`
               );
 
-              // Use location.href to avoid popup blockers
-              window.location.href = `https://wa.me/${whatsNum}?text=${msg}`;
+              window.open(`https://wa.me/${whatsNum}?text=${msg}`, "_blank", "noopener,noreferrer");
             }}>
               <MessageSquare className="w-4 h-4 mr-1" /> Enviar via WhatsApp
             </Button>
