@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2, MessageSquare, ClipboardList, ExternalLink, FileText, Bell, ScanSearch, CheckCircle2, XCircle, Download, PenLine } from "lucide-react";
+import { Loader2, MessageSquare, ClipboardList, ExternalLink, FileText, Bell, ScanSearch, CheckCircle2, XCircle, Download, PenLine, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -66,6 +66,12 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
   // Generated document for signature flow
   const [generatedDocId, setGeneratedDocId] = useState<string | null>(null);
   const [generatedDocName, setGeneratedDocName] = useState<string>("");
+
+  // PDF Preview state
+  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
+  const [pdfPreviewBlob, setPdfPreviewBlob] = useState<Blob | null>(null);
+  const [pdfPreviewMeta, setPdfPreviewMeta] = useState<{ docName: string; caseId: string; action: LaraAction; actionIndex: number } | null>(null);
+  const [savingPdf, setSavingPdf] = useState(false);
 
   // All actions including dynamically added ones
   const [dynamicActions, setDynamicActions] = useState<LaraAction[]>([]);
@@ -209,19 +215,12 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
 
         case "generate_document":
         case "generate_pdf": {
-          // Extract document text from the message content
           const docText = messageContent || "";
           const docName = confirmAction.data.document_name || confirmAction.data.template || "Documento";
           const caseId = confirmAction.data.case_id;
 
-          if (!docText.trim()) {
-            toast.error("Conteúdo do documento não encontrado");
-            break;
-          }
-          if (!caseId) {
-            toast.error("Caso não identificado");
-            break;
-          }
+          if (!docText.trim()) { toast.error("Conteúdo do documento não encontrado"); break; }
+          if (!caseId) { toast.error("Caso não identificado"); break; }
 
           // Generate PDF with jsPDF
           const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
@@ -231,7 +230,6 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
           pdf.setFont("helvetica", "normal");
           pdf.setFontSize(12);
 
-          // Clean markdown formatting for PDF
           const cleanText = docText
             .replace(/#{1,6}\s/g, "")
             .replace(/\*\*(.*?)\*\*/g, "$1")
@@ -253,61 +251,15 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
             y += lineHeight;
           }
 
-          // Upload PDF to storage
           const pdfBlob = pdf.output("blob");
-          const fileName = `${caseId}/${Date.now()}_${docName.replace(/\s+/g, "_")}.pdf`;
-          
-          const { error: uploadError } = await supabase.storage
-            .from("case-documents")
-            .upload(fileName, pdfBlob, { contentType: "application/pdf" });
+          const previewUrl = URL.createObjectURL(pdfBlob);
 
-          if (uploadError) {
-            toast.error("Erro ao fazer upload do PDF: " + uploadError.message);
-            break;
-          }
-
-          const { data: urlData } = supabase.storage
-            .from("case-documents")
-            .getPublicUrl(fileName);
-
-          // Create document record
-          const { data: newDoc, error: docError } = await supabase
-            .from("documents")
-            .insert({
-              case_id: caseId,
-              name: docName,
-              file_url: urlData.publicUrl,
-              status: "aprovado",
-              category: "peticao",
-              uploaded_by: "lara",
-              signature_status: "none",
-            })
-            .select("id, name")
-            .single();
-
-          if (docError) {
-            toast.error("Erro ao criar documento: " + docError.message);
-            break;
-          }
-
-          toast.success(`PDF "${docName}" gerado e salvo no caso!`);
-
-          // Store generated doc info and add signature action
-          setGeneratedDocId(newDoc.id);
-          setGeneratedDocName(newDoc.name);
-          setDynamicActions(prev => [
-            ...prev,
-            {
-              type: "send_for_signature" as const,
-              label: `Enviar "${newDoc.name}" para assinatura`,
-              data: {
-                document_id: newDoc.id,
-                document_name: newDoc.name,
-                client_phone: confirmAction.data.client_phone,
-                client_name: confirmAction.data.client_name,
-              },
-            },
-          ]);
+          // Show preview instead of saving immediately
+          const idx = allActions.indexOf(confirmAction);
+          setPdfPreviewBlob(pdfBlob);
+          setPdfPreviewUrl(previewUrl);
+          setPdfPreviewMeta({ docName, caseId, action: confirmAction, actionIndex: idx });
+          setConfirmAction(null);
           break;
         }
 
@@ -486,6 +438,114 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
             >
               {executing && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
               {confirmAction?.type === "send_for_signature" ? "Enviar para assinatura" : "Confirmar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* PDF Preview Dialog */}
+      <Dialog open={!!pdfPreviewUrl} onOpenChange={(open) => {
+        if (!open) {
+          if (pdfPreviewUrl) URL.revokeObjectURL(pdfPreviewUrl);
+          setPdfPreviewUrl(null);
+          setPdfPreviewBlob(null);
+          setPdfPreviewMeta(null);
+        }
+      }}>
+        <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="w-4 h-4" />
+              {pdfPreviewMeta?.docName}
+            </DialogTitle>
+            <DialogDescription>Revise o documento antes de salvar.</DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 min-h-0 border rounded-md overflow-hidden bg-muted">
+            {pdfPreviewUrl && (
+              <iframe src={pdfPreviewUrl} className="w-full h-[60vh]" title="PDF Preview" />
+            )}
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => {
+              if (pdfPreviewUrl) URL.revokeObjectURL(pdfPreviewUrl);
+              setPdfPreviewUrl(null);
+              setPdfPreviewBlob(null);
+              setPdfPreviewMeta(null);
+            }}>
+              Descartar
+            </Button>
+            <Button variant="outline" onClick={() => {
+              if (pdfPreviewUrl) {
+                const a = document.createElement("a");
+                a.href = pdfPreviewUrl;
+                a.download = `${pdfPreviewMeta?.docName || "documento"}.pdf`;
+                a.click();
+              }
+            }}>
+              <Download className="w-4 h-4 mr-1" /> Baixar
+            </Button>
+            <Button onClick={async () => {
+              if (!pdfPreviewBlob || !pdfPreviewMeta) return;
+              setSavingPdf(true);
+              try {
+                const { docName, caseId, action, actionIndex } = pdfPreviewMeta;
+                const fileName = `${caseId}/${Date.now()}_${docName.replace(/\s+/g, "_")}.pdf`;
+
+                const { error: uploadError } = await supabase.storage
+                  .from("case-documents")
+                  .upload(fileName, pdfPreviewBlob, { contentType: "application/pdf" });
+
+                if (uploadError) { toast.error("Erro ao fazer upload: " + uploadError.message); return; }
+
+                const { data: urlData } = supabase.storage
+                  .from("case-documents")
+                  .getPublicUrl(fileName);
+
+                const { data: newDoc, error: docError } = await supabase
+                  .from("documents")
+                  .insert({
+                    case_id: caseId,
+                    name: docName,
+                    file_url: urlData.publicUrl,
+                    status: "aprovado",
+                    category: "peticao",
+                    uploaded_by: "lara",
+                    signature_status: "none",
+                  })
+                  .select("id, name")
+                  .single();
+
+                if (docError) { toast.error("Erro ao criar documento: " + docError.message); return; }
+
+                toast.success(`PDF "${docName}" salvo no caso!`);
+                setGeneratedDocId(newDoc.id);
+                setGeneratedDocName(newDoc.name);
+                setExecuted(prev => new Set(prev).add(actionIndex));
+                setDynamicActions(prev => [
+                  ...prev,
+                  {
+                    type: "send_for_signature" as const,
+                    label: `Enviar "${newDoc.name}" para assinatura`,
+                    data: {
+                      document_id: newDoc.id,
+                      document_name: newDoc.name,
+                      client_phone: action.data.client_phone,
+                      client_name: action.data.client_name,
+                    },
+                  },
+                ]);
+              } catch (e: any) {
+                toast.error("Erro: " + (e.message || "erro desconhecido"));
+              } finally {
+                setSavingPdf(false);
+                if (pdfPreviewUrl) URL.revokeObjectURL(pdfPreviewUrl);
+                setPdfPreviewUrl(null);
+                setPdfPreviewBlob(null);
+                setPdfPreviewMeta(null);
+              }
+            }} disabled={savingPdf}>
+              {savingPdf && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
+              <Save className="w-4 h-4 mr-1" /> Salvar no caso
             </Button>
           </DialogFooter>
         </DialogContent>
