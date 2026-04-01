@@ -39,13 +39,26 @@ export function useMyPermissions() {
     queryKey: ["my-permissions", user?.id],
     enabled: !!user,
     queryFn: async () => {
-      // Check if user is admin — admins bypass permissions
+      // Check if user is admin or advogado
       const { data: isAdmin } = await supabase.rpc("has_role", {
         _user_id: user!.id,
         _role: "admin",
       });
 
       if (isAdmin) return ALL_GRANTED;
+
+      // Advogados get full data access but no settings
+      const { data: isAdvogado } = await supabase.rpc("has_role", {
+        _user_id: user!.id,
+        _role: "advogado",
+      });
+
+      if (isAdvogado) {
+        return {
+          ...ALL_GRANTED,
+          can_access_settings: false,
+        };
+      }
 
       const { data, error } = await supabase
         .from("user_permissions")

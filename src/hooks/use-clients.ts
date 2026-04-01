@@ -1,18 +1,22 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useOwnerFilter } from "@/hooks/use-owner-filter";
 import type { Database } from "@/integrations/supabase/types";
 
 type ClientRow = Database["public"]["Tables"]["clients"]["Row"];
 type ClientInsert = Database["public"]["Tables"]["clients"]["Insert"];
 
 export function useClients() {
+  const { ownerFilter } = useOwnerFilter();
   return useQuery({
-    queryKey: ["clients"],
+    queryKey: ["clients", ownerFilter],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("clients")
         .select("*")
         .order("created_at", { ascending: false });
+      if (ownerFilter) query = query.eq("owner_id", ownerFilter);
+      const { data, error } = await query;
       if (error) throw error;
       return data as ClientRow[];
     },

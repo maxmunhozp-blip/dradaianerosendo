@@ -22,6 +22,7 @@ export type Database = {
           event_date: string
           file_urls: Json | null
           id: string
+          owner_id: string | null
           pinned: boolean
           responsible: string | null
           source_email_id: string | null
@@ -38,6 +39,7 @@ export type Database = {
           event_date?: string
           file_urls?: Json | null
           id?: string
+          owner_id?: string | null
           pinned?: boolean
           responsible?: string | null
           source_email_id?: string | null
@@ -54,6 +56,7 @@ export type Database = {
           event_date?: string
           file_urls?: Json | null
           id?: string
+          owner_id?: string | null
           pinned?: boolean
           responsible?: string | null
           source_email_id?: string | null
@@ -93,6 +96,7 @@ export type Database = {
           opposing_party_address: string | null
           opposing_party_cpf: string | null
           opposing_party_name: string | null
+          owner_id: string | null
           status: string
         }
         Insert: {
@@ -107,6 +111,7 @@ export type Database = {
           opposing_party_address?: string | null
           opposing_party_cpf?: string | null
           opposing_party_name?: string | null
+          owner_id?: string | null
           status?: string
         }
         Update: {
@@ -121,6 +126,7 @@ export type Database = {
           opposing_party_address?: string | null
           opposing_party_cpf?: string | null
           opposing_party_name?: string | null
+          owner_id?: string | null
           status?: string
         }
         Relationships: [
@@ -140,6 +146,7 @@ export type Database = {
           done: boolean
           id: string
           label: string
+          owner_id: string | null
           required_by: string | null
         }
         Insert: {
@@ -148,6 +155,7 @@ export type Database = {
           done?: boolean
           id?: string
           label: string
+          owner_id?: string | null
           required_by?: string | null
         }
         Update: {
@@ -156,6 +164,7 @@ export type Database = {
           done?: boolean
           id?: string
           label?: string
+          owner_id?: string | null
           required_by?: string | null
         }
         Relationships: [
@@ -221,6 +230,7 @@ export type Database = {
           nationality: string | null
           notes: string | null
           origin: string | null
+          owner_id: string | null
           phone: string | null
           profession: string | null
           rg: string | null
@@ -244,6 +254,7 @@ export type Database = {
           nationality?: string | null
           notes?: string | null
           origin?: string | null
+          owner_id?: string | null
           phone?: string | null
           profession?: string | null
           rg?: string | null
@@ -267,6 +278,7 @@ export type Database = {
           nationality?: string | null
           notes?: string | null
           origin?: string | null
+          owner_id?: string | null
           phone?: string | null
           profession?: string | null
           rg?: string | null
@@ -411,6 +423,7 @@ export type Database = {
           id: string
           name: string
           notes: string | null
+          owner_id: string | null
           signature_completed_at: string | null
           signature_doc_token: string | null
           signature_requested_at: string | null
@@ -431,6 +444,7 @@ export type Database = {
           id?: string
           name: string
           notes?: string | null
+          owner_id?: string | null
           signature_completed_at?: string | null
           signature_doc_token?: string | null
           signature_requested_at?: string | null
@@ -451,6 +465,7 @@ export type Database = {
           id?: string
           name?: string
           notes?: string | null
+          owner_id?: string | null
           signature_completed_at?: string | null
           signature_doc_token?: string | null
           signature_requested_at?: string | null
@@ -701,6 +716,7 @@ export type Database = {
           id: string
           location: string | null
           notes: string | null
+          owner_id: string | null
           status: string
           title: string
         }
@@ -712,6 +728,7 @@ export type Database = {
           id?: string
           location?: string | null
           notes?: string | null
+          owner_id?: string | null
           status?: string
           title: string
         }
@@ -723,6 +740,7 @@ export type Database = {
           id?: string
           location?: string | null
           notes?: string | null
+          owner_id?: string | null
           status?: string
           title?: string
         }
@@ -747,6 +765,7 @@ export type Database = {
           id: string
           movement_type: string | null
           notes: string | null
+          owner_id: string | null
           process_number: string | null
           raw_email_body: string
           raw_email_date: string | null
@@ -765,6 +784,7 @@ export type Database = {
           id?: string
           movement_type?: string | null
           notes?: string | null
+          owner_id?: string | null
           process_number?: string | null
           raw_email_body?: string
           raw_email_date?: string | null
@@ -783,6 +803,7 @@ export type Database = {
           id?: string
           movement_type?: string | null
           notes?: string | null
+          owner_id?: string | null
           process_number?: string | null
           raw_email_body?: string
           raw_email_date?: string | null
@@ -853,6 +874,7 @@ export type Database = {
           content: string
           created_at: string
           id: string
+          owner_id: string | null
           role: string
         }
         Insert: {
@@ -861,6 +883,7 @@ export type Database = {
           content: string
           created_at?: string
           id?: string
+          owner_id?: string | null
           role: string
         }
         Update: {
@@ -869,6 +892,7 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
+          owner_id?: string | null
           role?: string
         }
         Relationships: [
@@ -947,6 +971,36 @@ export type Database = {
         }
         Relationships: []
       }
+      user_plans: {
+        Row: {
+          created_at: string
+          id: string
+          plan: string
+          promo_code: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          plan?: string
+          promo_code?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          plan?: string
+          promo_code?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
@@ -1004,7 +1058,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "client"
+      app_role: "admin" | "client" | "advogado"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1132,7 +1186,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "client"],
+      app_role: ["admin", "client", "advogado"],
     },
   },
 } as const

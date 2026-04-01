@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useUsers, useSetUserRole, useRemoveUserRole, useUserPermissions, useUpdatePermission, type UserPermissions } from "@/hooks/use-users";
 import { useAuth } from "@/hooks/use-auth";
+import { useViewAs } from "@/hooks/use-view-as";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -28,7 +29,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Shield, ShieldOff, Users, Loader2, ChevronDown, FolderOpen, UserCircle, FileText, Settings, Eye, PenLine, Briefcase, GraduationCap, Calculator } from "lucide-react";
+import { Shield, ShieldOff, Users, Loader2, ChevronDown, FolderOpen, UserCircle, FileText, Settings, Eye, PenLine, Briefcase, GraduationCap, Calculator, MonitorSmartphone } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 
@@ -126,6 +127,7 @@ const PROFILE_PRESETS: ProfilePreset[] = [
 
 export default function UsersManagement() {
   const { user: currentUser } = useAuth();
+  const { startViewAs } = useViewAs();
   const { data: users, isLoading } = useUsers();
   const { data: allPermissions } = useUserPermissions();
   const setRole = useSetUserRole();
@@ -137,7 +139,7 @@ export default function UsersManagement() {
     userId: string;
     email: string;
     action: "set" | "remove";
-    role?: "admin" | "client";
+    role?: "admin" | "advogado" | "client";
   } | null>(null);
 
   const toggleUser = (id: string) =>
@@ -169,7 +171,7 @@ export default function UsersManagement() {
     }
   };
 
-  const handleSetRole = (userId: string, email: string, role: "admin" | "client") => {
+  const handleSetRole = (userId: string, email: string, role: "admin" | "advogado" | "client") => {
     setConfirmAction({ userId, email, action: "set", role });
   };
 
@@ -197,6 +199,8 @@ export default function UsersManagement() {
     switch (role) {
       case "admin":
         return <Badge className="bg-amber-500/15 text-amber-600 border-amber-500/30">Admin</Badge>;
+      case "advogado":
+        return <Badge className="bg-blue-500/15 text-blue-600 border-blue-500/30">Advogado</Badge>;
       case "client":
         return <Badge variant="secondary">Cliente</Badge>;
       default:
@@ -295,6 +299,24 @@ export default function UsersManagement() {
                   </CollapsibleTrigger>
                   <CollapsibleContent>
                     <CardContent className="pt-0 space-y-5">
+                      {/* Ver Ambiente button */}
+                      {!isSelf && (
+                        <div className="flex items-center gap-3 pb-4 border-b">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 text-xs gap-1.5"
+                            onClick={() => {
+                              startViewAs(u.user_id, u.email);
+                              toast.success(`Visualizando ambiente de ${u.email}`);
+                            }}
+                          >
+                            <MonitorSmartphone className="w-3.5 h-3.5" />
+                            Ver Ambiente do Usuário
+                          </Button>
+                        </div>
+                      )}
+
                       {/* Role selector */}
                       {!isSelf && (
                         <div className="flex items-center gap-3 pb-4 border-b">
@@ -302,7 +324,7 @@ export default function UsersManagement() {
                           <Select
                             value={u.role === "sem_role" ? undefined : u.role}
                             onValueChange={(val) =>
-                              handleSetRole(u.user_id, u.email, val as "admin" | "client")
+                              handleSetRole(u.user_id, u.email, val as "admin" | "advogado" | "client")
                             }
                           >
                             <SelectTrigger className="w-[160px] h-8 text-xs">
@@ -312,6 +334,11 @@ export default function UsersManagement() {
                               <SelectItem value="admin">
                                 <span className="flex items-center gap-1.5">
                                   <Shield className="w-3 h-3" /> Admin
+                                </span>
+                              </SelectItem>
+                              <SelectItem value="advogado">
+                                <span className="flex items-center gap-1.5">
+                                  <Briefcase className="w-3 h-3" /> Advogado
                                 </span>
                               </SelectItem>
                               <SelectItem value="client">

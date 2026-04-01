@@ -39,7 +39,7 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { title: "Painel", url: "/", icon: LayoutDashboard },
+  { title: "Painel", url: "/dashboard", icon: LayoutDashboard },
   { title: "Clientes", url: "/clients", icon: Users, permission: "can_view_clients" },
   { title: "Documentos", url: "/documents", icon: FolderOpen, permission: "can_view_documents" },
   { title: "Agenda", url: "/agenda", icon: CalendarDays, permission: "can_view_cases" },
@@ -63,7 +63,7 @@ export function AppSidebar() {
   const { data: perms } = useMyPermissions();
 
   const isActive = (path: string) => {
-    if (path === "/") return currentPath === "/";
+    if (path === "/dashboard") return currentPath === "/dashboard";
     return currentPath.startsWith(path);
   };
 
@@ -102,7 +102,7 @@ export function AppSidebar() {
                   >
                     <NavLink
                       to={item.url}
-                      end={item.url === "/"}
+                      end={item.url === "/dashboard"}
                       className="hover:bg-sidebar-accent relative"
                       activeClassName="bg-sidebar-accent text-sidebar-accent-foreground before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[3px] before:rounded-r before:bg-amber-500"
                     >
