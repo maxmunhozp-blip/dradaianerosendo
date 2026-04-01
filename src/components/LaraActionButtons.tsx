@@ -367,7 +367,7 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
     }
   };
 
-  if (actions.length === 0) return null;
+  if (allActions.length === 0) return null;
 
   return (
     <>
