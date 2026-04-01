@@ -810,17 +810,17 @@ export default function ClientDetail() {
               <div className="p-4">
                 {editingAddress ? (
                   <div className="space-y-3">
-                    <div className="grid grid-cols-4 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                       <div><Label className="text-xs">CEP</Label><Input value={addressForm.address_zip} onChange={e => {
                         const v = e.target.value.replace(/\D/g, "").slice(0, 8);
                         const masked = v.length > 5 ? v.replace(/(\d{5})(\d)/, "$1-$2") : v;
                         setAddressForm(p => ({ ...p, address_zip: masked }));
                         if (v.length === 8) fetchCep(v);
                       }} placeholder="00000-000" className="mt-1" /></div>
-                      <div className="col-span-2"><Label className="text-xs">Rua</Label><Input value={addressForm.address_street} onChange={e => setAddressForm(p => ({ ...p, address_street: e.target.value }))} className="mt-1" /></div>
+                      <div className="sm:col-span-1 lg:col-span-2"><Label className="text-xs">Rua</Label><Input value={addressForm.address_street} onChange={e => setAddressForm(p => ({ ...p, address_street: e.target.value }))} className="mt-1" /></div>
                       <div><Label className="text-xs">Número</Label><Input value={addressForm.address_number} onChange={e => setAddressForm(p => ({ ...p, address_number: e.target.value }))} className="mt-1" /></div>
                     </div>
-                    <div className="grid grid-cols-4 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                       <div><Label className="text-xs">Complemento</Label><Input value={addressForm.address_complement} onChange={e => setAddressForm(p => ({ ...p, address_complement: e.target.value }))} className="mt-1" /></div>
                       <div><Label className="text-xs">Bairro</Label><Input value={addressForm.address_neighborhood} onChange={e => setAddressForm(p => ({ ...p, address_neighborhood: e.target.value }))} className="mt-1" /></div>
                       <div><Label className="text-xs">Cidade</Label><Input value={addressForm.address_city} onChange={e => setAddressForm(p => ({ ...p, address_city: e.target.value }))} className="mt-1" /></div>
