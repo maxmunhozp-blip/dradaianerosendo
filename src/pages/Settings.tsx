@@ -908,6 +908,7 @@ export default function Settings() {
         <SignatureSettings
           value={val("signature_api_token")}
           onChange={(v) => set("signature_api_token", v)}
+          onSave={() => saveSetting("signature_api_token")}
         />
       </CollapsibleSection>
 
