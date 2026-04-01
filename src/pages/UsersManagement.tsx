@@ -96,6 +96,21 @@ const ICON_MAP: Record<string, any> = {
   Shield, Users, FileText, Settings, Eye, PenLine,
 };
 
+const ICON_OPTIONS = [
+  { name: "User", icon: User },
+  { name: "Briefcase", icon: Briefcase },
+  { name: "GraduationCap", icon: GraduationCap },
+  { name: "Calculator", icon: Calculator },
+  { name: "ClipboardList", icon: ClipboardList },
+  { name: "Search", icon: Search },
+  { name: "Shield", icon: Shield },
+  { name: "FileText", icon: FileText },
+  { name: "Users", icon: Users },
+  { name: "Eye", icon: Eye },
+  { name: "PenLine", icon: PenLine },
+  { name: "Settings", icon: Settings },
+];
+
 interface DBProfile {
   id: string;
   name: string;
@@ -516,6 +531,7 @@ function ProfileModal({ open, onOpenChange, editing }: { open: boolean; onOpenCh
     can_view_documents: false, can_edit_documents: false,
     can_access_settings: false,
   });
+  const [selectedIcon, setSelectedIcon] = useState("User");
   const [saving, setSaving] = useState(false);
 
   // Reset form when opening
@@ -524,10 +540,12 @@ function ProfileModal({ open, onOpenChange, editing }: { open: boolean; onOpenCh
       if (editing) {
         setName(editing.name);
         setDescription(editing.description || "");
+        setSelectedIcon(editing.icon || "User");
         setPermissions({ ...permissions, ...editing.permissions });
       } else {
         setName("");
         setDescription("");
+        setSelectedIcon("User");
         setPermissions({
           can_view_cases: false, can_edit_cases: false,
           can_view_clients: false, can_edit_clients: false,
@@ -550,6 +568,7 @@ function ProfileModal({ open, onOpenChange, editing }: { open: boolean; onOpenCh
         const { error } = await (supabase.from("permission_profiles" as any).update({
           name: name.trim(),
           description: description.trim() || null,
+          icon: selectedIcon,
           permissions,
         }).eq("id", editing.id)) as any;
         if (error) throw error;
@@ -558,7 +577,7 @@ function ProfileModal({ open, onOpenChange, editing }: { open: boolean; onOpenCh
         const { error } = await (supabase.from("permission_profiles" as any).insert({
           name: name.trim(),
           description: description.trim() || null,
-          icon: "User",
+          icon: selectedIcon,
           permissions,
           is_builtin: false,
         })) as any;
@@ -590,6 +609,27 @@ function ProfileModal({ open, onOpenChange, editing }: { open: boolean; onOpenCh
           <div className="space-y-1.5">
             <Label className="text-xs">Descrição</Label>
             <Input className="h-8 text-xs" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Breve descrição do perfil" />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs">Ícone</Label>
+            <div className="flex flex-wrap gap-1.5">
+              {ICON_OPTIONS.map((opt) => {
+                const isActive = selectedIcon === opt.name;
+                return (
+                  <button
+                    key={opt.name}
+                    type="button"
+                    onClick={() => setSelectedIcon(opt.name)}
+                    className={`w-8 h-8 rounded-md border flex items-center justify-center transition-colors ${
+                      isActive ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-muted/50 text-muted-foreground"
+                    }`}
+                  >
+                    <opt.icon className="w-4 h-4" />
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           <div className="space-y-3">
