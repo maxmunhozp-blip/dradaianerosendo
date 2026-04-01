@@ -15,9 +15,10 @@ import {
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import jsPDF from "jspdf";
 
 interface LaraAction {
-  type: "send_whatsapp" | "create_task" | "open_client" | "generate_document" | "schedule_reminder" | "scan_documents" | "download_document" | "send_for_signature";
+  type: "send_whatsapp" | "create_task" | "open_client" | "generate_document" | "schedule_reminder" | "scan_documents" | "download_document" | "send_for_signature" | "generate_pdf";
   label: string;
   data: Record<string, any>;
 }
@@ -27,6 +28,7 @@ const ACTION_ICONS: Record<string, typeof MessageSquare> = {
   create_task: ClipboardList,
   open_client: ExternalLink,
   generate_document: FileText,
+  generate_pdf: FileText,
   schedule_reminder: Bell,
   scan_documents: ScanSearch,
   download_document: Download,
@@ -37,7 +39,8 @@ const ACTION_DESCRIPTIONS: Record<string, (data: Record<string, any>) => string>
   send_whatsapp: (d) => `Enviar mensagem via WhatsApp para ${d.phone || "o cliente"}`,
   create_task: (d) => `Criar tarefa: "${d.title || ""}"`,
   open_client: () => `Abrir cadastro do cliente`,
-  generate_document: () => `Abrir gerador de documentos para este caso`,
+  generate_document: () => `Gerar PDF do documento e salvar no caso`,
+  generate_pdf: (d) => `Gerar PDF "${d.document_name || "documento"}" e salvar no caso`,
   schedule_reminder: (d) => `Agendar lembrete: "${d.title || ""}" para ${d.date || "data a definir"}`,
   scan_documents: () => `Escanear documentos pendentes com IA para extrair dados automaticamente`,
   download_document: (d) => `Baixar documento "${d.template || ""}" em ${d.format || "DOCX"}`,
@@ -49,7 +52,7 @@ interface ScanResult {
   status: "pending" | "processing" | "done" | "failed";
 }
 
-export function LaraActionButtons({ actions, onScanComplete }: { actions: LaraAction[]; onScanComplete?: (summary: string) => void }) {
+export function LaraActionButtons({ actions, onScanComplete, messageContent }: { actions: LaraAction[]; onScanComplete?: (summary: string) => void; messageContent?: string }) {
   const navigate = useNavigate();
   const [confirmAction, setConfirmAction] = useState<LaraAction | null>(null);
   const [executing, setExecuting] = useState(false);
@@ -60,11 +63,20 @@ export function LaraActionButtons({ actions, onScanComplete }: { actions: LaraAc
   const [signerEmail, setSignerEmail] = useState("");
   const [signerCpf, setSignerCpf] = useState("");
 
+  // Generated document for signature flow
+  const [generatedDocId, setGeneratedDocId] = useState<string | null>(null);
+  const [generatedDocName, setGeneratedDocName] = useState<string>("");
+
+  // All actions including dynamically added ones
+  const [dynamicActions, setDynamicActions] = useState<LaraAction[]>([]);
+
   // Scan state
   const [scanning, setScanning] = useState(false);
   const [scanResults, setScanResults] = useState<ScanResult[]>([]);
   const [scanProgress, setScanProgress] = useState(0);
   const [scanTotal, setScanTotal] = useState(0);
+
+  const allActions = [...actions, ...dynamicActions];
 
   const handleScan = async (action: LaraAction) => {
     const { case_id, client_id } = action.data;
@@ -155,7 +167,7 @@ export function LaraActionButtons({ actions, onScanComplete }: { actions: LaraAc
       toast.error("Erro ao escanear: " + (e.message || "erro desconhecido"));
     } finally {
       setScanning(false);
-      const idx = actions.indexOf(action);
+      const idx = allActions.indexOf(action);
       setExecuted((prev) => new Set(prev).add(idx));
       setConfirmAction(null);
     }
@@ -196,9 +208,108 @@ export function LaraActionButtons({ actions, onScanComplete }: { actions: LaraAc
           break;
 
         case "generate_document":
-          navigate(`/templates`);
-          toast.info("Selecione o caso e tipo de documento na página de templates");
+        case "generate_pdf": {
+          // Extract document text from the message content
+          const docText = messageContent || "";
+          const docName = confirmAction.data.document_name || confirmAction.data.template || "Documento";
+          const caseId = confirmAction.data.case_id;
+
+          if (!docText.trim()) {
+            toast.error("Conteúdo do documento não encontrado");
+            break;
+          }
+          if (!caseId) {
+            toast.error("Caso não identificado");
+            break;
+          }
+
+          // Generate PDF with jsPDF
+          const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+          const margin = 25;
+          const pageWidth = pdf.internal.pageSize.getWidth();
+          const maxWidth = pageWidth - margin * 2;
+          pdf.setFont("helvetica", "normal");
+          pdf.setFontSize(12);
+
+          // Clean markdown formatting for PDF
+          const cleanText = docText
+            .replace(/#{1,6}\s/g, "")
+            .replace(/\*\*(.*?)\*\*/g, "$1")
+            .replace(/\*(.*?)\*/g, "$1")
+            .replace(/ACTIONS_START[\s\S]*?ACTIONS_END/g, "")
+            .replace(/```[\s\S]*?```/g, "")
+            .trim();
+
+          const lines = pdf.splitTextToSize(cleanText, maxWidth);
+          let y = margin;
+          const lineHeight = 6;
+
+          for (const line of lines) {
+            if (y + lineHeight > pdf.internal.pageSize.getHeight() - margin) {
+              pdf.addPage();
+              y = margin;
+            }
+            pdf.text(line, margin, y);
+            y += lineHeight;
+          }
+
+          // Upload PDF to storage
+          const pdfBlob = pdf.output("blob");
+          const fileName = `${caseId}/${Date.now()}_${docName.replace(/\s+/g, "_")}.pdf`;
+          
+          const { error: uploadError } = await supabase.storage
+            .from("case-documents")
+            .upload(fileName, pdfBlob, { contentType: "application/pdf" });
+
+          if (uploadError) {
+            toast.error("Erro ao fazer upload do PDF: " + uploadError.message);
+            break;
+          }
+
+          const { data: urlData } = supabase.storage
+            .from("case-documents")
+            .getPublicUrl(fileName);
+
+          // Create document record
+          const { data: newDoc, error: docError } = await supabase
+            .from("documents")
+            .insert({
+              case_id: caseId,
+              name: docName,
+              file_url: urlData.publicUrl,
+              status: "aprovado",
+              category: "peticao",
+              uploaded_by: "lara",
+              signature_status: "none",
+            })
+            .select("id, name")
+            .single();
+
+          if (docError) {
+            toast.error("Erro ao criar documento: " + docError.message);
+            break;
+          }
+
+          toast.success(`PDF "${docName}" gerado e salvo no caso!`);
+
+          // Store generated doc info and add signature action
+          setGeneratedDocId(newDoc.id);
+          setGeneratedDocName(newDoc.name);
+          setDynamicActions(prev => [
+            ...prev,
+            {
+              type: "send_for_signature" as const,
+              label: `Enviar "${newDoc.name}" para assinatura`,
+              data: {
+                document_id: newDoc.id,
+                document_name: newDoc.name,
+                client_phone: confirmAction.data.client_phone,
+                client_name: confirmAction.data.client_name,
+              },
+            },
+          ]);
           break;
+        }
 
         case "download_document":
           navigate(`/templates`);
@@ -246,7 +357,7 @@ export function LaraActionButtons({ actions, onScanComplete }: { actions: LaraAc
           break;
       }
 
-      const idx = actions.indexOf(confirmAction);
+      const idx = allActions.indexOf(confirmAction);
       setExecuted((prev) => new Set(prev).add(idx));
     } catch (e: any) {
       toast.error("Erro ao executar: " + (e.message || "erro desconhecido"));
@@ -256,12 +367,12 @@ export function LaraActionButtons({ actions, onScanComplete }: { actions: LaraAc
     }
   };
 
-  if (actions.length === 0) return null;
+  if (allActions.length === 0) return null;
 
   return (
     <>
       <div className="mt-3 flex flex-wrap gap-2">
-        {actions.map((action, i) => {
+        {allActions.map((action, i) => {
           const Icon = ACTION_ICONS[action.type] || ClipboardList;
           const isDone = executed.has(i);
           return (
