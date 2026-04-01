@@ -10,23 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { useUpcomingHearings } from "@/hooks/use-hearings";
 import { useUrgentIntimacoes } from "@/hooks/use-intimacoes";
-import { useSyncGmail } from "@/components/EmailAccountsSection";
 import { format, differenceInHours, differenceInDays } from "date-fns";
-
-function SyncEmailsButton() {
-  const syncMutation = useSyncGmail();
-  return (
-    <Button
-      variant="outline"
-      size="sm"
-      disabled={syncMutation.isPending}
-      onClick={() => syncMutation.mutate(undefined)}
-    >
-      <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${syncMutation.isPending ? "animate-spin" : ""}`} />
-      Sincronizar e-mails
-    </Button>
-  );
-}
 
 export default function Dashboard() {
   const { ownerFilter } = useOwnerFilter();
