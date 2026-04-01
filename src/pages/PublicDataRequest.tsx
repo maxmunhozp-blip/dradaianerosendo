@@ -308,6 +308,10 @@ export default function PublicDataRequest() {
     if (opposingName) formData.opposing_party_name = opposingName;
     if (opposingCpf && !skipCpf) formData.opposing_party_cpf = opposingCpf;
     if (opposingAddress) formData.opposing_party_address = opposingAddress;
+    if (maritalStatus) formData.marital_status = maritalStatus;
+    if (profession) formData.profession = profession;
+    if (rg) formData.rg = rg;
+    if (nationality) formData.nationality = nationality;
     return formData;
   };
 
