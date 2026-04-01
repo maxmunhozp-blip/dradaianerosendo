@@ -9,6 +9,7 @@ export interface StreamChatOptions {
   messages: { role: string; content: string; attachments?: ChatAttachment[] }[];
   caseId?: string;
   isPortalMode?: boolean;
+  clientId?: string;
   onDelta: (text: string) => void;
   onDone: () => void;
   onError: (error: string) => void;
@@ -20,6 +21,7 @@ export async function streamLaraChat({
   messages,
   caseId,
   isPortalMode,
+  clientId,
   onDelta,
   onDone,
   onError,
@@ -31,7 +33,12 @@ export async function streamLaraChat({
         "Content-Type": "application/json",
         Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
       },
-      body: JSON.stringify({ messages, caseId: caseId || null, ...(isPortalMode ? { isPortalMode: true } : {}) }),
+      body: JSON.stringify({
+        messages,
+        caseId: caseId || null,
+        ...(isPortalMode ? { isPortalMode: true } : {}),
+        ...(clientId ? { clientId } : {}),
+      }),
     });
 
     if (!resp.ok) {

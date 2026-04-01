@@ -707,6 +707,107 @@ async function fetchLexMLContext(query: string, supabaseUrl: string): Promise<st
   }
 }
 
+async function fetchPortalClientContext(clientId: string, supabaseClient: any) {
+  if (!clientId) return null;
+
+  const { data: client } = await supabaseClient
+    .from("clients")
+    .select("id, name, phone, status")
+    .eq("id", clientId)
+    .maybeSingle();
+
+  if (!client) return null;
+
+  const { data: cases } = await supabaseClient
+    .from("cases")
+    .select("id, case_type, status, description")
+    .eq("client_id", client.id)
+    .order("created_at", { ascending: false });
+
+  const caseIds = (cases || []).map((c: any) => c.id);
+
+  const [docsResult, checklistResult] = await Promise.all([
+    caseIds.length > 0
+      ? supabaseClient.from("documents").select("name, status, category").in("case_id", caseIds).order("created_at", { ascending: false }).limit(20)
+      : { data: [] },
+    caseIds.length > 0
+      ? supabaseClient.from("checklist_items").select("label, done").in("case_id", caseIds).eq("done", false)
+      : { data: [] },
+  ]);
+
+  const statusMap: Record<string, string> = {
+    documentacao: "reunindo a documentação necessária",
+    montagem: "sendo preparado pela equipe",
+    protocolo: "sendo protocolado no fórum",
+    andamento: "em andamento no tribunal",
+    encerrado: "encerrado",
+  };
+
+  const firstName = client.name.split(" ")[0];
+  const mainCase = cases?.[0];
+  const caseStatus = mainCase ? (statusMap[mainCase.status] || mainCase.status) : null;
+
+  return {
+    firstName,
+    clientName: client.name,
+    mainCase,
+    caseStatus,
+    allCases: cases || [],
+    documents: docsResult.data || [],
+    pendingDocs: checklistResult.data || [],
+  };
+}
+
+function buildSofiaSystemPrompt(ctx: any): string {
+  return `Você é a Sofia, assistente virtual do Escritório Rosendo, supervisionada pela Dra. Daiane Rosendo.
+Você atende o(a) cliente ${ctx.firstName} que tem um processo de ${ctx.mainCase?.case_type || "família"}.
+
+## Identidade
+- Seu nome é Sofia. Você é uma assistente virtual — diga isso uma vez na apresentação, não repita.
+- Você tem acesso ao sistema do escritório e pode ver informações reais do processo.
+- Sempre que relevante, mencione que a Dra. Daiane acompanha o processo.
+- NÃO mencione a LARA, o sistema interno, campos faltando, erros de banco de dados, ou qualquer limitação técnica.
+
+## Dados do cliente
+- Nome: ${ctx.clientName}
+- Processo: ${ctx.mainCase?.case_type || "não informado"}
+- Status atual: ${ctx.caseStatus || "em acompanhamento"}
+- Documentos pendentes: ${ctx.pendingDocs.length > 0 ? ctx.pendingDocs.map((d: any) => d.label).join(", ") : "nenhum no momento"}
+
+## Tom de voz
+- Acolhedor, direto, sem jargão jurídico
+- Frases curtas — máximo 2 linhas por parágrafo
+- Quando houver incerteza, diga "Vou verificar com a Dra. Daiane e te aviso" — nunca invente
+- Não use "infelizmente" para abrir frases negativas
+- Use "seu processo" e "sua advogada", não "o processo" ou "a advogada"
+
+## Quando receber __PORTAL_INIT__
+Gere uma mensagem de boas-vindas personalizada com EXATAMENTE esta estrutura:
+1. Cumprimento pelo primeiro nome (1 linha)
+2. Status do processo em linguagem humana — quem é responsável agora + próximo evento se souber (1 linha)
+3. Convite para interação (1 linha)
+Exemplo:
+"Olá, ${ctx.firstName}! Sou a Sofia, assistente do escritório.
+Seu processo de [tipo] está [status] — a Dra. Daiane está acompanhando cada etapa.
+Posso te ajudar a ver documentos pendentes, tirar dúvidas ou falar com o escritório."
+
+## Linguagem de status
+- documentacao → "reunindo a documentação necessária"
+- montagem → "sendo preparado pela equipe"
+- protocolo → "sendo protocolado no fórum"
+- andamento → "em andamento no tribunal"
+- encerrado → "encerrado"
+
+## Quando não souber algo
+Diga: "Não tenho essa informação agora. Se for urgente, fale direto com o escritório pelo WhatsApp."
+Nunca diga "não tenho acesso", "o sistema não tem", "dado faltando".
+
+## Canal WhatsApp
+Quando o cliente quiser falar com o escritório ou tiver urgência, oriente-o a usar o link de WhatsApp que aparece no rodapé da tela — não forneça número diretamente.
+`;
+}
+
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -721,7 +822,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const { messages, caseId, attachments, isPortalMode } = await req.json();
+    const { messages, caseId, attachments, isPortalMode, clientId } = await req.json();
 
     if (!messages || !Array.isArray(messages)) {
       return new Response(
@@ -869,7 +970,22 @@ Use seu conhecimento jurídico para complementar os dados do LexML com explicaç
       ? `\n\nMODO PORTAL DO CLIENTE: Você está atendendo o CLIENTE diretamente pelo portal. Use linguagem simples e acolhedora. Não use termos técnicos jurídicos sem explicar. Foque apenas no processo deste cliente. Não mencione outros clientes. Responda como se fosse uma atendente do escritório, não como assistente da advogada. NÃO inclua blocos de ação (ACTIONS_START/END, wizard-choice, save-data-action, whatsapp-action). Apenas responda de forma conversacional.\n\n`
       : "";
 
-    const fullSystemPrompt = officeContext + "\n\n" + SYSTEM_PROMPT + portalModePrefix + "\n\n" + settingsContext + intimacoesContext + skillsContext + (caseContext ? "\n\n" + caseContext : "") + lexmlContext;
+    let fullSystemPrompt: string;
+    if (isPortalMode) {
+      const portalCtx = await fetchPortalClientContext(clientId, supabase);
+      const sofiaPrompt = buildSofiaSystemPrompt(portalCtx || {
+        firstName: "cliente",
+        clientName: "cliente",
+        mainCase: null,
+        caseStatus: "em acompanhamento",
+        pendingDocs: [],
+        documents: [],
+        allCases: [],
+      });
+      fullSystemPrompt = sofiaPrompt + "\n\n" + settingsContext + (caseContext ? "\n\n" + caseContext : "");
+    } else {
+      fullSystemPrompt = officeContext + "\n\n" + SYSTEM_PROMPT + portalModePrefix + "\n\n" + settingsContext + intimacoesContext + skillsContext + (caseContext ? "\n\n" + caseContext : "") + lexmlContext;
+    }
 
     // Build messages for the AI API
     const aiMessages: any[] = [
