@@ -179,7 +179,7 @@ export function ClientUnifiedTimeline({ caseIds }: { caseIds: string[] }) {
         unified.push({
           id: `doc-${d.id}`,
           case_id: d.case_id,
-          title: `📄 ${d.name}${sigLabel}`,
+          title: `${d.name}${sigLabel}`,
           description: `Categoria: ${d.category} · Status: ${d.status}`,
           type: d.signature_status && d.signature_status !== "none" ? "assinatura" : "documento",
           status: d.signature_status === "signed" ? "assinado" : d.status,
