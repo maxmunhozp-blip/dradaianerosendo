@@ -90,6 +90,7 @@ export default function ClientDetail() {
   const [sendingPortal, setSendingPortal] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [showRequestData, setShowRequestData] = useState(false);
+  const [scanOpen, setScanOpen] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [scanProgress, setScanProgress] = useState("");
   const [scanCurrentIndex, setScanCurrentIndex] = useState(0);
