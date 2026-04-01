@@ -608,11 +608,6 @@ export default function ClientDetail() {
               </SelectContent>
             </Select>
           </div>
-          <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
-            {cl.cpf && <span>CPF: {cl.cpf}</span>}
-            {cl.phone && <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{cl.phone}</span>}
-            {cl.email && <span className="flex items-center gap-1"><Mail className="w-3 h-3" />{cl.email}</span>}
-          </div>
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
