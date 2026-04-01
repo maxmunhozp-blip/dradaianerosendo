@@ -805,7 +805,7 @@ Use seu conhecimento jurídico para complementar os dados do LexML com explicaç
       async pull(controller) {
         const { done, value } = await reader.read();
         if (done) {
-          if (caseId && fullAssistantContent) {
+          if (caseId && fullAssistantContent && !isCaseAudit) {
             await supabase.from("messages").insert({
               case_id: caseId,
               role: "assistant",
