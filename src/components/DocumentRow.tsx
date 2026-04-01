@@ -264,6 +264,15 @@ export function DocumentRow({ doc }: DocumentRowProps) {
               </Button>
             </>
           )}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+            title="Excluir"
+            onClick={(e) => { e.stopPropagation(); setDeleteOpen(true); }}
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </Button>
         </div>
       </button>
 
