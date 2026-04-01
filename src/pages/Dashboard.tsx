@@ -175,7 +175,6 @@ function UpcomingHearings() {
         ) : hearings.length === 0 ? (
           <div className="px-4 py-6 text-center">
             <CalendarDays className="w-5 h-5 text-muted-foreground mx-auto mb-2" />
-            <p className="text-sm text-muted-foreground">Nenhuma audiência agendada</p>
           </div>
         ) : (
           hearings.map((h: any) => {
