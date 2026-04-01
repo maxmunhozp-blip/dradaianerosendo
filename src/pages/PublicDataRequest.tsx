@@ -316,11 +316,17 @@ export default function PublicDataRequest() {
         headers: { "Content-Type": "application/json", apikey: supabaseAnonKey },
         body: JSON.stringify({ token, data: buildFormData() }),
       });
-      if (!res.ok) throw new Error("fail");
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || "fail");
+      }
       localStorage.removeItem(`lexai_wizard_${token}`);
       setPageState("completed");
     } catch {
-      toast.error("Parece que a internet falhou. Seus dados estão salvos — tente de novo quando tiver sinal.");
+      toast.error("Não conseguimos salvar. Tente novamente.", {
+        action: { label: "Tentar de novo", onClick: () => handleSubmit() },
+        duration: 10000,
+      });
     } finally {
       setSubmitting(false);
     }
