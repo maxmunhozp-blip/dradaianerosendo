@@ -182,6 +182,21 @@ export default function PortalDashboard() {
   };
 
   const isLoading = clientLoading || casesLoading;
+  const [timelineVisible, setTimelineVisible] = useState(10);
+
+  const timeline = useMemo(() =>
+    documents
+      .map((d) => ({
+        text: `Documento "${d.name}" — ${d.status === "recebido" ? "recebido" : "solicitado"}`,
+        date: d.created_at,
+        type: "document" as const,
+      }))
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+    [documents]
+  );
+  const visibleTimeline = timeline.slice(0, timelineVisible);
+  const hasMoreTimeline = timelineVisible < timeline.length;
+  const pendingChecklist = checklist.filter((c) => !c.done);
 
   if (isLoading) {
     return (
@@ -205,23 +220,6 @@ export default function PortalDashboard() {
       </div>
     );
   }
-
-  const pendingChecklist = checklist.filter((c) => !c.done);
-  const [timelineVisible, setTimelineVisible] = useState(10);
-
-  // Build timeline from documents
-  const timeline = useMemo(() =>
-    documents
-      .map((d) => ({
-        text: `Documento "${d.name}" — ${d.status === "recebido" ? "recebido" : "solicitado"}`,
-        date: d.created_at,
-        type: "document" as const,
-      }))
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
-    [documents]
-  );
-  const visibleTimeline = timeline.slice(0, timelineVisible);
-  const hasMoreTimeline = timelineVisible < timeline.length;
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
