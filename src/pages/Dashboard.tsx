@@ -39,7 +39,6 @@ export default function Dashboard() {
           <p className="text-sm text-muted-foreground mt-0.5">Visão geral do escritório</p>
         </div>
         <div className="flex gap-2">
-          <SyncEmailsButton />
           <Button variant="outline" size="sm" asChild>
             <Link to="/clients">
               <Plus className="w-3.5 h-3.5 mr-1.5" />
