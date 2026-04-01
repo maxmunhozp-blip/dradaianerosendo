@@ -82,6 +82,61 @@ export default function ClientDetail() {
   const [sendingPortal, setSendingPortal] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [showRequestData, setShowRequestData] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [scanProgress, setScanProgress] = useState("");
+  const queryClient = useQueryClient();
+
+  // Fetch all documents for this client's cases
+  const caseIds = cases.map((c: any) => c.id);
+  const { data: allDocs = [] } = useQuery({
+    queryKey: ["client-all-docs", id, caseIds],
+    queryFn: async () => {
+      if (caseIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from("documents")
+        .select("id, name, case_id, file_url, extraction_status")
+        .in("case_id", caseIds);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: caseIds.length > 0,
+  });
+
+  const pendingDocs = allDocs.filter(
+    (d: any) => d.file_url && (!d.extraction_status || d.extraction_status === "pending")
+  );
+
+  const handleScanAll = async () => {
+    if (pendingDocs.length === 0) {
+      toast.info("Nenhum documento pendente para escanear");
+      return;
+    }
+    setScanning(true);
+    let success = 0;
+    for (let i = 0; i < pendingDocs.length; i++) {
+      const doc = pendingDocs[i];
+      setScanProgress(`Escaneando documento ${i + 1} de ${pendingDocs.length}...`);
+      try {
+        await supabase.functions.invoke("process-document", {
+          body: {
+            document_id: doc.id,
+            case_id: doc.case_id,
+            client_id: id,
+            file_url: doc.file_url,
+            file_name: doc.name,
+          },
+        });
+        success++;
+      } catch (e) {
+        console.error(`Erro ao escanear ${doc.name}:`, e);
+      }
+    }
+    setScanProgress("");
+    setScanning(false);
+    queryClient.invalidateQueries({ queryKey: ["extraction-suggestions", id] });
+    queryClient.invalidateQueries({ queryKey: ["client-all-docs", id] });
+    toast.success(`Escaneamento concluído (${success}/${pendingDocs.length}) — verifique as sugestões abaixo.`);
+  };
 
   // Section states
   const [personalOpen, setPersonalOpen] = useState(true);
