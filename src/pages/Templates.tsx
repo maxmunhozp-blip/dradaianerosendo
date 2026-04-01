@@ -437,22 +437,16 @@ export default function Templates() {
 
   const handlePreviewPdf = () => {
     if (previewMode === "pdf") {
-      // Toggle back to text
       setPreviewMode("text");
-      if (pdfBlobUrl) {
-        URL.revokeObjectURL(pdfBlobUrl);
-        setPdfBlobUrl(null);
-      }
+      setPdfBlobUrl(null);
       return;
     }
 
     try {
       const pdf = buildPdfDoc();
       if (!pdf) return;
-      const blob = pdf.output("blob");
-      const url = URL.createObjectURL(blob);
-      if (pdfBlobUrl) URL.revokeObjectURL(pdfBlobUrl);
-      setPdfBlobUrl(url);
+      const dataUri = pdf.output("datauristring");
+      setPdfBlobUrl(dataUri);
       setPreviewMode("pdf");
     } catch (e) {
       console.error("Erro ao gerar preview:", e);
