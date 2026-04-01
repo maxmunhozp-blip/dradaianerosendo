@@ -58,7 +58,16 @@ export default function Templates() {
   const [extraInstructions, setExtraInstructions] = useState("");
   const [generatedContent, setGeneratedContent] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [useLetterhead, setUseLetterhead] = useState(true);
   const contentRef = useRef<HTMLDivElement>(null);
+
+  const { data: branding } = useQuery({
+    queryKey: ["document-branding"],
+    queryFn: async () => {
+      const { data } = await (supabase.from("document_branding" as any).select("*").eq("is_default", true).maybeSingle()) as any;
+      return data;
+    },
+  });
 
   const { data: cases } = useQuery({
     queryKey: ["all-cases-for-templates"],
