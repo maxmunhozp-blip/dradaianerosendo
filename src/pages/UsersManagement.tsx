@@ -322,7 +322,7 @@ export default function UsersManagement() {
                           <Select
                             value={u.role === "sem_role" ? undefined : u.role}
                             onValueChange={(val) =>
-                              handleSetRole(u.user_id, u.email, val as "admin" | "client")
+                              handleSetRole(u.user_id, u.email, val as "admin" | "advogado" | "client")
                             }
                           >
                             <SelectTrigger className="w-[160px] h-8 text-xs">
@@ -332,6 +332,11 @@ export default function UsersManagement() {
                               <SelectItem value="admin">
                                 <span className="flex items-center gap-1.5">
                                   <Shield className="w-3 h-3" /> Admin
+                                </span>
+                              </SelectItem>
+                              <SelectItem value="advogado">
+                                <span className="flex items-center gap-1.5">
+                                  <Briefcase className="w-3 h-3" /> Advogado
                                 </span>
                               </SelectItem>
                               <SelectItem value="client">
