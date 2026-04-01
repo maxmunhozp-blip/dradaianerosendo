@@ -222,7 +222,7 @@ export function ClientUnifiedTimeline({ caseIds }: { caseIds: string[] }) {
           unified.push({
             id: `chk-${c.id}`,
             case_id: c.case_id,
-            title: `✅ ${c.label}`,
+            title: c.label,
             description: "Item concluído",
             type: "checklist",
             status: "concluído",
