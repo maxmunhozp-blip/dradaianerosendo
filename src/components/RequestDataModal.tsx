@@ -150,7 +150,7 @@ export function RequestDataModal({ open, onOpenChange, caseId, clientId, clientD
                 </div>
 
                 <div className="flex gap-2">
-                  <Button onClick={handleWhatsApp} className="flex-1 bg-amber-500 hover:bg-amber-600 text-white" disabled={!phone}>
+                  <Button onClick={handleWhatsApp} className="flex-1 bg-accent text-accent-foreground hover:bg-accent/80" disabled={!phone}>
                     <Send className="w-4 h-4 mr-2" />
                     Enviar por WhatsApp
                   </Button>
