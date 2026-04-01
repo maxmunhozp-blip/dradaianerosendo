@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/collapsible";
 import {
   ArrowLeft, Phone, Mail, Plus, FolderOpen, Send, Loader2,
-  Pencil, Trash2, Save, X, ChevronDown, ChevronRight, MapPin, Users, UserX, Baby,
+  Pencil, Trash2, Save, X, ChevronDown, ChevronRight, MapPin, Users, UserX, Baby, ExternalLink,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -76,6 +76,7 @@ export default function ClientDetail() {
   const [notes, setNotes] = useState<string | null>(null);
   const [caseDialogOpen, setCaseDialogOpen] = useState(false);
   const [inviting, setInviting] = useState(false);
+  const [sendingPortal, setSendingPortal] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [showRequestData, setShowRequestData] = useState(false);
 
@@ -263,6 +264,45 @@ export default function ClientDetail() {
     } finally { setInviting(false); }
   };
 
+  const handleSendPortalLink = async () => {
+    if (!client) return;
+    const phone = (cl.phone || "").replace(/\D/g, "");
+    if (!phone) { toast.error("Cliente sem telefone cadastrado"); return; }
+    setSendingPortal(true);
+    try {
+      // Check for existing valid session
+      const { data: existing } = await supabase
+        .from("client_sessions")
+        .select("token, expires_at")
+        .eq("client_id", client.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      let token = existing?.token;
+      if (!existing || new Date(existing.expires_at) < new Date()) {
+        // Create new session
+        const { data: newSession, error } = await supabase
+          .from("client_sessions")
+          .insert({ client_id: client.id })
+          .select("token")
+          .single();
+        if (error) throw error;
+        token = newSession.token;
+      }
+
+      const portalUrl = `${window.location.origin}/portal?token=${token}`;
+      const firstName = client.name.split(" ")[0];
+      const message = `Olá ${firstName}! Acesse sua área do cliente pelo link abaixo para acompanhar seu processo:\n\n${portalUrl}`;
+      const waUrl = `https://wa.me/55${phone}?text=${encodeURIComponent(message)}`;
+      window.open(waUrl, "_blank");
+      toast.success("Link do portal gerado!");
+    } catch (err: any) {
+      toast.error("Erro ao gerar link do portal");
+      console.error(err);
+    } finally { setSendingPortal(false); }
+  };
+
   const handleSaveNotes = async () => {
     if (!client) return;
     try {
@@ -328,8 +368,8 @@ export default function ClientDetail() {
           <Button variant="outline" size="sm" onClick={() => setShowRequestData(true)} disabled={cases.length === 0}>
             <Send className="w-3.5 h-3.5 mr-1.5" />Solicitar Dados
           </Button>
-          <Button variant="outline" size="sm" onClick={handleInviteClient} disabled={inviting || !cl.email}>
-            {inviting ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Send className="w-3.5 h-3.5 mr-1.5" />}Convidar
+          <Button variant="outline" size="sm" onClick={handleSendPortalLink} disabled={sendingPortal || !cl.phone}>
+            {sendingPortal ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <ExternalLink className="w-3.5 h-3.5 mr-1.5" />}Enviar Portal
           </Button>
           <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" onClick={() => setDeleteOpen(true)}>
             <Trash2 className="w-3.5 h-3.5 mr-1.5" />Excluir

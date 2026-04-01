@@ -282,6 +282,7 @@ export type Database = {
           completed_at: string | null
           created_at: string
           expires_at: string
+          fields_completed: string[] | null
           fields_requested: string[] | null
           id: string
           status: string
@@ -293,6 +294,7 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           expires_at?: string
+          fields_completed?: string[] | null
           fields_requested?: string[] | null
           id?: string
           status?: string
@@ -304,6 +306,7 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           expires_at?: string
+          fields_completed?: string[] | null
           fields_requested?: string[] | null
           id?: string
           status?: string
