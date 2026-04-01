@@ -577,7 +577,7 @@ function ProfileModal({ open, onOpenChange, editing }: { open: boolean; onOpenCh
         const { error } = await (supabase.from("permission_profiles" as any).insert({
           name: name.trim(),
           description: description.trim() || null,
-          icon: "User",
+          icon: selectedIcon,
           permissions,
           is_builtin: false,
         })) as any;
