@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCase, useUpdateCase, useDeleteCase } from "@/hooks/use-cases";
 import { useDocumentsByCase, useCreateDocument, useUploadDocument } from "@/hooks/use-documents";
+import { useProcessDocument } from "@/hooks/use-extraction";
 import { useChecklistByCase, useCreateChecklistItem, useToggleChecklistItem, useDeleteChecklistItem } from "@/hooks/use-checklist";
 import { useMessagesByCase } from "@/hooks/use-messages";
 import { useLaraChat } from "@/hooks/use-lara-chat";
