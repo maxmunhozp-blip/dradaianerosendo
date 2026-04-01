@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
+import { RequestDataModal } from "@/components/RequestDataModal";
 import { useClient, useUpdateClient, useDeleteClient } from "@/hooks/use-clients";
 import { useCasesByClient, useCreateCase, useUpdateCase } from "@/hooks/use-cases";
 import { useCaseTypes } from "@/hooks/use-case-types";
