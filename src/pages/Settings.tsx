@@ -280,9 +280,26 @@ function SyncLogSection({ open, onOpenChange }: { open: boolean; onOpenChange: (
     </CollapsibleSection>
   );
 }
-function SignatureSettings({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+function SignatureSettings({ value, onChange, onSave }: { value: string; onChange: (v: string) => void; onSave: () => Promise<void> }) {
   const [showToken, setShowToken] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [savingToken, setSavingToken] = useState(false);
+
+  const saveToken = async () => {
+    if (!value.trim()) {
+      toast.error("Insira o token antes de salvar.");
+      return;
+    }
+    setSavingToken(true);
+    try {
+      await onSave();
+      toast.success("Token ZapSign salvo com sucesso!");
+    } catch (err: any) {
+      toast.error(err?.message || "Erro ao salvar token ZapSign.");
+    } finally {
+      setSavingToken(false);
+    }
+  };
 
   const testConnection = async () => {
     if (!value) {
@@ -297,7 +314,8 @@ function SignatureSettings({ value, onChange }: { value: string; onChange: (v: s
       if (error) {
         toast.error(error.message || "Erro ao conectar com ZapSign.");
       } else if (data?.success) {
-        toast.success("Conexão OK! Token válido.");
+        await onSave();
+        toast.success("Conexão OK! Token válido e salvo.");
       } else {
         toast.error(data?.error || "Token inválido. Verifique e tente novamente.");
       }
