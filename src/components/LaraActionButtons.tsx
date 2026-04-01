@@ -827,19 +827,7 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
               const html = editorRef.current?.getHTML() || "";
               if (!html.trim()) return;
 
-              // Validate placeholders
-              const textContent = html.replace(/<[^>]*>/g, "");
-              const placeholderPatterns = [
-                /\[PREENCHER[^\]]*\]/i,
-                /_{3,}/,
-                /\[.*não cadastrado.*\]/i,
-                /\[.*não informado.*\]/i,
-              ];
-              const hasPlaceholders = placeholderPatterns.some(p => p.test(textContent));
-              if (hasPlaceholders) {
-                toast.error("Ainda há campos a preencher no documento. Revise os campos marcados com [PREENCHER] ou ___ antes de gerar o PDF.", { duration: 6000 });
-                return;
-              }
+              // Placeholder validation suspended — allow generation with incomplete fields
 
               const pdfBlob = generatePdfFromHtml(html);
 
