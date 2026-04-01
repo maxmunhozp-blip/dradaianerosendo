@@ -504,7 +504,6 @@ export function PeticaoModal({
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {[1, 2, 3].map((s) => (
             {[1, 2, 3, 4].map((s) => (
               <div
                 key={s}
