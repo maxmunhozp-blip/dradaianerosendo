@@ -643,12 +643,15 @@ Deno.serve(async (req: Request) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Detect if last user message needs LexML grounding
+    // Detect if this is a case audit request
     const lastMsg = messages[messages.length - 1];
-    const legalQuery = lastMsg?.role === "user" ? detectLegalQuery(lastMsg.content) : null;
+    const isCaseAudit = lastMsg?.role === "user" && lastMsg.content.trim() === "__CASE_AUDIT__";
+
+    // Detect if last user message needs LexML grounding
+    const legalQuery = (!isCaseAudit && lastMsg?.role === "user") ? detectLegalQuery(lastMsg.content) : null;
     
     // Check if this is a direct /lei command
-    const isLeiCommand = lastMsg?.role === "user" && /^\/lei\s+/i.test(lastMsg.content.trim());
+    const isLeiCommand = !isCaseAudit && lastMsg?.role === "user" && /^\/lei\s+/i.test(lastMsg.content.trim());
 
     // Fetch all context in parallel (including LexML if needed)
     const [officeContext, caseContext, settings, lexmlContext, intimacoesContext] = await Promise.all([
