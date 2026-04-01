@@ -96,6 +96,13 @@ export default function CaseDetail() {
     }
   }, [dbMessages, historyLoaded, loadHistory]);
 
+  // Trigger audit when case loads
+  useEffect(() => {
+    if (caseData && id) {
+      triggerAudit();
+    }
+  }, [caseData, id, triggerAudit]);
+
   if (caseLoading) return <DetailSkeleton />;
 
   if (!caseData) {
