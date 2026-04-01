@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { RequestDataModal } from "@/components/RequestDataModal";
 import { ExtractionSuggestions } from "@/components/ExtractionSuggestions";
@@ -17,7 +18,7 @@ import {
 } from "@/components/ui/collapsible";
 import {
   ArrowLeft, Phone, Mail, Plus, FolderOpen, Send, Loader2,
-  Pencil, Trash2, Save, X, ChevronDown, ChevronRight, MapPin, Users, UserX, Baby, ExternalLink,
+  Pencil, Trash2, Save, X, ChevronDown, ChevronRight, MapPin, Users, UserX, Baby, ExternalLink, ScanSearch,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -81,6 +82,61 @@ export default function ClientDetail() {
   const [sendingPortal, setSendingPortal] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [showRequestData, setShowRequestData] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [scanProgress, setScanProgress] = useState("");
+  const queryClient = useQueryClient();
+
+  // Fetch all documents for this client's cases
+  const caseIds = cases.map((c: any) => c.id);
+  const { data: allDocs = [] } = useQuery({
+    queryKey: ["client-all-docs", id, caseIds],
+    queryFn: async () => {
+      if (caseIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from("documents")
+        .select("id, name, case_id, file_url, extraction_status")
+        .in("case_id", caseIds);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: caseIds.length > 0,
+  });
+
+  const pendingDocs = allDocs.filter(
+    (d: any) => d.file_url && (!d.extraction_status || d.extraction_status === "pending")
+  );
+
+  const handleScanAll = async () => {
+    if (pendingDocs.length === 0) {
+      toast.info("Nenhum documento pendente para escanear");
+      return;
+    }
+    setScanning(true);
+    let success = 0;
+    for (let i = 0; i < pendingDocs.length; i++) {
+      const doc = pendingDocs[i];
+      setScanProgress(`Escaneando documento ${i + 1} de ${pendingDocs.length}...`);
+      try {
+        await supabase.functions.invoke("process-document", {
+          body: {
+            document_id: doc.id,
+            case_id: doc.case_id,
+            client_id: id,
+            file_url: doc.file_url,
+            file_name: doc.name,
+          },
+        });
+        success++;
+      } catch (e) {
+        console.error(`Erro ao escanear ${doc.name}:`, e);
+      }
+    }
+    setScanProgress("");
+    setScanning(false);
+    queryClient.invalidateQueries({ queryKey: ["extraction-suggestions", id] });
+    queryClient.invalidateQueries({ queryKey: ["client-all-docs", id] });
+    toast.success(`Escaneamento concluído (${success}/${pendingDocs.length}) — verifique as sugestões abaixo.`);
+  };
 
   // Section states
   const [personalOpen, setPersonalOpen] = useState(true);
@@ -390,7 +446,25 @@ export default function ClientDetail() {
         />
       )}
 
-      {/* Extraction Suggestions */}
+      {/* Scan + Extraction Suggestions */}
+      {allDocs.length > 0 && (
+        <div className="flex items-center gap-3 mb-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleScanAll}
+            disabled={scanning || pendingDocs.length === 0}
+            className="gap-2"
+          >
+            {scanning ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <ScanSearch className="w-3.5 h-3.5" />
+            )}
+            {scanning ? scanProgress : `Escanear documentos com IA (${pendingDocs.length})`}
+          </Button>
+        </div>
+      )}
       <ExtractionSuggestions clientId={client.id} />
 
       {/* Collapsible Sections */}
