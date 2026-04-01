@@ -925,6 +925,20 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
           </div>
           <DialogFooter className="gap-2 flex-wrap pt-2">
             <Button variant="outline" onClick={() => {
+              // Go back to editor with current content
+              if (pdfPreviewMeta) {
+                setEditableText(editorRef.current?.getHTML() || "");
+                setEditMeta(pdfPreviewMeta);
+                setEditingText(true);
+              }
+              if (pdfPreviewUrl) URL.revokeObjectURL(pdfPreviewUrl);
+              setPdfPreviewUrl(null);
+              setPdfPreviewBlob(null);
+              setPdfPreviewMeta(null);
+            }}>
+              <ArrowLeft className="w-4 h-4 mr-1" /> Voltar ao editor
+            </Button>
+            <Button variant="outline" onClick={() => {
               if (pdfPreviewUrl) URL.revokeObjectURL(pdfPreviewUrl);
               setPdfPreviewUrl(null);
               setPdfPreviewBlob(null);
