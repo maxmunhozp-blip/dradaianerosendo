@@ -284,9 +284,9 @@ const ExtractionReviewPanel = ({
             </Button>
           </div>
           <p className="text-muted-foreground text-sm mt-1">
-            Encontrei <strong className="text-foreground">{initialSuggestions.length} informações</strong> em{" "}
+            Encontrei <strong className="text-foreground">{rawSuggestions.length} informações</strong> em{" "}
             <strong className="text-foreground">
-              {new Set(initialSuggestions.map((s) => s.documentId)).size} documentos
+              {new Set(rawSuggestions.map((s) => s.documentId)).size} documentos
             </strong>
           </p>
           <div className="flex gap-3 mt-4">
