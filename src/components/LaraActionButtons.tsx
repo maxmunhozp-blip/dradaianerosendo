@@ -585,7 +585,7 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
           if (needsEditor) {
             // Document doesn't exist or has no file — open editor first
             const rawText = messageContent || "";
-            const caseId = confirmAction.data.case_id || caseIdProp || "";
+            const caseId = confirmAction.data.case_id || "";
             const docName = confirmAction.data.document_name || "Documento";
 
             if (!rawText.trim()) {
