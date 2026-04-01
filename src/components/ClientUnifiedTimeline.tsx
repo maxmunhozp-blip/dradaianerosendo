@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Clock, FileText, PenLine, Bell, MessageSquare, Scale, AlertTriangle, CheckCircle2, Gavel, ClipboardCheck, Filter, Plus, Loader2 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Clock, FileText, PenLine, Bell, MessageSquare, Scale, AlertTriangle, CheckCircle2, Gavel, ClipboardCheck, Plus, Loader2 } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -81,8 +81,16 @@ const MANUAL_STATUSES = [
   { value: "atenção_necessária", label: "Atenção necessária" },
 ];
 
+// Tab definitions — each maps to a set of event types
+const TIMELINE_TABS = [
+  { value: "geral", label: "Geral", types: null }, // null = all
+  { value: "processo", label: "Processo", types: ["intimacao", "audiencia", "timeline"] },
+  { value: "documentos", label: "Documentos", types: ["documento", "assinatura", "peticao"] },
+  { value: "interno", label: "Interno", types: ["mensagem", "checklist", "manual"] },
+] as const;
+
 export function ClientUnifiedTimeline({ caseIds }: { caseIds: string[] }) {
-  const [activeFilter, setActiveFilter] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState("geral");
   const [showAddForm, setShowAddForm] = useState(false);
   const qc = useQueryClient();
 
@@ -249,9 +257,11 @@ export function ClientUnifiedTimeline({ caseIds }: { caseIds: string[] }) {
     onError: () => toast.error("Erro ao registrar movimentação"),
   });
 
-  // Compute available types from data
-  const availableTypes = [...new Set(events.map(e => e.type))].sort();
-  const filteredEvents = activeFilter ? events.filter(e => e.type === activeFilter) : events;
+  // Filter by active tab
+  const currentTab = TIMELINE_TABS.find(t => t.value === activeTab) || TIMELINE_TABS[0];
+  const filteredEvents = currentTab.types
+    ? events.filter(e => (currentTab.types as readonly string[]).includes(e.type))
+    : events;
 
   if (isLoading) {
     return (
@@ -269,7 +279,7 @@ export function ClientUnifiedTimeline({ caseIds }: { caseIds: string[] }) {
 
   return (
     <div className="mb-6">
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2 text-sm font-medium text-foreground">
           <Clock className="w-4 h-4" />
           Timeline ({filteredEvents.length})
@@ -285,6 +295,21 @@ export function ClientUnifiedTimeline({ caseIds }: { caseIds: string[] }) {
         </Button>
       </div>
 
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-3">
+        <TabsList className="h-8 w-full grid grid-cols-4">
+          {TIMELINE_TABS.map((tab) => {
+            const count = tab.types
+              ? events.filter(e => (tab.types as readonly string[]).includes(e.type)).length
+              : events.length;
+            return (
+              <TabsTrigger key={tab.value} value={tab.value} className="text-[11px] px-2 py-1 data-[state=active]:font-semibold">
+                {tab.label} ({count})
+              </TabsTrigger>
+            );
+          })}
+        </TabsList>
+      </Tabs>
+
       <AddManualEventDialog
         open={showAddForm}
         onOpenChange={setShowAddForm}
@@ -293,37 +318,9 @@ export function ClientUnifiedTimeline({ caseIds }: { caseIds: string[] }) {
         isPending={addEventMutation.isPending}
       />
 
-      {availableTypes.length > 1 && (
-        <div className="flex items-center gap-1.5 mb-3 flex-wrap">
-          <Filter className="w-3 h-3 text-muted-foreground" />
-          <Badge
-            variant={activeFilter === null ? "default" : "outline"}
-            className="text-[10px] px-2 py-0.5 cursor-pointer"
-            onClick={() => setActiveFilter(null)}
-          >
-            Todos
-          </Badge>
-          {availableTypes.map((type) => {
-            const Icon = TYPE_ICONS[type] || Clock;
-            const count = events.filter(e => e.type === type).length;
-            return (
-              <Badge
-                key={type}
-                variant={activeFilter === type ? "default" : "outline"}
-                className="text-[10px] px-2 py-0.5 cursor-pointer gap-1"
-                onClick={() => setActiveFilter(activeFilter === type ? null : type)}
-              >
-                <Icon className="w-2.5 h-2.5" />
-                {TYPE_LABELS[type] || type} ({count})
-              </Badge>
-            );
-          })}
-        </div>
-      )}
-
       {filteredEvents.length === 0 ? (
         <div className="border border-border rounded-lg p-6 text-center text-muted-foreground text-sm">
-          {activeFilter ? "Nenhuma movimentação deste tipo." : "Nenhuma movimentação registrada ainda."}
+          Nenhuma movimentação nesta categoria.
         </div>
       ) : (
         <div className="border border-border rounded-lg p-4 max-h-[500px] overflow-y-auto">
