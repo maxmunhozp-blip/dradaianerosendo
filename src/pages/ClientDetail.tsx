@@ -4,6 +4,8 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { RequestDataModal } from "@/components/RequestDataModal";
 import { ExtractionSuggestions } from "@/components/ExtractionSuggestions";
 import ExtractionProgress from "@/components/ExtractionProgress";
+import ExtractionReviewPanel, { type ReviewSuggestion } from "@/components/ExtractionReviewPanel";
+import { fieldLabels } from "@/hooks/use-extraction";
 import { useClient, useUpdateClient, useDeleteClient } from "@/hooks/use-clients";
 import { useCasesByClient, useCreateCase, useUpdateCase } from "@/hooks/use-cases";
 import { useCaseTypes } from "@/hooks/use-case-types";
@@ -89,6 +91,9 @@ export default function ClientDetail() {
   const [scanCurrentIndex, setScanCurrentIndex] = useState(0);
   const [scanResults, setScanResults] = useState<Record<string, { confidence: string; fieldsFound: number }>>({});
   const [scanDocList, setScanDocList] = useState<{ id: string; name: string }[]>([]);
+  const [reviewSuggestions, setReviewSuggestions] = useState<ReviewSuggestion[]>([]);
+  const [showReviewPanel, setShowReviewPanel] = useState(false);
+  const [scanSummary, setScanSummary] = useState<{ total: number; auto: number; review: number } | null>(null);
   const queryClient = useQueryClient();
 
   // Fetch all documents for this client's cases
@@ -201,7 +206,12 @@ export default function ClientDetail() {
     setScanResults({});
     setScanCurrentIndex(0);
     setScanning(true);
+    setScanSummary(null);
     let success = 0;
+    let totalAuto = 0;
+    let totalReview = 0;
+    const allClassified: ReviewSuggestion[] = [];
+
     for (let i = 0; i < docsToScan.length; i++) {
       const doc = docsToScan[i];
       setScanCurrentIndex(i);
@@ -224,9 +234,54 @@ export default function ClientDetail() {
           setScanResults(prev => ({ ...prev, [doc.id]: { confidence: "low", fieldsFound: 0 } }));
         } else {
           success++;
-          const fieldsFound = result?.data?.suggestions_created || result?.data?.fields_found || 0;
+          const data = result.data;
+          const fieldsFound = data.suggestions_created || data.fields_found || 0;
           const confidence = fieldsFound > 2 ? "high" : "low";
           setScanResults(prev => ({ ...prev, [doc.id]: { confidence, fieldsFound } }));
+          totalAuto += data.auto_applied || 0;
+          totalReview += data.pending_review || 0;
+
+          // Collect classified suggestions for review
+          if (data.classified) {
+            for (const c of data.classified) {
+              if (c.confidence !== "high") {
+                allClassified.push({
+                  id: `${doc.id}_${c.field_path}`,
+                  documentId: doc.id,
+                  documentName: doc.name,
+                  fieldLabel: fieldLabels[c.field_path] || c.field_path,
+                  field_path: c.field_path,
+                  value: c.suggested_value,
+                  currentValue: c.current_value,
+                  confidence: c.confidence as "medium" | "conflict",
+                  conflict: c.confidence === "conflict",
+                  case_id: doc.case_id,
+                  client_id: id!,
+                  assignOptions: [
+                    { label: client?.name || "Cliente", value: "client" },
+                    ...(cases[0]?.opposing_party_name
+                      ? [{ label: cases[0].opposing_party_name as string, value: "opposing" }]
+                      : [{ label: "Parte contrária", value: "opposing" }]),
+                    { label: "Ignorar", value: "skip" },
+                  ],
+                });
+              } else {
+                allClassified.push({
+                  id: `${doc.id}_${c.field_path}`,
+                  documentId: doc.id,
+                  documentName: doc.name,
+                  fieldLabel: fieldLabels[c.field_path] || c.field_path,
+                  field_path: c.field_path,
+                  value: c.suggested_value,
+                  currentValue: c.current_value,
+                  confidence: "high",
+                  conflict: false,
+                  case_id: doc.case_id,
+                  client_id: id!,
+                });
+              }
+            }
+          }
         }
       } catch (e) {
         console.error(`Erro ao escanear ${doc.name}:`, e);
@@ -241,7 +296,17 @@ export default function ClientDetail() {
     queryClient.invalidateQueries({ queryKey: ["client-all-docs", id] });
     queryClient.invalidateQueries({ queryKey: ["clients", id] });
     queryClient.invalidateQueries({ queryKey: ["clients"] });
-    toast.success(`Escaneamento concluído (${success}/${docsToScan.length}) — verifique os dados preenchidos acima.`);
+
+    const totalSuggestions = allClassified.length;
+    setScanSummary({ total: totalSuggestions, auto: totalAuto, review: totalReview });
+
+    // Store review suggestions and open panel if needed
+    setReviewSuggestions(allClassified);
+    if (totalReview > 0) {
+      setShowReviewPanel(true);
+    } else {
+      toast.success(`Escaneamento concluído! ${totalAuto} campos aplicados automaticamente.`);
+    }
   };
 
   // Section states
@@ -627,7 +692,46 @@ export default function ClientDetail() {
           )}
         </div>
       )}
+      {/* Scan summary banner with button to open review */}
+      {scanSummary && scanSummary.review > 0 && !showReviewPanel && (
+        <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between">
+          <p className="text-sm text-amber-800">
+            Terminei de analisar os documentos. Encontrei{" "}
+            <strong>{scanSummary.total} informações</strong> —{" "}
+            {scanSummary.auto} aplicadas automaticamente e{" "}
+            <strong>{scanSummary.review} precisam da sua confirmação</strong>.
+          </p>
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-amber-400 text-amber-700 hover:bg-amber-100 ml-3 flex-shrink-0"
+            onClick={() => setShowReviewPanel(true)}
+          >
+            Revisar dados
+          </Button>
+        </div>
+      )}
       <ExtractionSuggestions clientId={client.id} />
+
+      {/* Review Panel Modal */}
+      {showReviewPanel && reviewSuggestions.length > 0 && (
+        <ExtractionReviewPanel
+          suggestions={reviewSuggestions}
+          clientName={client.name}
+          opposingName={(cases[0] as any)?.opposing_party_name || "Parte contrária"}
+          onClose={() => setShowReviewPanel(false)}
+          onComplete={() => {
+            setShowReviewPanel(false);
+            setScanSummary(null);
+            setReviewSuggestions([]);
+            queryClient.invalidateQueries({ queryKey: ["extraction-suggestions", id] });
+            queryClient.invalidateQueries({ queryKey: ["clients", id] });
+            queryClient.invalidateQueries({ queryKey: ["clients"] });
+            queryClient.invalidateQueries({ queryKey: ["cases"] });
+            toast.success("Revisão concluída — dados atualizados!");
+          }}
+        />
+      )}
 
       {/* Collapsible Sections */}
       <div className="space-y-3 mb-6">
