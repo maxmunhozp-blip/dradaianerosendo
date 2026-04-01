@@ -111,6 +111,7 @@ const App = () => {
                 <Route path="/lara" element={<LaraPage />} />
                 <Route path="/documents" element={<Documents />} />
                 <Route path="/agenda" element={<Agenda />} />
+                <Route path="/admin" element={<AdminPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/users" element={<UsersManagement />} />
                 <Route path="/templates" element={<Templates />} />
