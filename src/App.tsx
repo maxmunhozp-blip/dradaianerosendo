@@ -42,14 +42,17 @@ const App = () => {
       const link = target.closest("a");
       if (!link) return;
       const href = link.getAttribute("href") || "";
-      if (href.includes("whatsapp") && !href.startsWith("https://wa.me/")) {
+      if (href.includes("whatsapp") || href.includes("wa.me")) {
         e.preventDefault();
-        const phoneMatch = href.match(/phone=(\d+)/);
-        const textMatch = href.match(/text=([^&]+)/);
-        if (phoneMatch) {
-          const clean = "https://wa.me/" + phoneMatch[1] + (textMatch ? "?text=" + textMatch[1] : "");
-          window.open(clean, "_blank");
+        let finalUrl = href;
+        if (!href.startsWith("https://wa.me/")) {
+          const phoneMatch = href.match(/phone=(\d+)/);
+          const textMatch = href.match(/text=([^&]+)/);
+          if (phoneMatch) {
+            finalUrl = "https://wa.me/" + phoneMatch[1] + (textMatch ? "?text=" + textMatch[1] : "");
+          }
         }
+        window.open(finalUrl, "_blank", "noopener,noreferrer");
       }
     };
     document.addEventListener("click", handleClick);
@@ -59,16 +62,19 @@ const App = () => {
   // Interceptor global: sobrescreve window.open para corrigir URLs de WhatsApp
   useEffect(() => {
     const originalOpen = window.open.bind(window);
-    window.open = (url?: string | URL, ...args: any[]) => {
-      if (typeof url === "string" && url.includes("api.whatsapp.com")) {
-        const phoneMatch = url.match(/phone=(\d+)/);
-        const textMatch = url.match(/text=([^&]+)/);
-        if (phoneMatch) {
-          const clean = "https://wa.me/" + phoneMatch[1] + (textMatch ? "?text=" + textMatch[1] : "");
-          return originalOpen(clean, ...args);
+    window.open = (url?: string | URL, target?: string, features?: string) => {
+      if (typeof url === "string" && (url.includes("wa.me") || url.includes("whatsapp"))) {
+        let finalUrl = url;
+        if (url.includes("api.whatsapp.com")) {
+          const phoneMatch = url.match(/phone=(\d+)/);
+          const textMatch = url.match(/text=([^&]+)/);
+          if (phoneMatch) {
+            finalUrl = "https://wa.me/" + phoneMatch[1] + (textMatch ? "?text=" + textMatch[1] : "");
+          }
         }
+        return originalOpen(finalUrl, "_blank", "noopener,noreferrer");
       }
-      return originalOpen(url, ...args);
+      return originalOpen(url, target, features);
     };
     return () => { window.open = originalOpen; };
   }, []);
