@@ -220,6 +220,44 @@ export function ClientUnifiedTimeline({ caseIds }: { caseIds: string[] }) {
     enabled: caseIds.length > 0,
   });
 
+  // Fetch case options for the form
+  const { data: caseOptions = [] } = useQuery({
+    queryKey: ["case-options-for-timeline", caseIds],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("cases")
+        .select("id, case_type")
+        .in("id", caseIds);
+      return data || [];
+    },
+    enabled: caseIds.length > 0,
+  });
+
+  const addEventMutation = useMutation({
+    mutationFn: async (payload: {
+      case_id: string;
+      title: string;
+      description: string;
+      type: string;
+      status: string;
+    }) => {
+      const { error } = await supabase.from("case_timeline").insert({
+        case_id: payload.case_id,
+        title: payload.title,
+        description: payload.description,
+        type: payload.type,
+        status: payload.status,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["client-unified-timeline", caseIds] });
+      setShowAddForm(false);
+      toast.success("Movimentação registrada!");
+    },
+    onError: () => toast.error("Erro ao registrar movimentação"),
+  });
+
   // Compute available types from data
   const availableTypes = [...new Set(events.map(e => e.type))].sort();
   const filteredEvents = activeFilter ? events.filter(e => e.type === activeFilter) : events;
@@ -245,7 +283,24 @@ export function ClientUnifiedTimeline({ caseIds }: { caseIds: string[] }) {
           <Clock className="w-4 h-4" />
           Movimentações ({filteredEvents.length})
         </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="text-xs gap-1 h-7"
+          onClick={() => setShowAddForm(true)}
+        >
+          <Plus className="w-3 h-3" />
+          Nova movimentação
+        </Button>
       </div>
+
+      <AddManualEventDialog
+        open={showAddForm}
+        onOpenChange={setShowAddForm}
+        caseOptions={caseOptions}
+        onSubmit={(data) => addEventMutation.mutate(data)}
+        isPending={addEventMutation.isPending}
+      />
 
       {availableTypes.length > 1 && (
         <div className="flex items-center gap-1.5 mb-3 flex-wrap">
