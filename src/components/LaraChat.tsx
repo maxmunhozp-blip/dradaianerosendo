@@ -34,7 +34,7 @@ interface SaveDataAction {
 }
 
 interface LaraAction {
-  type: "send_whatsapp" | "create_task" | "open_client" | "generate_document" | "schedule_reminder";
+  type: "send_whatsapp" | "create_task" | "open_client" | "generate_document" | "schedule_reminder" | "scan_documents";
   label: string;
   data: Record<string, any>;
 }
