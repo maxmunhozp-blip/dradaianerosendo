@@ -334,6 +334,10 @@ export type Database = {
           case_id: string
           category: string
           created_at: string
+          extracted_at: string | null
+          extracted_data: Json | null
+          extraction_confidence: string | null
+          extraction_status: string | null
           file_url: string | null
           id: string
           name: string
@@ -345,6 +349,10 @@ export type Database = {
           case_id: string
           category?: string
           created_at?: string
+          extracted_at?: string | null
+          extracted_data?: Json | null
+          extraction_confidence?: string | null
+          extraction_status?: string | null
           file_url?: string | null
           id?: string
           name: string
@@ -356,6 +364,10 @@ export type Database = {
           case_id?: string
           category?: string
           created_at?: string
+          extracted_at?: string | null
+          extracted_data?: Json | null
+          extraction_confidence?: string | null
+          extraction_status?: string | null
           file_url?: string | null
           id?: string
           name?: string
@@ -534,6 +546,64 @@ export type Database = {
             columns: ["intimacao_id"]
             isOneToOne: false
             referencedRelation: "intimacoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      extraction_suggestions: {
+        Row: {
+          case_id: string | null
+          client_id: string | null
+          created_at: string | null
+          current_value: string | null
+          document_id: string | null
+          field_path: string
+          id: string
+          status: string | null
+          suggested_value: string
+        }
+        Insert: {
+          case_id?: string | null
+          client_id?: string | null
+          created_at?: string | null
+          current_value?: string | null
+          document_id?: string | null
+          field_path: string
+          id?: string
+          status?: string | null
+          suggested_value: string
+        }
+        Update: {
+          case_id?: string | null
+          client_id?: string | null
+          created_at?: string | null
+          current_value?: string | null
+          document_id?: string | null
+          field_path?: string
+          id?: string
+          status?: string | null
+          suggested_value?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "extraction_suggestions_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "extraction_suggestions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "extraction_suggestions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
             referencedColumns: ["id"]
           },
         ]
