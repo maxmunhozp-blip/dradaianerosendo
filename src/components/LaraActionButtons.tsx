@@ -67,6 +67,12 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
   const [generatedDocId, setGeneratedDocId] = useState<string | null>(null);
   const [generatedDocName, setGeneratedDocName] = useState<string>("");
 
+  // PDF Preview state
+  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
+  const [pdfPreviewBlob, setPdfPreviewBlob] = useState<Blob | null>(null);
+  const [pdfPreviewMeta, setPdfPreviewMeta] = useState<{ docName: string; caseId: string; action: LaraAction; actionIndex: number } | null>(null);
+  const [savingPdf, setSavingPdf] = useState(false);
+
   // All actions including dynamically added ones
   const [dynamicActions, setDynamicActions] = useState<LaraAction[]>([]);
 
