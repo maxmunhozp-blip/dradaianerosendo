@@ -211,14 +211,21 @@ export default function PublicDataRequest() {
           setCepError(true);
           setShowManualAddress(true);
         } else {
-          setAddressData({
-            street: data.logradouro || "", number: "", complement: "",
-            neighborhood: data.bairro || "", city: data.localidade || "", state: data.uf || "",
-          });
+          const newAddress = {
+            street: data.logradouro ?? "",
+            number: "",
+            complement: data.complemento?.trim() || "",
+            neighborhood: data.bairro ?? "",
+            city: data.localidade ?? "",
+            state: data.uf ?? "",
+          };
+          setAddressData(newAddress);
           setAddressConfirmed(true);
           const cepIdx = steps.indexOf("cep");
           setCurrentStep(cepIdx + 2);
-          setTimeout(() => numberRef.current?.focus(), 300);
+          requestAnimationFrame(() => {
+            setTimeout(() => numberRef.current?.focus(), 200);
+          });
         }
       } catch {
         setCepError(true);
