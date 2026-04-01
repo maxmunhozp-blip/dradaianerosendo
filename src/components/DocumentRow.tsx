@@ -190,6 +190,24 @@ export function DocumentRow({ doc }: DocumentRowProps) {
                   Petição Inicial
                 </Badge>
               )}
+              {doc.extraction_status === "processing" && (
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-1 border-amber-300 text-amber-600 bg-amber-50">
+                  <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                  Extraindo dados...
+                </Badge>
+              )}
+              {doc.extraction_status === "done" && (
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-1 border-green-300 text-green-600 bg-green-50">
+                  <CheckCircle2 className="w-2.5 h-2.5" />
+                  {doc.extraction_confidence === "high" ? "Dados extraídos" : "Dados parciais"}
+                </Badge>
+              )}
+              {doc.extraction_status === "failed" && (
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-1 border-destructive/30 text-destructive bg-destructive/5">
+                  <AlertCircle className="w-2.5 h-2.5" />
+                  Extração falhou
+                </Badge>
+              )}
               {doc.notes && doc.notes.trim() && (
                 <Badge variant="outline" className="text-[10px] px-1.5 py-0">
                   Com anotações
