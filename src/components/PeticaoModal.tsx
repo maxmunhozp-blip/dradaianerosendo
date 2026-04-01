@@ -26,6 +26,156 @@ import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import jsPDF from "jspdf";
 
+// ─── PDF formatting helpers ───
+
+interface PdfSection {
+  type: "main-heading" | "section-heading" | "sub-heading" | "body" | "item" | "signature" | "spacer";
+  text: string;
+}
+
+function parsePeticaoSections(raw: string): PdfSection[] {
+  const lines = raw.split("\n");
+  const sections: PdfSection[] = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) { sections.push({ type: "spacer", text: "" }); continue; }
+
+    const clean = line.replace(/\*\*/g, "").replace(/^#+\s*/, "");
+
+    if (/^EXCELENT[ÍI]SSIM/.test(clean) || /^PROCURAÇÃO/.test(clean)) {
+      sections.push({ type: "main-heading", text: clean }); continue;
+    }
+    if (/^(I{1,3}|IV|V|VI{0,3}|IX|X)\s*[—–-]\s/.test(clean) || /^(AÇÃO DE|AÇÃO DECLARATÓRIA)/.test(clean)) {
+      sections.push({ type: "section-heading", text: clean }); continue;
+    }
+    if (/^[A-ZÁÉÍÓÚÂÊÔÃÕÇ\s]{4,}:?\s*$/.test(clean) && clean.length < 80) {
+      sections.push({ type: "sub-heading", text: clean }); continue;
+    }
+    if (/^[a-z]\)/.test(clean) || /^\d+\)/.test(clean) || /^[•\-–]\s/.test(clean)) {
+      sections.push({ type: "item", text: clean }); continue;
+    }
+    if (/^_{3,}/.test(clean) || /^Nestes termos/.test(clean) || /^Dra?\.\s/.test(clean) || /^OAB\//.test(clean)) {
+      sections.push({ type: "signature", text: clean }); continue;
+    }
+    sections.push({ type: "body", text: clean });
+  }
+  return sections;
+}
+
+function generateFormattedPdf(
+  text: string,
+  officeSettings: Record<string, string> | undefined,
+  caseData: any,
+  clientData: any,
+  docType: string = "Petição Inicial"
+): { blob: Blob; fileName: string } {
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const ml = 30, mr = 25, mt = 32, mb = 28;
+  const pw = doc.internal.pageSize.getWidth();
+  const ph = doc.internal.pageSize.getHeight();
+  const cw = pw - ml - mr;
+
+  const oName = officeSettings?.office_name || "Escritório de Advocacia";
+  const oOab = officeSettings?.office_oab || "";
+  const oAddr = officeSettings?.office_address || "";
+  const oPhone = officeSettings?.office_phone || "";
+  const oEmail = officeSettings?.office_email || "";
+
+  let curPage = 1, totalPages = 0;
+
+  const drawHeader = () => {
+    doc.setDrawColor(180, 130, 30); doc.setLineWidth(0.6);
+    doc.line(ml, 14, pw - mr, 14);
+    doc.setFont("times", "bold"); doc.setFontSize(13); doc.setTextColor(20, 20, 40);
+    doc.text(oName.toUpperCase(), ml, 21);
+    doc.setFont("times", "normal"); doc.setFontSize(8); doc.setTextColor(100, 100, 120);
+    const info = [oOab, oPhone, oEmail].filter(Boolean).join("  |  ");
+    if (info) doc.text(info, ml, 25.5);
+    if (oAddr) doc.text(oAddr, ml, 29);
+    doc.setDrawColor(180, 180, 195); doc.setLineWidth(0.2);
+    doc.line(ml, mt, pw - mr, mt);
+  };
+
+  const drawFooter = (pn: number, tp: number) => {
+    doc.setDrawColor(180, 180, 195); doc.setLineWidth(0.2);
+    doc.line(ml, ph - 18, pw - mr, ph - 18);
+    doc.setFont("times", "normal"); doc.setFontSize(7.5); doc.setTextColor(130, 130, 150);
+    doc.text(oName, ml, ph - 13);
+    doc.text(`Página ${pn} de ${tp}`, pw - mr, ph - 13, { align: "right" });
+  };
+
+  const sections = parsePeticaoSections(text);
+
+  const getMetrics = (type: string) => {
+    switch (type) {
+      case "main-heading": return { fs: 13, lh: 6, eb: 8, ea: 6 };
+      case "section-heading": return { fs: 12, lh: 5.5, eb: 8, ea: 4 };
+      case "sub-heading": return { fs: 11, lh: 5, eb: 6, ea: 3 };
+      case "item": return { fs: 11, lh: 5, eb: 1.5, ea: 0 };
+      case "signature": return { fs: 11, lh: 5, eb: 3, ea: 0 };
+      default: return { fs: 11, lh: 5, eb: 0, ea: 0 };
+    }
+  };
+
+  // Pass 1: count pages
+  let y = mt + 6; totalPages = 1;
+  for (const s of sections) {
+    if (s.type === "spacer") { y += 4; continue; }
+    const m = getMetrics(s.type);
+    doc.setFontSize(m.fs);
+    const w = doc.splitTextToSize(s.text, s.type === "item" ? cw - 10 : cw);
+    const bh = m.eb + w.length * m.lh + m.ea;
+    if (y + bh > ph - mb) { totalPages++; y = mt + 6; }
+    y += bh;
+  }
+
+  // Pass 2: render
+  drawHeader(); y = mt + 6; curPage = 1;
+  const np = () => { drawFooter(curPage, totalPages); doc.addPage(); curPage++; drawHeader(); y = mt + 6; };
+
+  for (const s of sections) {
+    if (s.type === "spacer") { y += 4; continue; }
+    const m = getMetrics(s.type);
+    const bold = ["main-heading", "section-heading", "sub-heading"].includes(s.type);
+    const center = s.type === "main-heading" || s.type === "signature";
+    const xOff = s.type === "item" ? 10 : 0;
+    const tc: [number, number, number] = bold ? [15, 15, 35] : [40, 40, 60];
+
+    doc.setFont("times", bold ? "bold" : "normal");
+    doc.setFontSize(m.fs);
+    const wrapped = doc.splitTextToSize(s.text, cw - xOff);
+    const bh = m.eb + wrapped.length * m.lh + m.ea;
+    if (y + bh > ph - mb) np();
+
+    y += m.eb;
+    doc.setTextColor(...tc);
+    for (const wl of wrapped) {
+      if (y > ph - mb) np();
+      if (center) doc.text(wl, pw / 2, y, { align: "center" });
+      else doc.text(wl, ml + xOff, y);
+      y += m.lh;
+    }
+    y += m.ea;
+  }
+  drawFooter(curPage, totalPages);
+
+  const cn = (clientData.name || "cliente").split(" ").slice(0, 2).join("-").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const dt = docType.toLowerCase().replace(/\s+/g, "-").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const ds = new Date().toISOString().slice(0, 10);
+  const fileName = `${dt}_${cn}_${ds}.pdf`;
+  return { blob: doc.output("blob"), fileName };
+}
+
+const REVIEW_CHECKLIST = [
+  { id: "qualificacao", label: "Qualificação das partes completa (nome, CPF, RG, endereço)" },
+  { id: "fundamentacao", label: "Fundamentação jurídica com leis corretas e verificadas" },
+  { id: "pedidos", label: "Pedidos claros e objetivos" },
+  { id: "valor", label: "Valor da causa informado" },
+  { id: "ortografia", label: "Revisão ortográfica e gramatical" },
+  { id: "dados", label: "Dados sensíveis corretos (números, datas, valores)" },
+];
+
 interface PeticaoModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -52,12 +202,14 @@ export function PeticaoModal({
   documents,
   checklist,
 }: PeticaoModalProps) {
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [selectedDocs, setSelectedDocs] = useState<Set<string>>(new Set());
   const [additionalContext, setAdditionalContext] = useState("");
   const [generatedText, setGeneratedText] = useState("");
   const [genStep, setGenStep] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [reviewChecks, setReviewChecks] = useState<Set<string>>(new Set());
+  const [docType, setDocType] = useState("Petição Inicial");
   const editorRef = useRef<HTMLDivElement>(null);
   const createDoc = useCreateDocument();
   const uploadDoc = useUploadDocument();
@@ -86,6 +238,8 @@ export function PeticaoModal({
       setGeneratedText("");
       setAdditionalContext("");
       setGenStep(0);
+      setReviewChecks(new Set());
+      setDocType("Petição Inicial");
     }
   }, [open, documents]);
 
@@ -351,6 +505,7 @@ export function PeticaoModal({
           </div>
           <div className="flex items-center gap-2">
             {[1, 2, 3].map((s) => (
+            {[1, 2, 3, 4].map((s) => (
               <div
                 key={s}
                 className={`w-2 h-2 rounded-full ${
