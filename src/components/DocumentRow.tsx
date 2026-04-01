@@ -222,6 +222,9 @@ export function DocumentRow({ doc, clientName, clientEmail, clientCpf, clientPho
                   Extração falhou
                 </Badge>
               )}
+              {doc.signature_status && doc.signature_status !== "none" && (
+                <SignatureStatusBadge status={doc.signature_status} />
+              )}
               {doc.notes && doc.notes.trim() && (
                 <Badge variant="outline" className="text-[10px] px-1.5 py-0">
                   Com anotações
