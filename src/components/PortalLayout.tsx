@@ -55,6 +55,21 @@ export default function PortalLayout() {
               <FolderOpen className="w-3.5 h-3.5" />
               Documentos
             </NavLink>
+            <NavLink
+              to="/portal/assistente"
+              className={({ isActive }) =>
+                cn(
+                  "flex items-center gap-1.5 px-3 py-2 text-sm border-b-2 transition-colors",
+                  isActive
+                    ? "border-primary text-foreground font-medium"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                )
+              }
+            >
+              <MessageSquare className="w-3.5 h-3.5" />
+              Sofia
+            </NavLink>
+            </NavLink>
           </nav>
         </div>
       </header>
