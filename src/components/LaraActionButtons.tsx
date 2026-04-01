@@ -208,9 +208,108 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
           break;
 
         case "generate_document":
-          navigate(`/templates`);
-          toast.info("Selecione o caso e tipo de documento na página de templates");
+        case "generate_pdf": {
+          // Extract document text from the message content
+          const docText = messageContent || "";
+          const docName = confirmAction.data.document_name || confirmAction.data.template || "Documento";
+          const caseId = confirmAction.data.case_id;
+
+          if (!docText.trim()) {
+            toast.error("Conteúdo do documento não encontrado");
+            break;
+          }
+          if (!caseId) {
+            toast.error("Caso não identificado");
+            break;
+          }
+
+          // Generate PDF with jsPDF
+          const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+          const margin = 25;
+          const pageWidth = pdf.internal.pageSize.getWidth();
+          const maxWidth = pageWidth - margin * 2;
+          pdf.setFont("helvetica", "normal");
+          pdf.setFontSize(12);
+
+          // Clean markdown formatting for PDF
+          const cleanText = docText
+            .replace(/#{1,6}\s/g, "")
+            .replace(/\*\*(.*?)\*\*/g, "$1")
+            .replace(/\*(.*?)\*/g, "$1")
+            .replace(/ACTIONS_START[\s\S]*?ACTIONS_END/g, "")
+            .replace(/```[\s\S]*?```/g, "")
+            .trim();
+
+          const lines = pdf.splitTextToSize(cleanText, maxWidth);
+          let y = margin;
+          const lineHeight = 6;
+
+          for (const line of lines) {
+            if (y + lineHeight > pdf.internal.pageSize.getHeight() - margin) {
+              pdf.addPage();
+              y = margin;
+            }
+            pdf.text(line, margin, y);
+            y += lineHeight;
+          }
+
+          // Upload PDF to storage
+          const pdfBlob = pdf.output("blob");
+          const fileName = `${caseId}/${Date.now()}_${docName.replace(/\s+/g, "_")}.pdf`;
+          
+          const { error: uploadError } = await supabase.storage
+            .from("case-documents")
+            .upload(fileName, pdfBlob, { contentType: "application/pdf" });
+
+          if (uploadError) {
+            toast.error("Erro ao fazer upload do PDF: " + uploadError.message);
+            break;
+          }
+
+          const { data: urlData } = supabase.storage
+            .from("case-documents")
+            .getPublicUrl(fileName);
+
+          // Create document record
+          const { data: newDoc, error: docError } = await supabase
+            .from("documents")
+            .insert({
+              case_id: caseId,
+              name: docName,
+              file_url: urlData.publicUrl,
+              status: "aprovado",
+              category: "peticao",
+              uploaded_by: "lara",
+              signature_status: "none",
+            })
+            .select("id, name")
+            .single();
+
+          if (docError) {
+            toast.error("Erro ao criar documento: " + docError.message);
+            break;
+          }
+
+          toast.success(`PDF "${docName}" gerado e salvo no caso!`);
+
+          // Store generated doc info and add signature action
+          setGeneratedDocId(newDoc.id);
+          setGeneratedDocName(newDoc.name);
+          setDynamicActions(prev => [
+            ...prev,
+            {
+              type: "send_for_signature" as const,
+              label: `Enviar "${newDoc.name}" para assinatura`,
+              data: {
+                document_id: newDoc.id,
+                document_name: newDoc.name,
+                client_phone: confirmAction.data.client_phone,
+                client_name: confirmAction.data.client_name,
+              },
+            },
+          ]);
           break;
+        }
 
         case "download_document":
           navigate(`/templates`);
