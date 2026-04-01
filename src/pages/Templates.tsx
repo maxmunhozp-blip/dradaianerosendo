@@ -5,6 +5,7 @@ import { streamLaraChat } from "@/lib/lara-stream";
 import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, LevelFormat, Header, Footer, ImageRun, PageBreak, BorderStyle } from "docx";
+import { useCallback } from "react";
 import { saveAs } from "file-saver";
 import jsPDF from "jspdf";
 import {
@@ -20,7 +21,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { FileText, Loader2, Copy, RefreshCw, Sparkles, Download, FileDown, Stamp } from "lucide-react";
+import { FileText, Loader2, Copy, RefreshCw, Sparkles, Download, FileDown, Stamp, Eye, EyeOff } from "lucide-react";
 
 const FORMAT_INSTRUCTIONS = `
 
@@ -60,6 +61,7 @@ export default function Templates() {
   const [generatedContent, setGeneratedContent] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [useLetterhead, setUseLetterhead] = useState(true);
+  const [previewMode, setPreviewMode] = useState<"text" | "pdf">("text");
   const contentRef = useRef<HTMLDivElement>(null);
 
   const { data: branding } = useQuery({
@@ -288,139 +290,141 @@ export default function Templates() {
     }
   };
 
-  const handleExportPdf = () => {
-    if (!generatedContent) return;
+  const buildPdfDoc = useCallback(() => {
+    if (!generatedContent) return null;
 
-    try {
-      const b = branding;
-      const templateLabel = TEMPLATE_TYPES.find((t) => t.value === selectedTemplate)?.label || "Documento";
-      const clientName = (selectedCaseData as any)?.clients?.name || "Cliente";
+    const b = branding;
+    const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const marginLeft = b?.margin_left || 30;
+    const marginRight = b?.margin_right || 20;
+    const marginTop = b?.margin_top || 30;
+    const marginBottom = b?.margin_bottom || 25;
+    const contentWidth = pageWidth - marginLeft - marginRight;
+    let y = marginTop;
 
-      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      const marginLeft = b?.margin_left || 30;
-      const marginRight = b?.margin_right || 20;
-      const marginTop = b?.margin_top || 30;
-      const marginBottom = b?.margin_bottom || 25;
-      const contentWidth = pageWidth - marginLeft - marginRight;
-      let y = marginTop;
-
-      const addHeader = () => {
-        if (useLetterhead && b?.header_text) {
-          const headerLines = (b.header_text as string).split("\n");
-          pdf.setFont("helvetica", "bold");
-          pdf.setFontSize(b.font_size_body || 12);
-          for (let i = 0; i < headerLines.length; i++) {
-            if (i > 0) pdf.setFont("helvetica", "normal");
-            pdf.setFontSize(i === 0 ? (b.font_size_body || 12) : (b.font_size_body || 12) - 1);
-            pdf.text(headerLines[i], marginLeft, y);
-            y += 5;
-          }
-          // Separator line
-          const secColor = (b.secondary_color || "#2B9E8F").replace("#", "");
-          const r = parseInt(secColor.substring(0, 2), 16);
-          const g = parseInt(secColor.substring(2, 4), 16);
-          const bl = parseInt(secColor.substring(4, 6), 16);
-          pdf.setDrawColor(r, g, bl);
-          pdf.setLineWidth(0.5);
-          pdf.line(marginLeft, y, pageWidth - marginRight, y);
-          y += 6;
+    const addHeader = () => {
+      if (useLetterhead && b?.header_text) {
+        const headerLines = (b.header_text as string).split("\n");
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(b.font_size_body || 12);
+        for (let i = 0; i < headerLines.length; i++) {
+          if (i > 0) pdf.setFont("helvetica", "normal");
+          pdf.setFontSize(i === 0 ? (b.font_size_body || 12) : (b.font_size_body || 12) - 1);
+          pdf.text(headerLines[i], marginLeft, y);
+          y += 5;
         }
-      };
+        const secColor = (b.secondary_color || "#2B9E8F").replace("#", "");
+        const r = parseInt(secColor.substring(0, 2), 16);
+        const g = parseInt(secColor.substring(2, 4), 16);
+        const bl = parseInt(secColor.substring(4, 6), 16);
+        pdf.setDrawColor(r, g, bl);
+        pdf.setLineWidth(0.5);
+        pdf.line(marginLeft, y, pageWidth - marginRight, y);
+        y += 6;
+      }
+    };
 
-      const addFooter = () => {
-        if (useLetterhead && b?.footer_text) {
-          pdf.setFont("helvetica", "normal");
-          pdf.setFontSize((b.font_size_body || 12) - 2);
-          pdf.setTextColor(113, 128, 150);
-          const footerY = pageHeight - 10;
-          pdf.text(b.footer_text as string, pageWidth / 2, footerY, { align: "center" });
-          pdf.setTextColor(0, 0, 0);
-        }
-      };
+    const addFooter = () => {
+      if (useLetterhead && b?.footer_text) {
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize((b.font_size_body || 12) - 2);
+        pdf.setTextColor(113, 128, 150);
+        const footerY = pageHeight - 10;
+        pdf.text(b.footer_text as string, pageWidth / 2, footerY, { align: "center" });
+        pdf.setTextColor(0, 0, 0);
+      }
+    };
 
-      addHeader();
+    addHeader();
 
-      const addPageIfNeeded = (lineHeight: number) => {
-        if (y + lineHeight > pageHeight - marginBottom) {
-          addFooter();
-          pdf.addPage();
-          y = marginTop;
-          addHeader();
-        }
-      };
+    const addPageIfNeeded = (lineHeight: number) => {
+      if (y + lineHeight > pageHeight - marginBottom) {
+        addFooter();
+        pdf.addPage();
+        y = marginTop;
+        addHeader();
+      }
+    };
 
-      const lines = generatedContent.split("\n");
+    const lines = generatedContent.split("\n");
 
-      for (const line of lines) {
-        const trimmed = line.trim();
+    for (const line of lines) {
+      const trimmed = line.trim();
 
-        if (!trimmed) {
-          y += 4;
-          continue;
-        }
-
-        // Headings
-        if (trimmed.startsWith("# ")) {
-          const text = trimmed.replace(/^#\s*/, "").replace(/\*\*/g, "");
-          pdf.setFont("helvetica", "bold");
-          pdf.setFontSize(14);
-          const wrapped = pdf.splitTextToSize(text.toUpperCase(), contentWidth);
-          addPageIfNeeded(wrapped.length * 7);
-          pdf.text(wrapped, pageWidth / 2, y, { align: "center" });
-          y += wrapped.length * 7 + 6;
-        } else if (trimmed.startsWith("## ")) {
-          const text = trimmed.replace(/^##\s*/, "").replace(/\*\*/g, "");
-          pdf.setFont("helvetica", "bold");
-          pdf.setFontSize(12);
-          addPageIfNeeded(8);
-          y += 4;
-          pdf.text(text.toUpperCase(), marginLeft, y);
-          y += 8;
-        } else if (trimmed.startsWith("### ")) {
-          const text = trimmed.replace(/^###\s*/, "").replace(/\*\*/g, "");
-          pdf.setFont("helvetica", "bold");
-          pdf.setFontSize(11);
-          addPageIfNeeded(7);
-          y += 2;
-          pdf.text(text, marginLeft, y);
-          y += 7;
-        } else if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
-          const text = trimmed.replace(/^[-*]\s*/, "").replace(/\*\*/g, "");
-          pdf.setFont("helvetica", "normal");
-          pdf.setFontSize(11);
-          const wrapped = pdf.splitTextToSize(text, contentWidth - 8);
-          addPageIfNeeded(wrapped.length * 5.5);
-          pdf.text("•", marginLeft + 2, y);
-          pdf.text(wrapped, marginLeft + 8, y);
-          y += wrapped.length * 5.5 + 2;
-        } else if (/^\d+\.\s/.test(trimmed)) {
-          const numMatch = trimmed.match(/^(\d+\.)\s*(.*)/);
-          const num = numMatch?.[1] || "";
-          const text = (numMatch?.[2] || "").replace(/\*\*/g, "");
-          pdf.setFont("helvetica", "normal");
-          pdf.setFontSize(11);
-          const wrapped = pdf.splitTextToSize(text, contentWidth - 10);
-          addPageIfNeeded(wrapped.length * 5.5);
-          pdf.setFont("helvetica", "bold");
-          pdf.text(num, marginLeft, y);
-          pdf.setFont("helvetica", "normal");
-          pdf.text(wrapped, marginLeft + 10, y);
-          y += wrapped.length * 5.5 + 2;
-        } else {
-          // Regular paragraph - strip bold markers for clean text
-          const cleanText = trimmed.replace(/\*\*/g, "");
-          pdf.setFont("helvetica", "normal");
-          pdf.setFontSize(11);
-          const wrapped = pdf.splitTextToSize(cleanText, contentWidth);
-          addPageIfNeeded(wrapped.length * 5.5);
-          pdf.text(wrapped, marginLeft, y, { align: "justify", maxWidth: contentWidth });
-          y += wrapped.length * 5.5 + 2;
-        }
+      if (!trimmed) {
+        y += 4;
+        continue;
       }
 
-      addFooter();
+      if (trimmed.startsWith("# ")) {
+        const text = trimmed.replace(/^#\s*/, "").replace(/\*\*/g, "");
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(14);
+        const wrapped = pdf.splitTextToSize(text.toUpperCase(), contentWidth);
+        addPageIfNeeded(wrapped.length * 7);
+        pdf.text(wrapped, pageWidth / 2, y, { align: "center" });
+        y += wrapped.length * 7 + 6;
+      } else if (trimmed.startsWith("## ")) {
+        const text = trimmed.replace(/^##\s*/, "").replace(/\*\*/g, "");
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(12);
+        addPageIfNeeded(8);
+        y += 4;
+        pdf.text(text.toUpperCase(), marginLeft, y);
+        y += 8;
+      } else if (trimmed.startsWith("### ")) {
+        const text = trimmed.replace(/^###\s*/, "").replace(/\*\*/g, "");
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(11);
+        addPageIfNeeded(7);
+        y += 2;
+        pdf.text(text, marginLeft, y);
+        y += 7;
+      } else if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
+        const text = trimmed.replace(/^[-*]\s*/, "").replace(/\*\*/g, "");
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(11);
+        const wrapped = pdf.splitTextToSize(text, contentWidth - 8);
+        addPageIfNeeded(wrapped.length * 5.5);
+        pdf.text("•", marginLeft + 2, y);
+        pdf.text(wrapped, marginLeft + 8, y);
+        y += wrapped.length * 5.5 + 2;
+      } else if (/^\d+\.\s/.test(trimmed)) {
+        const numMatch = trimmed.match(/^(\d+\.)\s*(.*)/);
+        const num = numMatch?.[1] || "";
+        const text = (numMatch?.[2] || "").replace(/\*\*/g, "");
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(11);
+        const wrapped = pdf.splitTextToSize(text, contentWidth - 10);
+        addPageIfNeeded(wrapped.length * 5.5);
+        pdf.setFont("helvetica", "bold");
+        pdf.text(num, marginLeft, y);
+        pdf.setFont("helvetica", "normal");
+        pdf.text(wrapped, marginLeft + 10, y);
+        y += wrapped.length * 5.5 + 2;
+      } else {
+        const cleanText = trimmed.replace(/\*\*/g, "");
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(11);
+        const wrapped = pdf.splitTextToSize(cleanText, contentWidth);
+        addPageIfNeeded(wrapped.length * 5.5);
+        pdf.text(wrapped, marginLeft, y, { align: "justify", maxWidth: contentWidth });
+        y += wrapped.length * 5.5 + 2;
+      }
+    }
+
+    addFooter();
+    return pdf;
+  }, [generatedContent, branding, useLetterhead]);
+
+  const handleExportPdf = () => {
+    try {
+      const pdf = buildPdfDoc();
+      if (!pdf) return;
+      const templateLabel = TEMPLATE_TYPES.find((t) => t.value === selectedTemplate)?.label || "Documento";
+      const clientName = (selectedCaseData as any)?.clients?.name || "Cliente";
       const fileName = `${templateLabel.replace(/\s+/g, "_")}_${clientName.replace(/\s+/g, "_")}.pdf`;
       pdf.save(fileName);
       toast.success("PDF exportado com papel timbrado!");
@@ -428,6 +432,10 @@ export default function Templates() {
       console.error("Erro ao exportar PDF:", e);
       toast.error("Erro ao exportar PDF");
     }
+  };
+
+  const handlePreviewPdf = () => {
+    setPreviewMode(previewMode === "pdf" ? "text" : "pdf");
   };
 
   const selectedCaseData = cases?.find((c) => c.id === selectedCase);
@@ -568,6 +576,23 @@ export default function Templates() {
             <CardTitle className="text-base">Pré-visualização</CardTitle>
             {generatedContent && (
               <div className="flex items-center gap-2">
+                <Button
+                  variant={previewMode === "pdf" ? "default" : "outline"}
+                  size="sm"
+                  onClick={handlePreviewPdf}
+                >
+                  {previewMode === "pdf" ? (
+                    <>
+                      <EyeOff className="w-3.5 h-3.5 mr-1.5" />
+                      Texto
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="w-3.5 h-3.5 mr-1.5" />
+                      Visualizar PDF
+                    </>
+                  )}
+                </Button>
                 <Button variant="outline" size="sm" onClick={handleCopy}>
                   <Copy className="w-3.5 h-3.5 mr-1.5" />
                   Copiar
@@ -583,7 +608,7 @@ export default function Templates() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={handleGenerate}
+                  onClick={() => { setPreviewMode("text"); handleGenerate(); }}
                   disabled={isGenerating}
                 >
                   <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
@@ -594,14 +619,153 @@ export default function Templates() {
           </CardHeader>
           <CardContent>
             {generatedContent ? (
-              <ScrollArea className="h-[calc(100vh-280px)]">
-                <div
-                  ref={contentRef}
-                  className="prose prose-sm max-w-none dark:prose-invert prose-headings:font-semibold prose-h1:text-xl prose-h2:text-lg prose-h3:text-base prose-p:text-sm prose-li:text-sm"
-                >
-                  <ReactMarkdown>{generatedContent}</ReactMarkdown>
-                </div>
-              </ScrollArea>
+              previewMode === "pdf" ? (
+                <ScrollArea className="h-[calc(100vh-280px)]">
+                  <div className="flex flex-col items-center gap-6 py-4">
+                    {/* A4 page simulation */}
+                    <div
+                      className="bg-white shadow-lg border border-border"
+                      style={{
+                        width: "595px", // A4 at 72dpi
+                        minHeight: "842px",
+                        padding: `${branding?.margin_top || 30}px ${branding?.margin_right || 20}px ${branding?.margin_bottom || 25}px ${branding?.margin_left || 30}px`,
+                        fontFamily: branding?.font_family || "Arial",
+                        fontSize: `${branding?.font_size_body || 12}px`,
+                        color: "#1A202C",
+                        lineHeight: 1.6,
+                      }}
+                    >
+                      {/* Header */}
+                      {useLetterhead && branding?.header_text && (
+                        <div className="mb-4">
+                          {(branding.header_text as string).split("\n").map((line, i) => (
+                            <p
+                              key={i}
+                              style={{
+                                color: branding.primary_color || "#1E3A5F",
+                                fontWeight: i === 0 ? "bold" : "normal",
+                                fontSize: i === 0 ? `${branding.font_size_body || 12}px` : `${(branding.font_size_body || 12) - 1}px`,
+                                margin: 0,
+                                lineHeight: 1.4,
+                              }}
+                            >
+                              {line}
+                            </p>
+                          ))}
+                          <div
+                            style={{
+                              borderBottom: `2px solid ${branding.secondary_color || "#2B9E8F"}`,
+                              marginTop: "6px",
+                              marginBottom: "16px",
+                            }}
+                          />
+                        </div>
+                      )}
+
+                      {/* Logo */}
+                      {useLetterhead && branding?.logo_url && (
+                        <div className="mb-4 flex justify-start">
+                          <img
+                            src={branding.logo_url as string}
+                            alt="Logo"
+                            style={{ maxHeight: "60px", objectFit: "contain" }}
+                          />
+                        </div>
+                      )}
+
+                      {/* Document content rendered as styled HTML */}
+                      <div
+                        className="prose prose-sm max-w-none"
+                        style={{ fontFamily: branding?.font_family || "Arial" }}
+                      >
+                        <ReactMarkdown
+                          components={{
+                            h1: ({ children }) => (
+                              <h1
+                                style={{
+                                  textAlign: "center",
+                                  fontSize: `${(branding?.font_size_heading || 14) + 2}px`,
+                                  fontWeight: "bold",
+                                  color: branding?.primary_color || "#1E3A5F",
+                                  textTransform: "uppercase",
+                                  margin: "16px 0 12px",
+                                }}
+                              >
+                                {children}
+                              </h1>
+                            ),
+                            h2: ({ children }) => (
+                              <h2
+                                style={{
+                                  fontSize: `${branding?.font_size_heading || 14}px`,
+                                  fontWeight: "bold",
+                                  color: branding?.primary_color || "#1E3A5F",
+                                  textTransform: "uppercase",
+                                  margin: "14px 0 8px",
+                                }}
+                              >
+                                {children}
+                              </h2>
+                            ),
+                            h3: ({ children }) => (
+                              <h3
+                                style={{
+                                  fontSize: `${(branding?.font_size_body || 12) + 1}px`,
+                                  fontWeight: "bold",
+                                  color: branding?.primary_color || "#1E3A5F",
+                                  margin: "10px 0 6px",
+                                }}
+                              >
+                                {children}
+                              </h3>
+                            ),
+                            p: ({ children }) => (
+                              <p
+                                style={{
+                                  fontSize: `${branding?.font_size_body || 12}px`,
+                                  textAlign: "justify",
+                                  margin: "0 0 8px",
+                                  lineHeight: 1.6,
+                                }}
+                              >
+                                {children}
+                              </p>
+                            ),
+                          }}
+                        >
+                          {generatedContent}
+                        </ReactMarkdown>
+                      </div>
+
+                      {/* Footer */}
+                      {useLetterhead && branding?.footer_text && (
+                        <div className="mt-auto pt-6">
+                          <div
+                            style={{
+                              borderTop: `1px solid ${branding.secondary_color || "#2B9E8F"}`,
+                              paddingTop: "8px",
+                              textAlign: "center",
+                              fontSize: `${(branding.font_size_body || 12) - 2}px`,
+                              color: "#718096",
+                            }}
+                          >
+                            {branding.footer_text as string}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </ScrollArea>
+              ) : (
+                <ScrollArea className="h-[calc(100vh-280px)]">
+                  <div
+                    ref={contentRef}
+                    className="prose prose-sm max-w-none dark:prose-invert prose-headings:font-semibold prose-h1:text-xl prose-h2:text-lg prose-h3:text-base prose-p:text-sm prose-li:text-sm"
+                  >
+                    <ReactMarkdown>{generatedContent}</ReactMarkdown>
+                  </div>
+                </ScrollArea>
+              )
             ) : (
               <div className="flex flex-col items-center justify-center h-[calc(100vh-280px)] text-center">
                 <FileText className="w-12 h-12 text-muted-foreground/30 mb-4" />
