@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { useUpcomingHearings } from "@/hooks/use-hearings";
+import { toast } from "sonner";
 import { useUrgentIntimacoes } from "@/hooks/use-intimacoes";
 import { format, differenceInHours, differenceInDays } from "date-fns";
 
