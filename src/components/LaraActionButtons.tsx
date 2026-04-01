@@ -252,6 +252,22 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
   const [scanProgress, setScanProgress] = useState(0);
   const [scanTotal, setScanTotal] = useState(0);
 
+  // Fetch client phone/name when preview meta is set
+  useEffect(() => {
+    if (!pdfPreviewMeta?.caseId) { setClientInfo(null); return; }
+    (async () => {
+      const { data } = await supabase
+        .from("cases")
+        .select("client_id, clients(name, phone)")
+        .eq("id", pdfPreviewMeta.caseId)
+        .single();
+      if (data && (data as any).clients) {
+        const c = (data as any).clients;
+        setClientInfo({ phone: c.phone || "", name: c.name || "" });
+      }
+    })();
+  }, [pdfPreviewMeta?.caseId]);
+
   const allActions = [...actions, ...dynamicActions];
 
   const handleScan = async (action: LaraAction) => {
