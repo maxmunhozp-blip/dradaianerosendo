@@ -896,13 +896,13 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
                     client_name: signatureFlowMeta.clientName,
                   },
                 };
-                setSignatureFlowMeta(null);
 
                 // Pre-fill signer info from original action data
                 const signer = action.data.signers?.[0];
                 setSignerName(signer?.name || action.data.client_name || signatureFlowMeta.clientName || "");
                 setSignerEmail(signer?.email || "");
                 setSignerCpf(signer?.cpf || "");
+                setSignatureFlowMeta(null);
                 setConfirmAction(sigAction);
               } else {
                 // Normal PDF flow: open preview
