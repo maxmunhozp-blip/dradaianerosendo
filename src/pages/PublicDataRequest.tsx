@@ -85,7 +85,9 @@ export default function PublicDataRequest() {
   const [showManualAddress, setShowManualAddress] = useState(false);
   const [addressConfirmed, setAddressConfirmed] = useState(false);
 
-  const [hasChildren, setHasChildren] = useState<boolean | null>(null);
+  const [hasChildren, setHasChildrenState] = useState<boolean | null>(null);
+  const hasChildrenRef = useRef<boolean | null>(null);
+  const setHasChildren = (val: boolean | null) => { hasChildrenRef.current = val; setHasChildrenState(val); };
   const [childCount, setChildCount] = useState(1);
   const [children, setChildren] = useState<ChildEntry[]>([{ name: "", day: "", month: "", year: "" }]);
 
@@ -238,7 +240,7 @@ export default function PublicDataRequest() {
     let nextStep = currentStep + 1;
     while (nextStep - 1 < steps.length) {
       const stepName = steps[nextStep - 1];
-      if (stepName === "children_data" && hasChildren !== true) { nextStep++; continue; }
+      if (stepName === "children_data" && hasChildrenRef.current !== true) { nextStep++; continue; }
       if (stepName === "address_confirm" && !addressConfirmed && !showManualAddress) { nextStep++; continue; }
       break;
     }
@@ -254,7 +256,7 @@ export default function PublicDataRequest() {
     let prevStep = currentStep - 1;
     while (prevStep > 0) {
       const stepName = steps[prevStep - 1];
-      if (stepName === "children_data" && hasChildren !== true) { prevStep--; continue; }
+      if (stepName === "children_data" && hasChildrenRef.current !== true) { prevStep--; continue; }
       if (stepName === "address_confirm" && !addressConfirmed && !showManualAddress) { prevStep--; continue; }
       break;
     }
