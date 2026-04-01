@@ -52,7 +52,7 @@ interface ScanResult {
   status: "pending" | "processing" | "done" | "failed";
 }
 
-export function LaraActionButtons({ actions, onScanComplete }: { actions: LaraAction[]; onScanComplete?: (summary: string) => void }) {
+export function LaraActionButtons({ actions, onScanComplete, messageContent }: { actions: LaraAction[]; onScanComplete?: (summary: string) => void; messageContent?: string }) {
   const navigate = useNavigate();
   const [confirmAction, setConfirmAction] = useState<LaraAction | null>(null);
   const [executing, setExecuting] = useState(false);
@@ -63,11 +63,20 @@ export function LaraActionButtons({ actions, onScanComplete }: { actions: LaraAc
   const [signerEmail, setSignerEmail] = useState("");
   const [signerCpf, setSignerCpf] = useState("");
 
+  // Generated document for signature flow
+  const [generatedDocId, setGeneratedDocId] = useState<string | null>(null);
+  const [generatedDocName, setGeneratedDocName] = useState<string>("");
+
+  // All actions including dynamically added ones
+  const [dynamicActions, setDynamicActions] = useState<LaraAction[]>([]);
+
   // Scan state
   const [scanning, setScanning] = useState(false);
   const [scanResults, setScanResults] = useState<ScanResult[]>([]);
   const [scanProgress, setScanProgress] = useState(0);
   const [scanTotal, setScanTotal] = useState(0);
+
+  const allActions = [...actions, ...dynamicActions];
 
   const handleScan = async (action: LaraAction) => {
     const { case_id, client_id } = action.data;
