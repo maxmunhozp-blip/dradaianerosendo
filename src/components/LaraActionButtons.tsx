@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2, MessageSquare, ClipboardList, ExternalLink, FileText, Bell, ScanSearch, CheckCircle2, XCircle, Download } from "lucide-react";
+import { Loader2, MessageSquare, ClipboardList, ExternalLink, FileText, Bell, ScanSearch, CheckCircle2, XCircle, Download, PenLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -15,7 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 interface LaraAction {
-  type: "send_whatsapp" | "create_task" | "open_client" | "generate_document" | "schedule_reminder" | "scan_documents" | "download_document";
+  type: "send_whatsapp" | "create_task" | "open_client" | "generate_document" | "schedule_reminder" | "scan_documents" | "download_document" | "send_for_signature";
   label: string;
   data: Record<string, any>;
 }
@@ -28,6 +28,7 @@ const ACTION_ICONS: Record<string, typeof MessageSquare> = {
   schedule_reminder: Bell,
   scan_documents: ScanSearch,
   download_document: Download,
+  send_for_signature: PenLine,
 };
 
 const ACTION_DESCRIPTIONS: Record<string, (data: Record<string, any>) => string> = {
@@ -38,6 +39,7 @@ const ACTION_DESCRIPTIONS: Record<string, (data: Record<string, any>) => string>
   schedule_reminder: (d) => `Agendar lembrete: "${d.title || ""}" para ${d.date || "data a definir"}`,
   scan_documents: () => `Escanear documentos pendentes com IA para extrair dados automaticamente`,
   download_document: (d) => `Baixar documento "${d.template || ""}" em ${d.format || "DOCX"}`,
+  send_for_signature: (d) => `Enviar "${d.document_name || "documento"}" para assinatura eletrônica via ZapSign`,
 };
 
 interface ScanResult {
@@ -194,6 +196,34 @@ export function LaraActionButtons({ actions, onScanComplete }: { actions: LaraAc
         case "download_document":
           navigate(`/templates`);
           break;
+
+        case "send_for_signature": {
+          const { document_id, signers, client_phone } = confirmAction.data;
+          if (!document_id || !signers?.length) {
+            toast.error("Dados insuficientes para enviar para assinatura");
+            break;
+          }
+          const { data: sigResult, error: sigError } = await supabase.functions.invoke("send-for-signature", {
+            body: { document_id, signers },
+          });
+          if (sigError) throw new Error(sigError.message);
+          if (sigResult?.error) throw new Error(sigResult.error);
+          
+          // Show success and offer WhatsApp links
+          const signerResults = sigResult?.signers || [];
+          if (signerResults.length > 0 && client_phone) {
+            const firstSigner = signerResults[0];
+            const docName = confirmAction.data.document_name || "documento";
+            const whatsMsg = `Olá ${firstSigner.name}! Segue o link para assinar o documento "${docName}":\n\n${firstSigner.sign_url}\n\nÉ só clicar no link, rolar até o final e assinar.`;
+            const encodedMsg = encodeURIComponent(whatsMsg);
+            const phone = client_phone.replace(/\D/g, "");
+            window.open(`https://wa.me/${phone}?text=${encodedMsg}`, "_blank");
+            toast.success("Link de assinatura gerado e WhatsApp aberto!");
+          } else {
+            toast.success("Documento enviado para assinatura com sucesso!");
+          }
+          break;
+        }
 
         case "schedule_reminder":
           if (confirmAction.data.case_id) {
