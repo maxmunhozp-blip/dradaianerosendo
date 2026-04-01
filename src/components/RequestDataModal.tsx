@@ -89,11 +89,6 @@ export function RequestDataModal({ open, onOpenChange, caseId, clientId, clientD
 
   const whatsappMessage = `Olá ${firstName}! Para dar continuidade ao seu processo, preciso de algumas informações. Clique no link abaixo para preencher com segurança (menos de 3 minutos):\n\n${generatedUrl || "[link]"}\n\nQualquer dúvida, estou à disposição! 🤝\nDra. Daiane Rosendo`;
 
-  const handleWhatsApp = () => {
-    if (!phone) { toast.error("Cliente sem telefone cadastrado"); return; }
-    const url = whatsappLink(phone, whatsappMessage);
-    window.open(url, "_blank");
-  };
 
   const handleCopy = async () => {
     if (generatedUrl) {
