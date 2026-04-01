@@ -750,9 +750,9 @@ Use seu conhecimento jurídico para complementar os dados do LexML com explicaç
       }
     }
 
-    // Save the user message to DB
+    // Save the user message to DB (skip audit messages)
     const lastUserMsg = messages[messages.length - 1];
-    if (lastUserMsg && lastUserMsg.role === "user" && caseId) {
+    if (lastUserMsg && lastUserMsg.role === "user" && caseId && !isCaseAudit) {
       await supabase.from("messages").insert({
         case_id: caseId,
         role: "user",
