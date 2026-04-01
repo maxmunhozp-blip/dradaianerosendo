@@ -905,6 +905,42 @@ export type Database = {
           },
         ]
       }
+      permission_profiles: {
+        Row: {
+          created_at: string
+          description: string | null
+          icon: string | null
+          id: string
+          is_builtin: boolean
+          name: string
+          permissions: Json
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_builtin?: boolean
+          name: string
+          permissions?: Json
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_builtin?: boolean
+          name?: string
+          permissions?: Json
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       settings: {
         Row: {
           created_at: string | null
