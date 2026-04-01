@@ -520,11 +520,11 @@ export default function ClientDetail() {
         token = newSession.token;
       }
 
-      const portalUrl = `${window.location.origin}/portal?token=${token}`;
+      const portalUrl = `https://dradaianerosendo.lovable.app/portal?token=${token}`;
       const firstName = client.name.split(" ")[0];
       const message = `Olá ${firstName}! Acesse sua área do cliente pelo link abaixo para acompanhar seu processo:\n\n${portalUrl}`;
-      const clean = phone.startsWith("55") ? phone : `55${phone}`;
-      window.open(`https://wa.me/${clean}?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
+      const number = phone.startsWith("55") ? phone : `55${phone}`;
+      window.open(`https://wa.me/${number}?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
       toast.success("Link do portal gerado!");
     } catch (err: any) {
       toast.error("Erro ao gerar link do portal");
