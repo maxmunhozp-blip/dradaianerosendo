@@ -59,7 +59,7 @@ export function useUpdatePermission() {
 export function useSetUserRole() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ userId, role }: { userId: string; role: "admin" | "client" }) => {
+    mutationFn: async ({ userId, role }: { userId: string; role: "admin" | "advogado" | "client" }) => {
       const { error } = await supabase.rpc("set_user_role", {
         _target_user_id: userId,
         _role: role,
