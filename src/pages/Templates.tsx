@@ -598,6 +598,23 @@ export default function Templates() {
             <CardTitle className="text-base">Pré-visualização</CardTitle>
             {generatedContent && (
               <div className="flex items-center gap-2">
+                <Button
+                  variant={previewMode === "pdf" ? "default" : "outline"}
+                  size="sm"
+                  onClick={handlePreviewPdf}
+                >
+                  {previewMode === "pdf" ? (
+                    <>
+                      <EyeOff className="w-3.5 h-3.5 mr-1.5" />
+                      Texto
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="w-3.5 h-3.5 mr-1.5" />
+                      Visualizar PDF
+                    </>
+                  )}
+                </Button>
                 <Button variant="outline" size="sm" onClick={handleCopy}>
                   <Copy className="w-3.5 h-3.5 mr-1.5" />
                   Copiar
@@ -613,7 +630,7 @@ export default function Templates() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={handleGenerate}
+                  onClick={() => { setPreviewMode("text"); handleGenerate(); }}
                   disabled={isGenerating}
                 >
                   <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
@@ -624,14 +641,24 @@ export default function Templates() {
           </CardHeader>
           <CardContent>
             {generatedContent ? (
-              <ScrollArea className="h-[calc(100vh-280px)]">
-                <div
-                  ref={contentRef}
-                  className="prose prose-sm max-w-none dark:prose-invert prose-headings:font-semibold prose-h1:text-xl prose-h2:text-lg prose-h3:text-base prose-p:text-sm prose-li:text-sm"
-                >
-                  <ReactMarkdown>{generatedContent}</ReactMarkdown>
+              previewMode === "pdf" && pdfBlobUrl ? (
+                <div className="h-[calc(100vh-280px)] rounded-lg overflow-hidden border border-border bg-muted/30">
+                  <iframe
+                    src={pdfBlobUrl}
+                    className="w-full h-full"
+                    title="Pré-visualização do PDF"
+                  />
                 </div>
-              </ScrollArea>
+              ) : (
+                <ScrollArea className="h-[calc(100vh-280px)]">
+                  <div
+                    ref={contentRef}
+                    className="prose prose-sm max-w-none dark:prose-invert prose-headings:font-semibold prose-h1:text-xl prose-h2:text-lg prose-h3:text-base prose-p:text-sm prose-li:text-sm"
+                  >
+                    <ReactMarkdown>{generatedContent}</ReactMarkdown>
+                  </div>
+                </ScrollArea>
+              )
             ) : (
               <div className="flex flex-col items-center justify-center h-[calc(100vh-280px)] text-center">
                 <FileText className="w-12 h-12 text-muted-foreground/30 mb-4" />
