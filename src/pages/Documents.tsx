@@ -80,7 +80,6 @@ export default function Documents() {
           <EmptyState
             icon={Search}
             title="Nenhum resultado"
-            description="Nenhum documento encontrado com os filtros aplicados."
           />
         </div>
       ) : (
