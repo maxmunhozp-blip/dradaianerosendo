@@ -319,6 +319,7 @@ REGRAS IMPORTANTES para WhatsApp:
 - Só inclua clientes que tenham telefone cadastrado. Se um cliente não tem telefone, mencione isso e pule.
 - Use os dados REAIS do contexto. Nunca invente nomes, telefones ou documentos.
 - Formate o telefone apenas com números (ex: 5511999999999).
+- IMPORTANTE: Quando gerar links de WhatsApp nas suas ações ou respostas, SEMPRE use o formato https://wa.me/NUMERO?text=MENSAGEM. NUNCA use api.whatsapp.com, nunca adicione type=phone_number, nunca adicione app_absent=0.
 - Se não houver clientes com pendências, informe que está tudo em dia.
 - Se a advogada pedir para cobrar um cliente específico, gere apenas a mensagem daquele cliente.
 - SEMPRE use o template configurado nas CONFIGURAÇÕES DO ESCRITÓRIO. Se o template estiver vazio ou não existir, use o template padrão acima.`;
