@@ -496,23 +496,22 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
 
           if (!existingDoc || !existingDoc.file_url) {
             // Document doesn't exist or has no file — need to generate PDF first
-            const docText = messageContent || "";
+            const rawText = messageContent || "";
             const caseId = confirmAction.data.case_id || document_id;
             const docName = confirmAction.data.document_name || "Documento";
 
-            if (!docText.trim()) {
+            if (!rawText.trim()) {
               toast.error("Conteúdo do documento não encontrado. Gere o PDF primeiro usando 'Gerar PDF'.");
               break;
             }
 
             toast.info("Gerando PDF e salvando antes de enviar para assinatura...");
 
-            const cleanText = docText
+            const cleanText = extractLegalDocumentContent(rawText)
               .replace(/#{1,6}\s/g, "")
               .replace(/\*\*(.*?)\*\*/g, "$1")
               .replace(/\*(.*?)\*/g, "$1")
-              .replace(/ACTIONS_START[\s\S]*?ACTIONS_END/g, "")
-              .replace(/```[\s\S]*?```/g, "")
+              .trim();
               .trim();
 
             const pdfBlob = generatePdfFromHtml(`<p>${cleanText.replace(/\n\n/g, "</p><p>").replace(/\n/g, "<br/>")}</p>`);
