@@ -508,7 +508,32 @@ export default function CaseDetail() {
             <div>
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-sm font-medium text-foreground">Documentos ({documents.length})</h2>
-                <div>
+                <div className="flex items-center gap-2">
+                  {documents.length > 0 && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm" disabled={downloading}>
+                          {downloading ? (
+                            <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                          ) : (
+                            <Download className="w-3.5 h-3.5 mr-1.5" />
+                          )}
+                          Baixar todos
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleDownloadAll(true)} className="gap-2">
+                          <PackageOpen className="w-4 h-4" />
+                          Baixar como ZIP
+                          <span className="text-xs text-muted-foreground ml-auto">Recomendado</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDownloadAll(false)} className="gap-2">
+                          <Download className="w-4 h-4" />
+                          Baixar separados
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
                   <input ref={fileInputRef} type="file" onChange={handleFileUpload} className="hidden" />
                   <Button
                     variant="outline"
