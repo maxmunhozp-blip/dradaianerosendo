@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Send, Copy, Check, Loader2 } from "lucide-react";
-import { whatsappLink } from "@/lib/utils";
+import WhatsAppButton from "@/components/ui/WhatsAppButton";
 
 interface FieldOption {
   key: string;
@@ -89,11 +89,6 @@ export function RequestDataModal({ open, onOpenChange, caseId, clientId, clientD
 
   const whatsappMessage = `Olá ${firstName}! Para dar continuidade ao seu processo, preciso de algumas informações. Clique no link abaixo para preencher com segurança (menos de 3 minutos):\n\n${generatedUrl || "[link]"}\n\nQualquer dúvida, estou à disposição! 🤝\nDra. Daiane Rosendo`;
 
-  const handleWhatsApp = () => {
-    if (!phone) { toast.error("Cliente sem telefone cadastrado"); return; }
-    const url = whatsappLink(phone, whatsappMessage);
-    window.open(url, "_blank");
-  };
 
   const handleCopy = async () => {
     if (generatedUrl) {
@@ -151,10 +146,18 @@ export function RequestDataModal({ open, onOpenChange, caseId, clientId, clientD
                 </div>
 
                 <div className="flex gap-2">
-                  <Button onClick={handleWhatsApp} className="flex-1 bg-accent text-accent-foreground hover:bg-accent/80" disabled={!phone}>
-                    <Send className="w-4 h-4 mr-2" />
-                    Enviar por WhatsApp
-                  </Button>
+                  <WhatsAppButton
+                    phone={phone}
+                    message={whatsappMessage}
+                    onMissingPhone={() => toast.error("Cliente sem telefone cadastrado")}
+                    className="flex-1"
+                    disabled={!phone}
+                  >
+                    <div className="inline-flex w-full items-center justify-center rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-accent/80 disabled:pointer-events-none disabled:opacity-50">
+                      <Send className="w-4 h-4 mr-2" />
+                      Enviar por WhatsApp
+                    </div>
+                  </WhatsAppButton>
                   <Button variant="outline" onClick={handleCopy}>
                     {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                   </Button>

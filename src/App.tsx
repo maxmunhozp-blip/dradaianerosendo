@@ -35,7 +35,6 @@ import LaraSkills from "./pages/LaraSkills";
 const queryClient = new QueryClient();
 
 const App = () => {
-  // Interceptor global: sanitiza links <a> de WhatsApp ao clicar
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
@@ -46,7 +45,7 @@ const App = () => {
         e.preventDefault();
         let finalUrl = href;
         if (!href.startsWith("https://wa.me/")) {
-          const phoneMatch = href.match(/phone=(\d+)/);
+          const phoneMatch = href.match(/phone=(\d+)/) || href.match(/wa\.me\/(\d+)/);
           const textMatch = href.match(/text=([^&]+)/);
           if (phoneMatch) {
             finalUrl = "https://wa.me/" + phoneMatch[1] + (textMatch ? "?text=" + textMatch[1] : "");
@@ -59,14 +58,13 @@ const App = () => {
     return () => document.removeEventListener("click", handleClick);
   }, []);
 
-  // Interceptor global: sobrescreve window.open para corrigir URLs de WhatsApp
   useEffect(() => {
     const originalOpen = window.open.bind(window);
     window.open = (url?: string | URL, target?: string, features?: string) => {
       if (typeof url === "string" && (url.includes("wa.me") || url.includes("whatsapp"))) {
         let finalUrl = url;
-        if (url.includes("api.whatsapp.com")) {
-          const phoneMatch = url.match(/phone=(\d+)/);
+        if (!url.startsWith("https://wa.me/")) {
+          const phoneMatch = url.match(/phone=(\d+)/) || url.match(/wa\.me\/(\d+)/);
           const textMatch = url.match(/text=([^&]+)/);
           if (phoneMatch) {
             finalUrl = "https://wa.me/" + phoneMatch[1] + (textMatch ? "?text=" + textMatch[1] : "");

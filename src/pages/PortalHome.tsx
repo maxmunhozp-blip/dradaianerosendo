@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AlertCircle, FileText, MessageSquare, Clock, Download, ChevronDown, ChevronUp } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
-import { whatsappLink } from "@/lib/utils";
+import WhatsAppButton from "@/components/ui/WhatsAppButton";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -203,33 +203,66 @@ export default function PortalHome() {
 
       {/* Quick Actions */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
-        {[
-          { icon: FileText, label: "Enviar documento", action: () => navigate("/portal/docs") },
-          { icon: MessageSquare, label: "Falar com escritório", action: () => window.open(whatsappLink(whatsappSetting || "5500000000000"), "_blank") },
-          { icon: Clock, label: "Ver meu processo", action: () => document.getElementById("portal-timeline")?.scrollIntoView({ behavior: "smooth" }) },
-          { icon: Download, label: "Minha procuração", action: () => {
+        <button
+          onClick={() => navigate("/portal/docs")}
+          style={{
+            background: "#fff", borderRadius: 12, padding: "16px 14px",
+            border: "1px solid #E5E7EB", cursor: "pointer",
+            display: "flex", flexDirection: "column", alignItems: "center", gap: 8,
+            transition: "border-color .2s",
+          }}
+        >
+          <FileText size={22} color="var(--wizard-accent)" />
+          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--wizard-primary)", textAlign: "center" }}>
+            Enviar documento
+          </span>
+        </button>
+        <WhatsAppButton
+          phone={whatsappSetting || "5500000000000"}
+          message="Olá! Preciso falar com o escritório."
+          style={{
+            background: "#fff", borderRadius: 12, padding: "16px 14px",
+            border: "1px solid #E5E7EB", cursor: "pointer",
+            display: "flex", flexDirection: "column", alignItems: "center", gap: 8,
+            transition: "border-color .2s",
+            width: "100%",
+          }}
+        >
+          <MessageSquare size={22} color="var(--wizard-accent)" />
+          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--wizard-primary)", textAlign: "center" }}>
+            Falar com escritório
+          </span>
+        </WhatsAppButton>
+        <button
+          onClick={() => document.getElementById("portal-timeline")?.scrollIntoView({ behavior: "smooth" })}
+          style={{
+            background: "#fff", borderRadius: 12, padding: "16px 14px",
+            border: "1px solid #E5E7EB", cursor: "pointer",
+            display: "flex", flexDirection: "column", alignItems: "center", gap: 8,
+            transition: "border-color .2s",
+          }}
+        >
+          <Clock size={22} color="var(--wizard-accent)" />
+          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--wizard-primary)", textAlign: "center" }}>
+            Ver meu processo
+          </span>
+        </button>
+        <button
+          onClick={() => {
             if (procuracaoDoc?.file_url) window.open(procuracaoDoc.file_url, "_blank");
-          }},
-        ].map((item, i) => (
-          <button
-            key={i}
-            onClick={item.action}
-            style={{
-              background: "#fff", borderRadius: 12, padding: "16px 14px",
-              border: "1px solid #E5E7EB", cursor: "pointer",
-              display: "flex", flexDirection: "column", alignItems: "center", gap: 8,
-              transition: "border-color .2s",
-            }}
-          >
-            <item.icon size={22} color="var(--wizard-accent)" />
-            <span style={{
-              fontSize: 13, fontWeight: 600, color: "var(--wizard-primary)",
-              textAlign: "center",
-            }}>
-              {item.label}
-            </span>
-          </button>
-        ))}
+          }}
+          style={{
+            background: "#fff", borderRadius: 12, padding: "16px 14px",
+            border: "1px solid #E5E7EB", cursor: "pointer",
+            display: "flex", flexDirection: "column", alignItems: "center", gap: 8,
+            transition: "border-color .2s",
+          }}
+        >
+          <Download size={22} color="var(--wizard-accent)" />
+          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--wizard-primary)", textAlign: "center" }}>
+            Minha procuração
+          </span>
+        </button>
       </div>
 
       {/* Timeline */}

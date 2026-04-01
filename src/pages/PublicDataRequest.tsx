@@ -4,7 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 import { ShieldCheck, Lock, Clock, AlertCircle, CheckCircle, ChevronLeft, Minus, Plus, MessageSquare, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Toaster as Sonner } from "@/components/ui/sonner";
-import { whatsappLink } from "@/lib/utils";
+import WhatsAppButton from "@/components/ui/WhatsAppButton";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -438,12 +438,13 @@ export default function PublicDataRequest() {
           <p style={{ fontSize: 18, color: "#4A5568", marginBottom: 24, lineHeight: 1.5 }}>
             A Dra. Daiane já vai receber seus dados e dará continuidade ao seu processo.
           </p>
-          <button
-            onClick={() => window.open(whatsappLink(whatsappNumber), "_blank")}
+          <WhatsAppButton
+            phone={whatsappNumber}
+            message="Olá! Preciso falar com o escritório."
             style={{ ...s.btn, background: "var(--wizard-accent)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
           >
             <MessageSquare size={20} /> Falar com o escritório no WhatsApp
-          </button>
+          </WhatsAppButton>
         </div>
         <style>{`
           .animate-scale-in {
