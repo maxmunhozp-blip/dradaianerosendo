@@ -342,8 +342,7 @@ function SignatureSettings({ value, onChange }: { value: string; onChange: (v: s
         </Button>
       </div>
 
-      {value && (
-        <div className="bg-muted/50 rounded-md p-3 text-xs text-muted-foreground space-y-2">
+      <div className="bg-muted/50 rounded-md p-3 text-xs text-muted-foreground space-y-2">
           <p className="font-medium text-foreground">Configure o webhook no ZapSign:</p>
           <div className="flex items-center gap-2">
             <code className="flex-1 bg-background border rounded px-2 py-1.5 text-[11px] font-mono break-all">
@@ -362,10 +361,9 @@ function SignatureSettings({ value, onChange }: { value: string; onChange: (v: s
             </Button>
           </div>
           <p className="text-[10px]">
-            No painel ZapSign: Configurações → Webhooks → Adicione a URL acima para o evento "Documento finalizado".
+            No painel ZapSign: Configurações → Integrações → Webhooks → Adicione a URL acima para os eventos "doc_signed" e "doc_refused".
           </p>
         </div>
-      )}
     </div>
   );
 }
