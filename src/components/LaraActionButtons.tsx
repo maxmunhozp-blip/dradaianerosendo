@@ -374,21 +374,32 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
   const [scanProgress, setScanProgress] = useState(0);
   const [scanTotal, setScanTotal] = useState(0);
 
-  // Fetch client phone/name when preview meta is set
+  // Fetch client phone/name/email when preview meta is set
   useEffect(() => {
     if (!pdfPreviewMeta?.caseId) { setClientInfo(null); return; }
     (async () => {
       const { data } = await supabase
         .from("cases")
-        .select("client_id, clients(name, phone)")
+        .select("client_id, clients(name, phone, email)")
         .eq("id", pdfPreviewMeta.caseId)
         .single();
       if (data && (data as any).clients) {
         const c = (data as any).clients;
-        setClientInfo({ phone: c.phone || "", name: c.name || "" });
+        setClientInfo({ phone: c.phone || "", name: c.name || "", email: c.email || "" });
       }
     })();
   }, [pdfPreviewMeta?.caseId]);
+
+  // Fetch email accounts
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from("email_accounts").select("id, email, label").eq("status", "active");
+      if (data && data.length > 0) {
+        setEmailAccounts(data);
+        setSelectedAccountId(data[0].id);
+      }
+    })();
+  }, []);
 
   const allActions = [...actions, ...dynamicActions];
 
