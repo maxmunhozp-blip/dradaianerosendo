@@ -524,6 +524,11 @@ export default function UsersManagement() {
         onOpenChange={setShowProfileModal}
         editing={editingProfile}
       />
+
+      <AddUserModal
+        open={showAddUser}
+        onOpenChange={setShowAddUser}
+      />
     </div>
   );
 }
