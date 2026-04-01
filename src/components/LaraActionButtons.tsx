@@ -424,6 +424,74 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
         </DialogContent>
       </Dialog>
 
+      {/* Text Editor Dialog */}
+      <Dialog open={editingText} onOpenChange={(open) => {
+        if (!open) {
+          setEditingText(false);
+          setEditableText("");
+          setEditMeta(null);
+        }
+      }}>
+        <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="w-4 h-4" />
+              Editar — {editMeta?.docName}
+            </DialogTitle>
+            <DialogDescription>Edite o texto antes de gerar o PDF.</DialogDescription>
+          </DialogHeader>
+          <Textarea
+            value={editableText}
+            onChange={(e) => setEditableText(e.target.value)}
+            className="flex-1 min-h-[50vh] font-mono text-sm resize-none"
+          />
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => {
+              setEditingText(false);
+              setEditableText("");
+              setEditMeta(null);
+            }}>
+              Cancelar
+            </Button>
+            <Button onClick={() => {
+              if (!editMeta || !editableText.trim()) return;
+              // Generate PDF from edited text
+              const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+              const margin = 25;
+              const pageWidth = pdf.internal.pageSize.getWidth();
+              const maxWidth = pageWidth - margin * 2;
+              pdf.setFont("helvetica", "normal");
+              pdf.setFontSize(12);
+
+              const lines = pdf.splitTextToSize(editableText, maxWidth);
+              let y = margin;
+              const lineHeight = 6;
+
+              for (const line of lines) {
+                if (y + lineHeight > pdf.internal.pageSize.getHeight() - margin) {
+                  pdf.addPage();
+                  y = margin;
+                }
+                pdf.text(line, margin, y);
+                y += lineHeight;
+              }
+
+              const pdfBlob = pdf.output("blob");
+              const previewUrl = URL.createObjectURL(pdfBlob);
+
+              setPdfPreviewBlob(pdfBlob);
+              setPdfPreviewUrl(previewUrl);
+              setPdfPreviewMeta(editMeta);
+              setEditingText(false);
+              setEditableText("");
+              setEditMeta(null);
+            }}>
+              <FileText className="w-4 h-4 mr-1" /> Gerar PDF
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* PDF Preview Dialog */}
       <Dialog open={!!pdfPreviewUrl} onOpenChange={(open) => {
         if (!open) {
