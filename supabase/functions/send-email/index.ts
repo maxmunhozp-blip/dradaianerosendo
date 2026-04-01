@@ -156,6 +156,7 @@ Deno.serve(async (req: Request) => {
     const boundary = `boundary_${crypto.randomUUID().replace(/-/g, "")}`;
     let emailData = `From: ${account.email}\r\n`;
     emailData += `To: ${to}\r\n`;
+    if (cc) emailData += `Cc: ${cc}\r\n`;
     emailData += `Subject: =?UTF-8?B?${encodeBase64(subject)}?=\r\n`;
     emailData += `MIME-Version: 1.0\r\n`;
     emailData += `Content-Type: text/plain; charset=UTF-8\r\n`;
