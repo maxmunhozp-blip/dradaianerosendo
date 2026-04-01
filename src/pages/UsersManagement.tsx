@@ -127,6 +127,7 @@ const PROFILE_PRESETS: ProfilePreset[] = [
 
 export default function UsersManagement() {
   const { user: currentUser } = useAuth();
+  const { startViewAs } = useViewAs();
   const { data: users, isLoading } = useUsers();
   const { data: allPermissions } = useUserPermissions();
   const setRole = useSetUserRole();
