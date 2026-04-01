@@ -550,8 +550,6 @@ export default function CaseDetail() {
                 {documents.length === 0 ? (
                   <EmptyState
                     icon={FileText}
-                    title="Nenhum documento"
-                    description="Envie o primeiro documento para este caso."
                     actionLabel="Enviar documento"
                     onAction={() => fileInputRef.current?.click()}
                   />
