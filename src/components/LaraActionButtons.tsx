@@ -372,7 +372,7 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent }: {
   return (
     <>
       <div className="mt-3 flex flex-wrap gap-2">
-        {actions.map((action, i) => {
+        {allActions.map((action, i) => {
           const Icon = ACTION_ICONS[action.type] || ClipboardList;
           const isDone = executed.has(i);
           return (
