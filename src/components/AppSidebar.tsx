@@ -120,7 +120,7 @@ export function AppSidebar() {
                         )
                       )}
                       {!collapsed && item.url === "/intimacoes" && intimacaoCount > 0 && (
-                        <span className="ml-auto bg-amber-500 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                        <span className="ml-auto bg-accent text-accent-foreground text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
                           {intimacaoCount > 9 ? "9+" : intimacaoCount}
                         </span>
                       )}
