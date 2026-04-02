@@ -17,6 +17,7 @@ Deno.serve(async (req) => {
     );
 
     const { document_id, signers } = await req.json();
+    console.log("[send-for-signature] Request:", JSON.stringify({ document_id, signerCount: signers?.length }));
 
     if (!document_id || !signers?.length) {
       return new Response(
@@ -33,6 +34,7 @@ Deno.serve(async (req) => {
 
     const apiToken = tokenResult.data?.value;
     if (!apiToken) {
+      console.error("[send-for-signature] No API token configured");
       return new Response(
         JSON.stringify({ error: "Configure o token ZapSign nas Configurações." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -40,6 +42,7 @@ Deno.serve(async (req) => {
     }
 
     const useSandbox = sandboxResult.data?.value !== "false";
+    console.log("[send-for-signature] Sandbox mode:", useSandbox);
 
     // Step 2 — Get document and download PDF
     const { data: doc, error: docError } = await supabase
@@ -85,6 +88,7 @@ Deno.serve(async (req) => {
       binary += String.fromCharCode(bytes[i]);
     }
     const base64 = btoa(binary);
+    console.log("[send-for-signature] PDF downloaded, base64 length:", base64.length);
 
     // Step 3 — Create document on ZapSign
     const zapSignBody = {
@@ -102,6 +106,7 @@ Deno.serve(async (req) => {
       })),
     };
 
+    console.log("[send-for-signature] Calling ZapSign API...");
     const zapRes = await fetch("https://api.zapsign.com.br/api/v1/docs/", {
       method: "POST",
       headers: {
@@ -113,7 +118,7 @@ Deno.serve(async (req) => {
 
     if (!zapRes.ok) {
       const errText = await zapRes.text();
-      console.error("ZapSign error:", errText);
+      console.error("[send-for-signature] ZapSign API error:", zapRes.status, errText);
       return new Response(
         JSON.stringify({ error: "Erro na API ZapSign: " + errText }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -121,6 +126,15 @@ Deno.serve(async (req) => {
     }
 
     const zapData = await zapRes.json();
+    console.log("[send-for-signature] ZapSign response token:", zapData.token, "signers:", zapData.signers?.length);
+
+    if (!zapData.token) {
+      console.error("[send-for-signature] ZapSign returned no token:", JSON.stringify(zapData));
+      return new Response(
+        JSON.stringify({ error: "ZapSign não retornou token do documento. Verifique seu plano e créditos." }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Step 4 — Save result
     const { error: updateError } = await supabase
@@ -134,19 +148,20 @@ Deno.serve(async (req) => {
       .eq("id", document_id);
 
     if (updateError) {
-      console.error("Update error:", updateError);
+      console.error("[send-for-signature] DB update error:", updateError);
       return new Response(
         JSON.stringify({ error: "Erro ao salvar resultado: " + updateError.message }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
+    console.log("[send-for-signature] Success! Document updated with token:", zapData.token);
     return new Response(
       JSON.stringify({ success: true, signers: zapData.signers }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
-    console.error("Unexpected error:", err);
+    console.error("[send-for-signature] Unexpected error:", err);
     return new Response(
       JSON.stringify({ error: "Erro interno: " + (err as Error).message }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
