@@ -10,10 +10,12 @@ import {
   ShieldCheck,
   FileStack,
   Bell,
+  BellRing,
   Mail,
   Palette,
 } from "lucide-react";
 import { useIntimacaoCount } from "@/hooks/use-intimacoes";
+import { useSignedDocumentsCount } from "@/hooks/use-documents";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
@@ -43,6 +45,7 @@ const navItems: NavItem[] = [
   { title: "Clientes", url: "/clients", icon: Users, permission: "can_view_clients" },
   { title: "Documentos", url: "/documents", icon: FolderOpen, permission: "can_view_documents" },
   { title: "Agenda", url: "/agenda", icon: CalendarDays, permission: "can_view_cases" },
+  { title: "Notificações", url: "/dashboard#assinaturas", icon: BellRing, permission: "can_view_documents" },
   { title: "Intimações", url: "/intimacoes", icon: Bell, permission: "can_view_cases" },
   { title: "Caixa de E-mail", url: "/mail", icon: Mail, permission: "can_access_settings" },
   { title: "LARA", url: "/lara", icon: Bot },
@@ -58,6 +61,7 @@ export function AppSidebar() {
   const currentPath = location.pathname;
   const { signOut, user } = useAuth();
   const { data: intimacaoCount = 0 } = useIntimacaoCount();
+  const { data: signedDocumentsCount = 0 } = useSignedDocumentsCount();
   const { data: perms } = useMyPermissions();
 
   const isActive = (path: string) => {
@@ -106,6 +110,15 @@ export function AppSidebar() {
                     >
                       <item.icon className="w-4 h-4" />
                       {!collapsed && <span>{item.title}</span>}
+                      {item.url === "/dashboard#assinaturas" && signedDocumentsCount > 0 && (
+                        collapsed ? (
+                          <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-accent" />
+                        ) : (
+                          <span className="ml-auto bg-accent text-accent-foreground text-[10px] font-bold rounded-full min-w-5 h-5 px-1.5 flex items-center justify-center">
+                            {signedDocumentsCount > 9 ? "9+" : signedDocumentsCount}
+                          </span>
+                        )
+                      )}
                       {!collapsed && item.url === "/intimacoes" && intimacaoCount > 0 && (
                         <span className="ml-auto bg-amber-500 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
                           {intimacaoCount > 9 ? "9+" : intimacaoCount}

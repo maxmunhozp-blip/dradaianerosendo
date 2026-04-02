@@ -18,6 +18,25 @@ export function useDocumentsByCase(caseId: string) {
       return data as DocRow[];
     },
     enabled: !!caseId,
+    refetchInterval: 15000,
+    refetchOnWindowFocus: true,
+  });
+}
+
+export function useSignedDocumentsCount() {
+  return useQuery({
+    queryKey: ["documents-count-signed"],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("documents")
+        .select("id", { count: "exact", head: true })
+        .eq("signature_status", "signed");
+
+      if (error) throw error;
+      return count || 0;
+    },
+    refetchInterval: 15000,
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -50,6 +69,7 @@ export function useCreateDocument() {
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ["documents", data.case_id] });
       qc.invalidateQueries({ queryKey: ["documents"] });
+      qc.invalidateQueries({ queryKey: ["documents-count-signed"] });
     },
   });
 }
@@ -70,6 +90,7 @@ export function useUpdateDocument() {
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ["documents", data.case_id] });
       qc.invalidateQueries({ queryKey: ["documents"] });
+      qc.invalidateQueries({ queryKey: ["documents-count-signed"] });
     },
   });
 }
@@ -94,6 +115,7 @@ export function useDeleteDocument() {
     onSuccess: (caseId) => {
       qc.invalidateQueries({ queryKey: ["documents", caseId] });
       qc.invalidateQueries({ queryKey: ["documents"] });
+      qc.invalidateQueries({ queryKey: ["documents-count-signed"] });
     },
   });
 }
