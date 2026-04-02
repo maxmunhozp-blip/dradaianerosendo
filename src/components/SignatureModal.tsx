@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 import { WhatsAppButton } from "@/components/ui/WhatsAppButton";
 
 interface Signer {
@@ -53,6 +54,7 @@ export function SignatureModal({
   ]);
   const [sending, setSending] = useState(false);
   const [results, setResults] = useState<SignerResult[] | null>(null);
+  const queryClient = useQueryClient();
 
   const updateSigner = (index: number, field: keyof Signer, value: string) => {
     setSigners((prev) =>
@@ -82,13 +84,38 @@ export function SignatureModal({
         body: { document_id: documentId, signers },
       });
 
-      if (error) throw new Error(error.message);
-      if (data?.error) throw new Error(data.error);
+      if (error) {
+        console.error("Invoke error:", error);
+        throw new Error(error.message || "Erro ao chamar a função de assinatura");
+      }
+      if (data?.error) {
+        console.error("Function returned error:", data.error);
+        throw new Error(data.error);
+      }
+      if (!data?.signers?.length) {
+        console.error("No signers returned:", data);
+        throw new Error("Nenhum link de assinatura foi gerado. Verifique o token ZapSign nas Configurações.");
+      }
 
-      setResults(data.signers);
+      const signerResults = data.signers.map((s: any) => ({
+        name: s.name || "",
+        email: s.email || "",
+        token: s.token || "",
+        sign_url: s.sign_url || s.signing_link || "",
+      }));
+
+      setResults(signerResults);
+
+      // Invalidate document queries so UI reflects the new signature_status
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      queryClient.invalidateQueries({ queryKey: ["documents", undefined] });
+      queryClient.invalidateQueries({ queryKey: ["signature-docs-dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["documents-count-signed"] });
+
       toast.success("Links de assinatura gerados com sucesso!");
     } catch (err: any) {
-      toast.error(err.message || "Erro ao enviar para assinatura");
+      console.error("Signature send error:", err);
+      toast.error(err.message || "Erro ao enviar para assinatura. Verifique as configurações do ZapSign.");
     } finally {
       setSending(false);
     }
