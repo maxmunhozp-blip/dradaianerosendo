@@ -208,7 +208,7 @@ function UpcomingHearings() {
   const { data: hearings = [], isLoading } = useUpcomingHearings(5);
 
   return (
-    <div className="mt-8">
+    <div id="assinaturas" className="mt-8 scroll-mt-24">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-sm font-medium text-foreground">Próximas audiências</h2>
         <Button variant="ghost" size="sm" asChild>

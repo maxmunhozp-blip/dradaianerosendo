@@ -1,8 +1,24 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Content-Type": "application/json",
+};
+
+function pickFirstString(...values: unknown[]) {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  return null;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { status: 200 });
+    return new Response("ok", { status: 200, headers: corsHeaders });
   }
 
   try {
@@ -14,34 +30,103 @@ Deno.serve(async (req) => {
     const payload = await req.json();
     console.log("ZapSign webhook payload:", JSON.stringify(payload));
 
-    const docToken = payload.open_id || payload.token;
-    const status = payload.status;
+    const eventType = pickFirstString(
+      payload.event_type,
+      payload.type,
+      payload.event,
+      payload.webhook_type,
+      payload.name,
+      payload.data?.event_type,
+    )?.toLowerCase();
+
+    const status = pickFirstString(
+      payload.status,
+      payload.data?.status,
+      payload.doc?.status,
+      payload.document?.status,
+      payload.data?.document_status,
+    )?.toLowerCase();
+
+    const docToken = pickFirstString(
+      payload.token,
+      payload.data?.token,
+      payload.doc?.token,
+      payload.document?.token,
+      payload.doc_token,
+      payload.data?.doc_token,
+      payload.doc?.doc_token,
+      payload.document?.doc_token,
+      payload.open_id,
+      payload.data?.open_id,
+      payload.doc?.open_id,
+      payload.document?.open_id,
+    );
+
+    const signerPayload =
+      payload.signers ??
+      payload.data?.signers ??
+      payload.doc?.signers ??
+      payload.document?.signers ??
+      null;
+
+    const isSigned = eventType?.includes("signed") || status === "finished" || status === "signed";
+    const isRejected = eventType?.includes("refused") || eventType?.includes("reject") || status === "refused" || status === "rejected";
 
     if (!docToken) {
-      return new Response("OK", { status: 200 });
+      return new Response(JSON.stringify({ ok: true, ignored: "missing_token" }), { status: 200, headers: corsHeaders });
     }
 
-    const signatureStatus = status === "finished" ? "signed" : status === "refused" ? "rejected" : null;
+    const signatureStatus = isSigned ? "signed" : isRejected ? "rejected" : null;
+
+    console.log("Resolved ZapSign webhook:", JSON.stringify({ eventType, status, docToken, signatureStatus }));
 
     if (!signatureStatus) {
-      return new Response("OK", { status: 200 });
+      return new Response(JSON.stringify({ ok: true, ignored: "unsupported_status" }), { status: 200, headers: corsHeaders });
     }
 
-    // Update document status
-    const { data: updatedDocs } = await supabase
+    const { data: existingDoc, error: fetchDocError } = await supabase
       .from("documents")
-      .update({
-        signature_status: signatureStatus,
-        signature_completed_at: new Date().toISOString(),
-      })
+      .select("id, name, case_id, owner_id, signature_status")
       .eq("signature_doc_token", docToken)
-      .select("id, name, case_id, owner_id");
+      .maybeSingle();
 
-    const doc = updatedDocs?.[0];
-    if (!doc) {
-      console.log("Document not found for token:", docToken);
-      return new Response("OK", { status: 200 });
+    if (fetchDocError) {
+      console.error("Failed to fetch document by token:", fetchDocError);
+      return new Response(JSON.stringify({ ok: true, ignored: "fetch_error" }), { status: 200, headers: corsHeaders });
     }
+
+    if (!existingDoc) {
+      console.log("Document not found for token:", docToken);
+      return new Response(JSON.stringify({ ok: true, ignored: "document_not_found" }), { status: 200, headers: corsHeaders });
+    }
+
+    if (existingDoc.signature_status === signatureStatus) {
+      console.log("Webhook already processed for document:", existingDoc.id);
+      return new Response(JSON.stringify({ ok: true, ignored: "already_processed" }), { status: 200, headers: corsHeaders });
+    }
+
+    const updatePayload: Record<string, unknown> = {
+      signature_status: signatureStatus,
+      signature_completed_at: new Date().toISOString(),
+    };
+
+    if (Array.isArray(signerPayload)) {
+      updatePayload.signers = signerPayload;
+    }
+
+    const { data: updatedDoc, error: updateError } = await supabase
+      .from("documents")
+      .update(updatePayload)
+      .eq("id", existingDoc.id)
+      .select("id, name, case_id, owner_id")
+      .single();
+
+    if (updateError || !updatedDoc) {
+      console.error("Failed to update document signature status:", updateError);
+      return new Response(JSON.stringify({ ok: true, ignored: "update_error" }), { status: 200, headers: corsHeaders });
+    }
+
+    const doc = updatedDoc;
 
     // Get case + client info for notification
     const { data: caseData } = await supabase
@@ -105,9 +190,9 @@ Deno.serve(async (req) => {
       }
     }
 
-    return new Response("OK", { status: 200 });
+    return new Response(JSON.stringify({ ok: true, status: signatureStatus, document_id: doc.id }), { status: 200, headers: corsHeaders });
   } catch (err) {
     console.error("Webhook error:", err);
-    return new Response("OK", { status: 200 });
+    return new Response(JSON.stringify({ ok: true, ignored: "unexpected_error" }), { status: 200, headers: corsHeaders });
   }
 });
