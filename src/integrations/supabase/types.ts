@@ -707,6 +707,54 @@ export type Database = {
           },
         ]
       }
+      feature_requests: {
+        Row: {
+          admin_response: string | null
+          ai_interpretation: string | null
+          created_at: string | null
+          description: string
+          id: string
+          image_urls: string[] | null
+          priority: string | null
+          status: string
+          title: string
+          type: string
+          updated_at: string | null
+          user_email: string | null
+          user_id: string
+        }
+        Insert: {
+          admin_response?: string | null
+          ai_interpretation?: string | null
+          created_at?: string | null
+          description: string
+          id?: string
+          image_urls?: string[] | null
+          priority?: string | null
+          status?: string
+          title: string
+          type: string
+          updated_at?: string | null
+          user_email?: string | null
+          user_id: string
+        }
+        Update: {
+          admin_response?: string | null
+          ai_interpretation?: string | null
+          created_at?: string | null
+          description?: string
+          id?: string
+          image_urls?: string[] | null
+          priority?: string | null
+          status?: string
+          title?: string
+          type?: string
+          updated_at?: string | null
+          user_email?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       hearings: {
         Row: {
           alert_whatsapp: boolean
