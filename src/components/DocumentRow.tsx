@@ -317,7 +317,7 @@ export function DocumentRow({ doc, clientName, clientEmail, clientCpf, clientPho
               ))}
             </SelectContent>
           </Select>
-          {doc.file_url && doc.file_url !== "" && (
+          {(doc.file_url && doc.file_url !== "" || doc.signed_file_url || (doc.signature_status === "signed" && doc.signature_doc_token)) && (
             <>
               <Button
                 variant="ghost"
