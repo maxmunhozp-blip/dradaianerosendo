@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
+import { PdfViewer } from "./PdfViewer";
 import { supabase } from "@/integrations/supabase/client";
 import { StatusBadge } from "./StatusBadge";
 import {
@@ -561,40 +562,47 @@ export function DocumentRow({ doc, clientName, clientEmail, clientCpf, clientPho
         </div>
       )}
 
-      {/* Preview Modal */}
-      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-        <DialogContent className="max-w-4xl h-[85vh] flex flex-col p-0">
-          <DialogHeader className="px-6 pt-6 pb-3 border-b border-border">
-            <div className="flex items-center justify-between">
-              <DialogTitle className="text-sm font-medium truncate pr-4">{doc.name}</DialogTitle>
-              <Button variant="outline" size="sm" className="shrink-0 gap-1.5" onClick={handleDownload}>
-                <Download className="w-3.5 h-3.5" />
-                Baixar
-              </Button>
-            </div>
-          </DialogHeader>
-          <div className="flex-1 overflow-hidden">
-            {isPdf && previewUrl ? (
-              <iframe src={previewUrl + "#toolbar=1"} className="w-full h-full border-0" title={doc.name} />
-            ) : isImage && previewUrl ? (
-              <div className="w-full h-full flex items-center justify-center p-6 overflow-auto">
-                <img src={previewUrl} alt={doc.name} className="max-w-full max-h-full object-contain rounded" />
-              </div>
-            ) : previewUrl ? (
-              <div className="w-full h-full flex flex-col items-center justify-center gap-4 text-muted-foreground text-sm">
-                <p>Pré-visualização não disponível neste navegador.</p>
-                <Button variant="outline" size="sm" onClick={() => window.open(previewUrl, "_blank", "noopener,noreferrer")}>
-                  <ExternalLink className="w-3.5 h-3.5 mr-1.5" /> Abrir em nova aba
+      {/* Preview - PDF Viewer or Dialog */}
+      {previewOpen && isPdf && previewUrl ? (
+        <PdfViewer
+          url={previewUrl}
+          fileName={doc.name}
+          onClose={() => setPreviewOpen(false)}
+          onDownload={handleDownload as any}
+        />
+      ) : (
+        <Dialog open={previewOpen && !isPdf} onOpenChange={setPreviewOpen}>
+          <DialogContent className="max-w-4xl h-[85vh] flex flex-col p-0">
+            <DialogHeader className="px-6 pt-6 pb-3 border-b border-border">
+              <div className="flex items-center justify-between">
+                <DialogTitle className="text-sm font-medium truncate pr-4">{doc.name}</DialogTitle>
+                <Button variant="outline" size="sm" className="shrink-0 gap-1.5" onClick={handleDownload}>
+                  <Download className="w-3.5 h-3.5" />
+                  Baixar
                 </Button>
               </div>
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
-                <p>Pré-visualização não disponível para este tipo de arquivo.</p>
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+            </DialogHeader>
+            <div className="flex-1 overflow-hidden">
+              {isImage && previewUrl ? (
+                <div className="w-full h-full flex items-center justify-center p-6 overflow-auto">
+                  <img src={previewUrl} alt={doc.name} className="max-w-full max-h-full object-contain rounded" />
+                </div>
+              ) : previewUrl ? (
+                <div className="w-full h-full flex flex-col items-center justify-center gap-4 text-muted-foreground text-sm">
+                  <p>Pré-visualização não disponível neste navegador.</p>
+                  <Button variant="outline" size="sm" onClick={() => window.open(previewUrl, "_blank", "noopener,noreferrer")}>
+                    <ExternalLink className="w-3.5 h-3.5 mr-1.5" /> Abrir em nova aba
+                  </Button>
+                </div>
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
+                  <p>Pré-visualização não disponível para este tipo de arquivo.</p>
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
       {/* Delete Confirmation */}
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>
