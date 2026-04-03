@@ -198,7 +198,7 @@ Deno.serve(async (req) => {
     }
 
     if (existingDoc.signature_status === signatureStatus) {
-      if (isSigned && doc.case_id && !existingDoc.signed_file_url) {
+      if (isSigned && existingDoc.case_id && !existingDoc.signed_file_url) {
         try {
           await downloadAndStoreSignedPdf(supabase, docToken, existingDoc.id, existingDoc.name, existingDoc.case_id);
         } catch (e) {
