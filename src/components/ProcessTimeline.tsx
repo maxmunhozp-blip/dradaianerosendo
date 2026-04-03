@@ -326,7 +326,7 @@ export function ProcessTimeline({ caseId }: ProcessTimelineProps) {
                           {entry.pinned && (
                             <Pin className="w-3 h-3 text-amber-500 shrink-0" />
                           )}
-                          <span className="text-sm font-medium text-foreground truncate">
+                          <span className="text-xs font-medium text-foreground truncate">
                             {entry.title}
                           </span>
                           <Badge className={`${statusStyle.color} text-[10px] px-1.5 py-0 shrink-0`}>
