@@ -580,7 +580,7 @@ export function DocumentRow({ doc, clientName, clientEmail, clientCpf, clientPho
           data={pdfData}
           fileName={doc.name}
           onClose={() => setPreviewOpen(false)}
-          onDownload={() => handleDownload({} as React.MouseEvent)}
+          onDownload={() => handleDownload()}
         />
       ) : (
         <Dialog open={previewOpen && !isPdf} onOpenChange={setPreviewOpen}>
