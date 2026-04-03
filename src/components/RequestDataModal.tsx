@@ -9,12 +9,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { Send, Copy, Check, Loader2 } from "lucide-react";
 import WhatsAppButton from "@/components/ui/WhatsAppButton";
 
-interface FieldOption {
-  key: string;
-  label: string;
-  missing: boolean;
-}
-
 interface RequestDataModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -24,30 +18,47 @@ interface RequestDataModalProps {
   caseData: Record<string, unknown>;
 }
 
-const FIELD_MAP: { key: string; label: string; check: (c: Record<string, unknown>, cs: Record<string, unknown>) => boolean }[] = [
-  { key: "address", label: "Endereço completo", check: (c) => !c.address_street },
-  { key: "rg", label: "RG", check: (c) => !c.rg },
-  { key: "marital_status", label: "Estado civil", check: (c) => !c.marital_status },
-  { key: "profession", label: "Profissão", check: (c) => !c.profession },
-  { key: "nationality", label: "Nacionalidade", check: (c) => !c.nationality || c.nationality === "brasileiro(a)" },
-  { key: "children", label: "Nome e data de nascimento dos filhos", check: (_, cs) => !cs.children || (Array.isArray(cs.children) && (cs.children as unknown[]).length === 0) },
-  { key: "opposing_party", label: "Dados da parte contrária", check: (_, cs) => !cs.opposing_party_name },
+const FIELD_MAP: { key: string; label: string; category: "info"; check: (c: Record<string, unknown>, cs: Record<string, unknown>) => boolean }[] = [
+  { key: "address", label: "Endereço completo", category: "info", check: (c) => !c.address_street },
+  { key: "rg", label: "RG", category: "info", check: (c) => !c.rg },
+  { key: "marital_status", label: "Estado civil", category: "info", check: (c) => !c.marital_status },
+  { key: "profession", label: "Profissão", category: "info", check: (c) => !c.profession },
+  { key: "nationality", label: "Nacionalidade", category: "info", check: (c) => !c.nationality || c.nationality === "brasileiro(a)" },
+  { key: "children", label: "Nome e data de nascimento dos filhos", category: "info", check: (_, cs) => !cs.children || (Array.isArray(cs.children) && (cs.children as unknown[]).length === 0) },
+  { key: "opposing_party", label: "Dados da parte contrária", category: "info", check: (_, cs) => !cs.opposing_party_name },
+];
+
+const DOCUMENT_CATALOG: { key: string; label: string }[] = [
+  { key: "doc_rg", label: "RG (documento de identidade)" },
+  { key: "doc_cpf", label: "CPF" },
+  { key: "doc_certidao_nascimento", label: "Certidão de nascimento" },
+  { key: "doc_certidao_casamento", label: "Certidão de casamento ou divórcio" },
+  { key: "doc_comprovante_renda", label: "Comprovante de renda (holerite/contracheque)" },
+  { key: "doc_declaracao_ir", label: "Declaração de Imposto de Renda" },
+  { key: "doc_comprovante_residencia", label: "Comprovante de residência" },
+  { key: "doc_ctps", label: "Carteira de Trabalho (CTPS)" },
+  { key: "doc_matricula_imovel", label: "Certidão de matrícula do imóvel" },
+  { key: "doc_escritura", label: "Escritura do imóvel" },
+  { key: "doc_extrato_bancario", label: "Extrato bancário" },
+  { key: "doc_cnh", label: "CNH (Carteira de Habilitação)" },
+  { key: "doc_certidao_obito", label: "Certidão de óbito" },
+  { key: "doc_pacto_antenupcial", label: "Pacto antenupcial" },
+  { key: "doc_contrato_trabalho", label: "Contrato de trabalho" },
 ];
 
 export function RequestDataModal({ open, onOpenChange, caseId, clientId, clientData, caseData }: RequestDataModalProps) {
-  const [fields, setFields] = useState<FieldOption[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const [generatedUrl, setGeneratedUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
+  const detectedMissing = FIELD_MAP
+    .filter((f) => f.check(clientData, caseData))
+    .map((f) => f.key);
+
   useEffect(() => {
     if (open) {
-      const detected = FIELD_MAP
-        .filter((f) => f.check(clientData, caseData))
-        .map((f) => ({ key: f.key, label: f.label, missing: true }));
-      setFields(detected);
-      setSelected(new Set(detected.map((f) => f.key)));
+      setSelected(new Set(detectedMissing));
       setGeneratedUrl(null);
       setCopied(false);
     }
@@ -66,7 +77,7 @@ export function RequestDataModal({ open, onOpenChange, caseId, clientId, clientD
   const phone = ((clientData.phone as string) || "").replace(/\D/g, "");
 
   const handleGenerate = async () => {
-    if (selected.size === 0) { toast.error("Selecione ao menos um campo"); return; }
+    if (selected.size === 0) { toast.error("Selecione ao menos um item"); return; }
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("create-data-request", {
@@ -89,7 +100,6 @@ export function RequestDataModal({ open, onOpenChange, caseId, clientId, clientD
 
   const whatsappMessage = `Olá ${firstName}! Para dar continuidade ao seu processo, preciso de algumas informações. Clique no link abaixo para preencher com segurança (menos de 3 minutos):\n\n${generatedUrl || "[link]"}\n\nQualquer dúvida, estou à disposição! 🤝\nDra. Daiane Rosendo`;
 
-
   const handleCopy = async () => {
     if (generatedUrl) {
       await navigator.clipboard.writeText(generatedUrl);
@@ -101,72 +111,102 @@ export function RequestDataModal({ open, onOpenChange, caseId, clientId, clientD
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Solicitar dados ao cliente</DialogTitle>
           <DialogDescription>
-            Um link mágico será enviado para {clientName} preencher os dados faltantes pelo celular.
+            Selecione o que precisa solicitar ao cliente. Um link seguro será gerado para preenchimento pelo celular.
           </DialogDescription>
         </DialogHeader>
 
-        {fields.length === 0 ? (
-          <div className="text-center py-6">
-            <Check className="w-10 h-10 text-primary mx-auto mb-2" />
-            <p className="text-sm text-muted-foreground">Todos os dados estão preenchidos! 🎉</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <div>
-              <p className="text-sm font-medium mb-2">Os seguintes dados estão faltando:</p>
-              <div className="space-y-2">
-                {fields.map((f) => (
+        <div className="space-y-4">
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+              Informações do cadastro
+            </p>
+            <div className="space-y-1.5">
+              {FIELD_MAP.map((f) => {
+                const isMissing = detectedMissing.includes(f.key);
+                return (
                   <div key={f.key} className="flex items-center gap-2">
                     <Checkbox
                       id={f.key}
                       checked={selected.has(f.key)}
                       onCheckedChange={() => toggleField(f.key)}
                     />
-                    <Label htmlFor={f.key} className="text-sm cursor-pointer">{f.label}</Label>
+                    <Label htmlFor={f.key} className="text-sm cursor-pointer flex items-center gap-1.5">
+                      {f.label}
+                      {isMissing && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">
+                          faltando
+                        </span>
+                      )}
+                    </Label>
                   </div>
-                ))}
-              </div>
-              <p className="text-xs text-muted-foreground mt-2">Desmarque o que não precisa agora.</p>
+                );
+              })}
             </div>
-
-            {!generatedUrl ? (
-              <Button onClick={handleGenerate} disabled={loading || selected.size === 0} className="w-full">
-                {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
-                Gerar link
-              </Button>
-            ) : (
-              <div className="space-y-3">
-                <div className="bg-muted rounded-lg p-3">
-                  <p className="text-xs font-medium text-muted-foreground mb-1">Prévia da mensagem:</p>
-                  <p className="text-sm whitespace-pre-line">{whatsappMessage}</p>
-                </div>
-
-                <div className="flex gap-2">
-                  <WhatsAppButton
-                    phone={phone}
-                    message={whatsappMessage}
-                    onMissingPhone={() => toast.error("Cliente sem telefone cadastrado")}
-                    className="flex-1"
-                    disabled={!phone}
-                  >
-                    <div className="inline-flex w-full items-center justify-center rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-accent/80 disabled:pointer-events-none disabled:opacity-50">
-                      <Send className="w-4 h-4 mr-2" />
-                      Enviar por WhatsApp
-                    </div>
-                  </WhatsAppButton>
-                  <Button variant="outline" onClick={handleCopy}>
-                    {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                  </Button>
-                </div>
-                {!phone && <p className="text-xs text-destructive">Cliente sem telefone cadastrado</p>}
-              </div>
+            {detectedMissing.length === 0 && (
+              <p className="text-xs text-muted-foreground mt-1">Todos os dados cadastrais estão preenchidos.</p>
             )}
           </div>
-        )}
+
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+              Documentos
+            </p>
+            <div className="space-y-1.5">
+              {DOCUMENT_CATALOG.map((doc) => (
+                <div key={doc.key} className="flex items-center gap-2">
+                  <Checkbox
+                    id={doc.key}
+                    checked={selected.has(doc.key)}
+                    onCheckedChange={() => toggleField(doc.key)}
+                  />
+                  <Label htmlFor={doc.key} className="text-sm cursor-pointer">
+                    {doc.label}
+                  </Label>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            Selecione o que precisa solicitar ao cliente.
+          </p>
+
+          {!generatedUrl ? (
+            <Button onClick={handleGenerate} disabled={loading || selected.size === 0} className="w-full">
+              {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
+              Gerar link de solicitação
+            </Button>
+          ) : (
+            <div className="space-y-3">
+              <div className="bg-muted rounded-lg p-3">
+                <p className="text-xs font-medium text-muted-foreground mb-1">Prévia da mensagem:</p>
+                <p className="text-sm whitespace-pre-line">{whatsappMessage}</p>
+              </div>
+              <div className="flex gap-2">
+                <WhatsAppButton
+                  phone={phone}
+                  message={whatsappMessage}
+                  onMissingPhone={() => toast.error("Cliente sem telefone cadastrado")}
+                  className="flex-1"
+                  disabled={!phone}
+                >
+                  <div className="inline-flex w-full items-center justify-center rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-accent/80 disabled:pointer-events-none disabled:opacity-50">
+                    <Send className="w-4 h-4 mr-2" />
+                    Enviar por WhatsApp
+                  </div>
+                </WhatsAppButton>
+                <Button variant="outline" onClick={handleCopy}>
+                  {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                </Button>
+              </div>
+              {!phone && <p className="text-xs text-destructive">Cliente sem telefone cadastrado</p>}
+            </div>
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   );
