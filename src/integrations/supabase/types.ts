@@ -428,6 +428,7 @@ export type Database = {
           signature_doc_token: string | null
           signature_requested_at: string | null
           signature_status: string | null
+          signed_file_url: string | null
           signers: Json | null
           status: string
           uploaded_by: string
@@ -449,6 +450,7 @@ export type Database = {
           signature_doc_token?: string | null
           signature_requested_at?: string | null
           signature_status?: string | null
+          signed_file_url?: string | null
           signers?: Json | null
           status?: string
           uploaded_by?: string
@@ -470,6 +472,7 @@ export type Database = {
           signature_doc_token?: string | null
           signature_requested_at?: string | null
           signature_status?: string | null
+          signed_file_url?: string | null
           signers?: Json | null
           status?: string
           uploaded_by?: string
