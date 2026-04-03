@@ -24,7 +24,9 @@ import {
   Minus,
   IndentIncrease,
   IndentDecrease,
+  Palette,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Separator } from "@/components/ui/separator";
 import {
   Select,
@@ -375,6 +377,22 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(
           >
             <Minus className="w-3.5 h-3.5" />
           </ToolbarButton>
+
+          <Separator orientation="vertical" className="mx-1 h-5" />
+
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-[11px] gap-1"
+            title="Configurar formatação do documento"
+            asChild
+          >
+            <Link to="/settings/document-branding" target="_blank">
+              <Palette className="w-3.5 h-3.5" />
+              Formatação
+            </Link>
+          </Button>
         </div>
 
         {/* Editor content */}
