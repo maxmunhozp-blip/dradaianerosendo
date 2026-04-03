@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { PenLine, Clock, CheckCircle2, XCircle, Loader2, Copy, Plus, Trash2 } from "lucide-react";
+import { PenLine, Clock, CheckCircle2, XCircle, Loader2, Copy, Plus, Trash2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,6 +19,7 @@ interface Signer {
   name: string;
   email: string;
   cpf: string;
+  phone: string;
 }
 
 interface SignerResult {
@@ -26,6 +27,7 @@ interface SignerResult {
   email: string;
   token: string;
   sign_url: string;
+  phone: string;
 }
 
 interface SignatureModalProps {
@@ -39,6 +41,34 @@ interface SignatureModalProps {
   clientPhone?: string;
 }
 
+/** Normalize phone to digits only, ensuring country code */
+function normalizePhone(raw: string): string {
+  const digits = raw.replace(/\D/g, "");
+  if (digits.startsWith("55") && digits.length >= 12) return digits;
+  if (digits.length === 10 || digits.length === 11) return `55${digits}`;
+  return digits;
+}
+
+/** Validate Brazilian phone: 55 + 2-digit DDD + 8-9 digit number */
+function isValidBrPhone(raw: string): boolean {
+  const digits = normalizePhone(raw);
+  return /^55\d{10,11}$/.test(digits);
+}
+
+/** Format phone for display: (XX) XXXXX-XXXX */
+function formatPhoneDisplay(raw: string): string {
+  const digits = raw.replace(/\D/g, "");
+  // Handle with or without country code
+  const local = digits.startsWith("55") ? digits.slice(2) : digits;
+  if (local.length === 11) {
+    return `(${local.slice(0, 2)}) ${local.slice(2, 7)}-${local.slice(7)}`;
+  }
+  if (local.length === 10) {
+    return `(${local.slice(0, 2)}) ${local.slice(2, 6)}-${local.slice(6)}`;
+  }
+  return raw;
+}
+
 export function SignatureModal({
   open,
   onOpenChange,
@@ -50,25 +80,50 @@ export function SignatureModal({
   clientPhone = "",
 }: SignatureModalProps) {
   const [signers, setSigners] = useState<Signer[]>([
-    { name: clientName, email: clientEmail, cpf: clientCpf },
+    { name: clientName, email: clientEmail, cpf: clientCpf, phone: clientPhone },
   ]);
   const [sending, setSending] = useState(false);
   const [results, setResults] = useState<SignerResult[] | null>(null);
+  const [phoneErrors, setPhoneErrors] = useState<Record<number, string>>({});
   const queryClient = useQueryClient();
 
   const updateSigner = (index: number, field: keyof Signer, value: string) => {
     setSigners((prev) =>
       prev.map((s, i) => (i === index ? { ...s, [field]: value } : s))
     );
+    // Clear phone error on edit
+    if (field === "phone") {
+      setPhoneErrors((prev) => {
+        const next = { ...prev };
+        delete next[index];
+        return next;
+      });
+    }
   };
 
   const addSigner = () => {
-    setSigners((prev) => [...prev, { name: "", email: "", cpf: "" }]);
+    setSigners((prev) => [...prev, { name: "", email: "", cpf: "", phone: "" }]);
   };
 
   const removeSigner = (index: number) => {
     if (signers.length <= 1) return;
     setSigners((prev) => prev.filter((_, i) => i !== index));
+    setPhoneErrors((prev) => {
+      const next = { ...prev };
+      delete next[index];
+      return next;
+    });
+  };
+
+  const validatePhones = (): boolean => {
+    const errors: Record<number, string> = {};
+    signers.forEach((s, i) => {
+      if (s.phone.trim() && !isValidBrPhone(s.phone)) {
+        errors[i] = "Telefone inválido. Use: (XX) XXXXX-XXXX";
+      }
+    });
+    setPhoneErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const handleSend = async () => {
@@ -78,10 +133,15 @@ export function SignatureModal({
       return;
     }
 
+    if (!validatePhones()) {
+      toast.error("Corrija os telefones inválidos antes de enviar.");
+      return;
+    }
+
     setSending(true);
     try {
       const { data, error } = await supabase.functions.invoke("send-for-signature", {
-        body: { document_id: documentId, signers },
+        body: { document_id: documentId, signers: signers.map(({ phone, ...rest }) => rest) },
       });
 
       if (error) {
@@ -104,16 +164,16 @@ export function SignatureModal({
         throw new Error("Nenhum link de assinatura foi gerado. Verifique o token ZapSign nas Configurações.");
       }
 
-      const signerResults = data.signers.map((s: any) => ({
+      const signerResults: SignerResult[] = data.signers.map((s: any, i: number) => ({
         name: s.name || "",
         email: s.email || "",
         token: s.token || "",
         sign_url: s.sign_url || s.signing_link || "",
+        phone: signers[i]?.phone || clientPhone || "",
       }));
 
       setResults(signerResults);
 
-      // Invalidate document queries so UI reflects the new signature_status
       queryClient.invalidateQueries({ queryKey: ["documents"] });
       queryClient.invalidateQueries({ queryKey: ["documents", undefined] });
       queryClient.invalidateQueries({ queryKey: ["signature-docs-dashboard"] });
@@ -131,7 +191,8 @@ export function SignatureModal({
   const handleClose = (v: boolean) => {
     if (!v) {
       setResults(null);
-      setSigners([{ name: clientName, email: clientEmail, cpf: clientCpf }]);
+      setSigners([{ name: clientName, email: clientEmail, cpf: clientCpf, phone: clientPhone }]);
+      setPhoneErrors({});
     }
     onOpenChange(v);
   };
@@ -204,6 +265,21 @@ export function SignatureModal({
                         placeholder="000.000.000-00"
                       />
                     </div>
+                    <div className="col-span-2 space-y-1">
+                      <Label className="text-[11px]">Telefone (WhatsApp)</Label>
+                      <Input
+                        className={`h-8 text-xs ${phoneErrors[index] ? "border-destructive" : ""}`}
+                        value={signer.phone}
+                        onChange={(e) => updateSigner(index, "phone", e.target.value)}
+                        placeholder="(11) 99999-9999"
+                      />
+                      {phoneErrors[index] && (
+                        <p className="text-[10px] text-destructive flex items-center gap-1">
+                          <AlertCircle className="w-3 h-3" />
+                          {phoneErrors[index]}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -238,34 +314,56 @@ export function SignatureModal({
             </>
           ) : (
             <div className="space-y-3">
-              {results.map((signer, index) => (
-                <div key={index} className="border rounded-lg p-3 space-y-2">
-                  <div>
-                    <p className="text-sm font-medium">{signer.name}</p>
-                    <p className="text-xs text-muted-foreground">{signer.email}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-xs gap-1 flex-1"
-                      onClick={() => copyLink(signer.sign_url)}
-                    >
-                      <Copy className="w-3 h-3" />
-                      Copiar link
-                    </Button>
-                    <WhatsAppButton
-                      phone={clientPhone || ""}
-                      message={`Olá ${signer.name}! Segue o link para assinar o documento "${documentName}":\n\n${signer.sign_url}\n\nÉ só clicar no link, rolar até o final e assinar.`}
-                      className="flex-1"
-                    >
-                      <Button variant="outline" size="sm" className="text-xs gap-1 w-full">
-                        Enviar via WhatsApp
+              {results.map((signer, index) => {
+                const hasPhone = signer.phone && isValidBrPhone(signer.phone);
+                const whatsappPhone = hasPhone ? normalizePhone(signer.phone) : "";
+
+                return (
+                  <div key={index} className="border rounded-lg p-3 space-y-2">
+                    <div>
+                      <p className="text-sm font-medium">{signer.name}</p>
+                      <p className="text-xs text-muted-foreground">{signer.email}</p>
+                      {signer.phone && (
+                        <p className="text-xs text-muted-foreground">
+                          📱 {formatPhoneDisplay(signer.phone)}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-xs gap-1 flex-1"
+                        onClick={() => copyLink(signer.sign_url)}
+                      >
+                        <Copy className="w-3 h-3" />
+                        Copiar link
                       </Button>
-                    </WhatsAppButton>
+                      {hasPhone ? (
+                        <WhatsAppButton
+                          phone={whatsappPhone}
+                          message={`Olá ${signer.name}! Segue o link para assinar o documento "${documentName}":\n\n${signer.sign_url}\n\nÉ só clicar no link, rolar até o final e assinar.`}
+                          className="flex-1"
+                        >
+                          <Button variant="outline" size="sm" className="text-xs gap-1 w-full">
+                            Enviar via WhatsApp
+                          </Button>
+                        </WhatsAppButton>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-xs gap-1 flex-1 opacity-50"
+                          disabled
+                          title="Telefone não informado ou inválido"
+                        >
+                          WhatsApp indisponível
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
 
               <Button
                 variant="outline"
