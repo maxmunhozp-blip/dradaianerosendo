@@ -4,7 +4,7 @@ import { StatusBadge } from "./StatusBadge";
 import {
   Download, Scale, ChevronDown, ChevronRight,
   Bold, Italic, List, Paperclip, Save, Loader2, Eye,
-  CheckCircle2, AlertCircle, Trash2, PenLine, Mail,
+  CheckCircle2, AlertCircle, Trash2, PenLine, Mail, ExternalLink,
 } from "lucide-react";
 import { SignatureModal, SignatureStatusBadge } from "@/components/SignatureModal";
 import { Button } from "@/components/ui/button";
@@ -149,8 +149,9 @@ export function DocumentRow({ doc, clientName, clientEmail, clientCpf, clientPho
     }
   };
 
-  const isPdf = doc.file_url?.toLowerCase().endsWith(".pdf");
-  const isImage = /\.(jpg|jpeg|png|webp|gif)$/i.test(doc.file_url || "");
+  const activeFileUrl = doc.signed_file_url || doc.file_url;
+  const isPdf = activeFileUrl?.toLowerCase().endsWith(".pdf") || activeFileUrl?.includes(".pdf");
+  const isImage = /\.(jpg|jpeg|png|webp|gif)/i.test(activeFileUrl || "");
 
   // Extract storage path from full public URL
   const getStoragePath = useCallback((url: string) => {
@@ -324,13 +325,12 @@ export function DocumentRow({ doc, clientName, clientEmail, clientCpf, clientPho
                 size="icon"
                 className="h-7 w-7"
                 title="Visualizar"
-                onClick={async (e) => {
+                onClick={(e) => {
                   e.stopPropagation();
-                  // Prioridade: PDF assinado salvo no storage > PDF original
+                  // Use public URL directly (bucket is public) — signed URLs get blocked in iframes
                   const targetUrl = doc.signed_file_url || doc.file_url;
                   if (targetUrl) {
-                    const url = await getSignedUrl(targetUrl);
-                    setPreviewUrl(url);
+                    setPreviewUrl(targetUrl);
                     setPreviewOpen(true);
                   }
                 }}
@@ -477,10 +477,17 @@ export function DocumentRow({ doc, clientName, clientEmail, clientCpf, clientPho
           </DialogHeader>
           <div className="flex-1 overflow-hidden">
             {isPdf && previewUrl ? (
-              <iframe src={previewUrl} className="w-full h-full border-0" title={doc.name} />
+              <iframe src={previewUrl + "#toolbar=1"} className="w-full h-full border-0" title={doc.name} />
             ) : isImage && previewUrl ? (
               <div className="w-full h-full flex items-center justify-center p-6 overflow-auto">
                 <img src={previewUrl} alt={doc.name} className="max-w-full max-h-full object-contain rounded" />
+              </div>
+            ) : previewUrl ? (
+              <div className="w-full h-full flex flex-col items-center justify-center gap-4 text-muted-foreground text-sm">
+                <p>Pré-visualização não disponível neste navegador.</p>
+                <Button variant="outline" size="sm" onClick={() => window.open(previewUrl, "_blank", "noopener,noreferrer")}>
+                  <ExternalLink className="w-3.5 h-3.5 mr-1.5" /> Abrir em nova aba
+                </Button>
               </div>
             ) : (
               <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
