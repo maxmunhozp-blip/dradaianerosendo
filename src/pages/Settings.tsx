@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, type ReactNode } from "react";
+import { Switch } from "@/components/ui/switch";
 import { PenLine, Eye, EyeOff } from "lucide-react";
 import {
   Save,
