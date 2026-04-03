@@ -9,7 +9,7 @@ const plans = [
   {
     id: "basic",
     name: "Básico",
-    price: "180",
+    price: "380",
     description: "Para advogados autônomos começando",
     features: [
       "Até 30 clientes",
