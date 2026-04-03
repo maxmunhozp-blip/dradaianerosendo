@@ -14,6 +14,7 @@ import {
   Mail,
   Palette,
   MessageSquarePlus,
+  ClipboardList,
 } from "lucide-react";
 import { useIntimacaoCount } from "@/hooks/use-intimacoes";
 import { useSignedDocumentsCount } from "@/hooks/use-documents";
