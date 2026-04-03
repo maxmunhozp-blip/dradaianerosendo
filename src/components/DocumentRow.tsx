@@ -326,19 +326,10 @@ export function DocumentRow({ doc, clientName, clientEmail, clientCpf, clientPho
                 title="Visualizar"
                 onClick={async (e) => {
                   e.stopPropagation();
-                  if (doc.signed_file_url) {
-                    const url = await getSignedUrl(doc.signed_file_url);
-                    setPreviewUrl(url);
-                    setPreviewOpen(true);
-                    return;
-                  }
-                  if (doc.signature_status === "signed" && doc.signature_doc_token) {
-                    window.open(`https://app.zapsign.com.br/validar/${doc.signature_doc_token}`, "_blank", "noopener,noreferrer");
-                    toast.info("Abrindo documento assinado no ZapSign...");
-                    return;
-                  }
-                  if (doc.file_url) {
-                    const url = await getSignedUrl(doc.file_url);
+                  // Prioridade: PDF assinado salvo no storage > PDF original
+                  const targetUrl = doc.signed_file_url || doc.file_url;
+                  if (targetUrl) {
+                    const url = await getSignedUrl(targetUrl);
                     setPreviewUrl(url);
                     setPreviewOpen(true);
                   }
