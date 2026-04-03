@@ -714,7 +714,24 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent, all
       const idx = allActions.indexOf(confirmAction);
       setExecuted((prev) => new Set(prev).add(idx));
     } catch (e: any) {
-      toast.error("Erro ao executar: " + (e.message || "erro desconhecido"));
+      const msg: string = e.message || "Erro desconhecido";
+      const isZapSignConfig = msg.includes("402") || msg.includes("sandbox") || msg.includes("token") || msg.includes("plano") || msg.includes("Token");
+      const isZapSignDown = msg.includes("fora do ar") || msg.includes("instabilidade") || msg.includes("unreachable") || msg.includes("503");
+
+      if (isZapSignConfig) {
+        toast.error(msg, {
+          description: "Verifique as configurações do ZapSign.",
+          action: { label: "Configurações", onClick: () => window.location.href = "/settings" },
+          duration: 8000,
+        });
+      } else if (isZapSignDown) {
+        toast.warning(msg, {
+          description: "Tente novamente em alguns minutos.",
+          duration: 8000,
+        });
+      } else {
+        toast.error("Erro ao executar: " + msg);
+      }
     } finally {
       setExecuting(false);
       setConfirmAction(null);

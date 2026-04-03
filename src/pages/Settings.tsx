@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, type ReactNode } from "react";
+import { Switch } from "@/components/ui/switch";
 import { PenLine, Eye, EyeOff } from "lucide-react";
 import {
   Save,
@@ -285,6 +286,22 @@ function SignatureSettings({ value, onChange, onSave }: { value: string; onChang
   const [testing, setTesting] = useState(false);
   const [savingToken, setSavingToken] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<"idle" | "ok" | "error">("idle");
+  const [sandboxEnabled, setSandboxEnabled] = useState(true);
+
+  useEffect(() => {
+    supabase.from("settings").select("value").eq("key", "signature_sandbox").single().then(({ data }) => {
+      if (data) setSandboxEnabled(data.value !== "false");
+    });
+  }, []);
+
+  const handleSandboxToggle = async (checked: boolean) => {
+    setSandboxEnabled(checked);
+    await supabase.from("settings").upsert(
+      { key: "signature_sandbox", value: checked ? "true" : "false" },
+      { onConflict: "key" }
+    );
+    toast.success(checked ? "Modo sandbox ativado." : "Modo produção ativado.");
+  };
 
   const saveToken = async () => {
     if (!value.trim()) {
@@ -399,6 +416,37 @@ function SignatureSettings({ value, onChange, onSave }: { value: string; onChang
         </Button>
       </div>
 
+      {/* Sandbox toggle */}
+      <div className="border rounded-lg p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-foreground">Modo Sandbox</p>
+            <p className="text-xs text-muted-foreground">
+              {sandboxEnabled ? "Testes — sem validade jurídica" : "Produção — requer Plano de API ZapSign"}
+            </p>
+          </div>
+          <Switch checked={sandboxEnabled} onCheckedChange={handleSandboxToggle} />
+        </div>
+
+        {sandboxEnabled ? (
+          <div className="bg-amber-50 border border-amber-200 rounded-md p-2.5 space-y-1">
+            <p className="text-[11px] font-medium text-amber-800">Modo desenvolvimento ativo</p>
+            <p className="text-[10px] text-amber-700">
+              Documentos são criados como teste no ZapSign, sem validade jurídica. Ideal para validar a integração antes de contratar o plano.
+            </p>
+          </div>
+        ) : (
+          <div className="bg-blue-50 border border-blue-200 rounded-md p-2.5 space-y-1">
+            <p className="text-[11px] font-medium text-blue-800">Modo produção ativo</p>
+            <p className="text-[10px] text-blue-700">
+              Requer Plano de API ZapSign ativo. Sem o plano, envios retornam erro 402.{" "}
+              <a href="https://app.zapsign.com.br" target="_blank" rel="noopener noreferrer" className="underline font-medium">
+                Contratar plano
+              </a>
+            </p>
+          </div>
+        )}
+      </div>
       <div className="bg-muted/50 rounded-md p-3 text-xs text-muted-foreground space-y-2">
           <p className="font-medium text-foreground">Configure o webhook no ZapSign:</p>
           <div className="flex items-center gap-2">
