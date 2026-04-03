@@ -122,6 +122,7 @@ const App = () => {
                 <Route path="/settings/lara-skills" element={<LaraSkills />} />
                 <Route path="/settings/document-branding" element={<DocumentBranding />} />
                 <Route path="/settings/emails" element={<EmailSettings />} />
+                <Route path="/solicitacoes" element={<Solicitacoes />} />
               </Route>
             </Route>
 
