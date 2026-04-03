@@ -711,6 +711,7 @@ export type Database = {
         Row: {
           admin_response: string | null
           ai_interpretation: string | null
+          confirmed_at: string | null
           created_at: string | null
           description: string
           id: string
@@ -718,6 +719,7 @@ export type Database = {
           priority: string | null
           status: string
           title: string
+          tokens_awarded: number | null
           type: string
           updated_at: string | null
           user_email: string | null
@@ -726,6 +728,7 @@ export type Database = {
         Insert: {
           admin_response?: string | null
           ai_interpretation?: string | null
+          confirmed_at?: string | null
           created_at?: string | null
           description: string
           id?: string
@@ -733,6 +736,7 @@ export type Database = {
           priority?: string | null
           status?: string
           title: string
+          tokens_awarded?: number | null
           type: string
           updated_at?: string | null
           user_email?: string | null
@@ -741,6 +745,7 @@ export type Database = {
         Update: {
           admin_response?: string | null
           ai_interpretation?: string | null
+          confirmed_at?: string | null
           created_at?: string | null
           description?: string
           id?: string
@@ -748,6 +753,7 @@ export type Database = {
           priority?: string | null
           status?: string
           title?: string
+          tokens_awarded?: number | null
           type?: string
           updated_at?: string | null
           user_email?: string | null
