@@ -86,7 +86,15 @@ export function SignatureModal({
 
       if (error) {
         console.error("Invoke error:", error);
-        throw new Error(error.message || "Erro ao chamar a função de assinatura");
+        let errorMessage = "Erro ao chamar a função de assinatura";
+        try {
+          const body = await (error as any).context?.json?.();
+          if (body?.error) errorMessage = body.error;
+          else if (error.message) errorMessage = error.message;
+        } catch {
+          errorMessage = error.message || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
       if (data?.error) {
         console.error("Function returned error:", data.error);
