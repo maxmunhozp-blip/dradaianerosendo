@@ -285,6 +285,22 @@ function SignatureSettings({ value, onChange, onSave }: { value: string; onChang
   const [testing, setTesting] = useState(false);
   const [savingToken, setSavingToken] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<"idle" | "ok" | "error">("idle");
+  const [sandboxEnabled, setSandboxEnabled] = useState(true);
+
+  useEffect(() => {
+    supabase.from("settings").select("value").eq("key", "signature_sandbox").single().then(({ data }) => {
+      if (data) setSandboxEnabled(data.value !== "false");
+    });
+  }, []);
+
+  const handleSandboxToggle = async (checked: boolean) => {
+    setSandboxEnabled(checked);
+    await supabase.from("settings").upsert(
+      { key: "signature_sandbox", value: checked ? "true" : "false" },
+      { onConflict: "key" }
+    );
+    toast.success(checked ? "Modo sandbox ativado." : "Modo produção ativado.");
+  };
 
   const saveToken = async () => {
     if (!value.trim()) {

@@ -107,27 +107,51 @@ Deno.serve(async (req) => {
     };
 
     console.log("[send-for-signature] Calling ZapSign API...");
-    const zapRes = await fetch("https://api.zapsign.com.br/api/v1/docs/", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(zapSignBody),
-    });
+
+    let zapRes: Response;
+    try {
+      zapRes = await fetch("https://api.zapsign.com.br/api/v1/docs/", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(zapSignBody),
+        signal: AbortSignal.timeout(15000),
+      });
+    } catch (fetchErr: any) {
+      const isTimeout = fetchErr?.name === "TimeoutError" || fetchErr?.name === "AbortError";
+      console.error("[send-for-signature] ZapSign unreachable:", fetchErr?.message);
+      return new Response(
+        JSON.stringify({
+          error: isTimeout
+            ? "ZapSign não respondeu a tempo. O serviço pode estar com instabilidade. Tente novamente em alguns minutos."
+            : "Não foi possível conectar ao ZapSign. Verifique sua conexão ou tente novamente em instantes.",
+          zapsign_status: "unreachable",
+        }),
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     if (!zapRes.ok) {
       const errText = await zapRes.text();
-      console.error(
-        "[send-for-signature] ZapSign API error",
-        "status:", zapRes.status,
-        "body:", errText.substring(0, 500),
-        "token_prefix:", apiToken.substring(0, 8)
-      );
+      console.error("[send-for-signature] ZapSign error", zapRes.status, errText.substring(0, 300), "token_prefix:", apiToken.substring(0, 8));
+
+      const friendlyMessages: Record<number, string> = {
+        400: "Dados inválidos enviados ao ZapSign. Verifique o documento e os dados dos signatários.",
+        401: "Token ZapSign inválido ou expirado. Atualize o token em Configurações → ZapSign.",
+        402: "Sua conta ZapSign não possui o Plano de API ativo para modo produção. Ative o Sandbox em Configurações → ZapSign para testes, ou contrate o plano em app.zapsign.com.br.",
+        403: "Sem permissão para usar a API ZapSign. Verifique se o token tem acesso à API.",
+        429: "Limite de requisições ZapSign atingido. Aguarde alguns minutos e tente novamente.",
+        500: "ZapSign está com instabilidade no momento. Tente novamente em alguns minutos.",
+        502: "ZapSign está com instabilidade no momento (502). Tente novamente em alguns minutos.",
+        503: "ZapSign está fora do ar no momento. Acompanhe em status.zapsign.com.br e tente mais tarde.",
+      };
+
+      const message = friendlyMessages[zapRes.status] || `Erro ZapSign (${zapRes.status}). Tente novamente ou contate o suporte.`;
+
       return new Response(
-        JSON.stringify({
-          error: `Erro na API ZapSign (${zapRes.status}): ${errText.substring(0, 200)}. Verifique o token em Configurações → ZapSign.`,
-        }),
+        JSON.stringify({ error: message, zapsign_status: zapRes.status }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
