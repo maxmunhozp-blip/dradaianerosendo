@@ -409,7 +409,7 @@ export function DocumentRow({ doc, clientName, clientEmail, clientCpf, clientPho
                   variant="ghost"
                   size="icon"
                   className="h-7 w-7 text-emerald-600"
-                  title="Abrir documento no ZapSign"
+                  title="Abrir assinatura no ZapSign"
                   onClick={(e) => {
                     e.stopPropagation();
                     window.open(signerVerificationUrl, "_blank", "noopener,noreferrer");
