@@ -45,6 +45,8 @@ interface DocumentRowProps {
     extraction_status?: string | null;
     extraction_confidence?: string | null;
     signature_status?: string | null;
+    signature_doc_token?: string | null;
+    signed_file_url?: string | null;
     signers?: any | null;
   };
   clientName?: string;
