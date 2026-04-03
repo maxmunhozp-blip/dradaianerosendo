@@ -88,11 +88,8 @@ export function DocumentRow({ doc, clientName, clientEmail, clientCpf, clientPho
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewMimeType, setPreviewMimeType] = useState<string | null>(null);
   const [pdfData, setPdfData] = useState<ArrayBuffer | null>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
   const previewObjectUrlRef = useRef<string | null>(null);
   const updateDoc = useUpdateDocument();
-  const uploadDoc = useUploadDocument();
   const deleteDoc = useDeleteDocument();
 
   const categoryLabels: Record<string, string> = {
