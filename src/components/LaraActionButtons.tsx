@@ -669,7 +669,17 @@ export function LaraActionButtons({ actions, onScanComplete, messageContent, all
           const { data: sigResult, error: sigError } = await supabase.functions.invoke("send-for-signature", {
             body: { document_id, signers },
           });
-          if (sigError) throw new Error(sigError.message);
+          if (sigError) {
+            let errorMessage = "Erro ao chamar a função de assinatura.";
+            try {
+              const body = await (sigError as any).context?.json?.();
+              if (body?.error) errorMessage = body.error;
+              else errorMessage = sigError.message || errorMessage;
+            } catch {
+              errorMessage = sigError.message || errorMessage;
+            }
+            throw new Error(errorMessage);
+          }
           if (sigResult?.error) throw new Error(sigResult.error);
           
           // Show success and offer WhatsApp links
