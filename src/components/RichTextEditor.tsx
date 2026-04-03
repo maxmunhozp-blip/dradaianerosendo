@@ -24,7 +24,9 @@ import {
   Minus,
   IndentIncrease,
   IndentDecrease,
+  Palette,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Separator } from "@/components/ui/separator";
 import {
   Select,
