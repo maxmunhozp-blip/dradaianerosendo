@@ -12,8 +12,81 @@ function pickFirstString(...values: unknown[]) {
       return value.trim();
     }
   }
-
   return null;
+}
+
+async function downloadAndStoreSignedPdf(
+  supabase: any,
+  docToken: string,
+  documentId: string,
+  documentName: string,
+  caseId: string
+): Promise<void> {
+  const { data: tokenSetting } = await supabase
+    .from("settings")
+    .select("value")
+    .eq("key", "signature_api_token")
+    .single();
+
+  const apiToken = tokenSetting?.value;
+  if (!apiToken) {
+    console.log("[signature-webhook] No ZapSign token configured, skipping PDF download");
+    return;
+  }
+
+  const zapRes = await fetch(`https://api.zapsign.com.br/api/v1/docs/${docToken}/`, {
+    headers: { Authorization: `Bearer ${apiToken}` },
+  });
+
+  if (!zapRes.ok) {
+    console.error("[signature-webhook] Failed to fetch doc from ZapSign:", zapRes.status);
+    return;
+  }
+
+  const zapData = await zapRes.json();
+  const signedFileUrl: string | undefined = zapData.signed_file;
+
+  if (!signedFileUrl) {
+    console.log("[signature-webhook] ZapSign doc has no signed_file yet:", JSON.stringify(zapData).substring(0, 200));
+    return;
+  }
+
+  const pdfRes = await fetch(signedFileUrl);
+  if (!pdfRes.ok) {
+    console.error("[signature-webhook] Failed to download signed PDF:", pdfRes.status);
+    return;
+  }
+
+  const pdfBuffer = await pdfRes.arrayBuffer();
+  const safeName = documentName.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const storagePath = `${caseId}/assinado_${safeName}_${Date.now()}.pdf`;
+
+  const { error: uploadError } = await supabase.storage
+    .from("case-documents")
+    .upload(storagePath, pdfBuffer, {
+      contentType: "application/pdf",
+      upsert: true,
+    });
+
+  if (uploadError) {
+    console.error("[signature-webhook] Failed to upload signed PDF:", uploadError);
+    return;
+  }
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const publicUrl = `${supabaseUrl}/storage/v1/object/public/case-documents/${storagePath}`;
+
+  const { error: updateError } = await supabase
+    .from("documents")
+    .update({ signed_file_url: publicUrl })
+    .eq("id", documentId);
+
+  if (updateError) {
+    console.error("[signature-webhook] Failed to update signed_file_url:", updateError);
+    return;
+  }
+
+  console.log("[signature-webhook] Signed PDF saved to storage:", storagePath);
 }
 
 Deno.serve(async (req) => {
@@ -127,6 +200,12 @@ Deno.serve(async (req) => {
     }
 
     const doc = updatedDoc;
+
+    // Download and store signed PDF (fire-and-forget)
+    if (isSigned && doc.case_id) {
+      downloadAndStoreSignedPdf(supabase, docToken, existingDoc.id, existingDoc.name, doc.case_id)
+        .catch((e) => console.error("[signature-webhook] downloadAndStoreSignedPdf error:", e));
+    }
 
     // Get case + client info for notification
     const { data: caseData } = await supabase
