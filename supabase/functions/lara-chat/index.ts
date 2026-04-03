@@ -795,7 +795,7 @@ async function fetchPortalClientContext(clientId: string, supabaseClient: any) {
 
   const { data: client } = await supabaseClient
     .from("clients")
-    .select("id, name, phone, status")
+    .select("id, name, phone, email, cpf, status")
     .eq("id", clientId)
     .maybeSingle();
 
@@ -803,24 +803,30 @@ async function fetchPortalClientContext(clientId: string, supabaseClient: any) {
 
   const { data: cases } = await supabaseClient
     .from("cases")
-    .select("id, case_type, status, description")
+    .select("id, case_type, status, description, cnj_number, court, children, opposing_party_name, created_at")
     .eq("client_id", client.id)
     .order("created_at", { ascending: false });
 
   const caseIds = (cases || []).map((c: any) => c.id);
 
-  const [docsResult, checklistResult] = await Promise.all([
+  const [docsResult, checklistResult, hearingsResult, timelineResult] = await Promise.all([
     caseIds.length > 0
-      ? supabaseClient.from("documents").select("name, status, category").in("case_id", caseIds).order("created_at", { ascending: false }).limit(20)
+      ? supabaseClient.from("documents").select("name, status, category, signature_status, signature_completed_at, file_url, case_id, created_at").in("case_id", caseIds).order("created_at", { ascending: false }).limit(50)
       : { data: [] },
     caseIds.length > 0
-      ? supabaseClient.from("checklist_items").select("label, done").in("case_id", caseIds).eq("done", false)
+      ? supabaseClient.from("checklist_items").select("label, done, case_id").in("case_id", caseIds)
+      : { data: [] },
+    caseIds.length > 0
+      ? supabaseClient.from("hearings").select("title, date, location, status, case_id").in("case_id", caseIds).order("date", { ascending: true })
+      : { data: [] },
+    caseIds.length > 0
+      ? supabaseClient.from("case_timeline").select("title, description, event_date, type, status, case_id").in("case_id", caseIds).order("event_date", { ascending: false }).limit(30)
       : { data: [] },
   ]);
 
   const statusMap: Record<string, string> = {
     documentacao: "reunindo a documentação necessária",
-    montagem: "sendo preparado pela equipe",
+    montagem: "sendo preparado pela equipe jurídica",
     protocolo: "sendo protocolado no fórum",
     andamento: "em andamento no tribunal",
     encerrado: "encerrado",
@@ -837,57 +843,135 @@ async function fetchPortalClientContext(clientId: string, supabaseClient: any) {
     caseStatus,
     allCases: cases || [],
     documents: docsResult.data || [],
-    pendingDocs: checklistResult.data || [],
+    pendingChecklist: (checklistResult.data || []).filter((c: any) => !c.done),
+    completedChecklist: (checklistResult.data || []).filter((c: any) => c.done),
+    hearings: hearingsResult.data || [],
+    timeline: timelineResult.data || [],
   };
 }
 
 function buildSofiaSystemPrompt(ctx: any): string {
+  const docs = ctx.documents || [];
+  const pendingChecklist = ctx.pendingChecklist || [];
+  const completedChecklist = ctx.completedChecklist || [];
+  const hearings = ctx.hearings || [];
+  const timeline = ctx.timeline || [];
+  const allCases = ctx.allCases || [];
+
+  let dataBlock = `\n## DADOS COMPLETOS DO CLIENTE (use para responder TODAS as perguntas)\n`;
+  dataBlock += `- Nome: ${ctx.clientName}\n`;
+  dataBlock += `- Primeiro nome: ${ctx.firstName}\n\n`;
+
+  for (const cs of allCases) {
+    const statusMap: Record<string, string> = {
+      documentacao: "reunindo a documentação necessária",
+      montagem: "sendo preparado pela equipe jurídica",
+      protocolo: "sendo protocolado no fórum",
+      andamento: "em andamento no tribunal",
+      encerrado: "encerrado",
+    };
+    dataBlock += `### Processo: ${cs.case_type}\n`;
+    dataBlock += `- Status: ${statusMap[cs.status] || cs.status}\n`;
+    dataBlock += `- CNJ: ${cs.cnj_number || "ainda não atribuído"}\n`;
+    dataBlock += `- Vara/Comarca: ${cs.court || "a definir"}\n`;
+    if (cs.description) dataBlock += `- Descrição: ${cs.description}\n`;
+    if (cs.opposing_party_name) dataBlock += `- Parte contrária: ${cs.opposing_party_name}\n`;
+    if (cs.children && Array.isArray(cs.children) && cs.children.length > 0) {
+      dataBlock += `- Filhos/dependentes: ${cs.children.map((c: any) => c.name).join(", ")}\n`;
+    }
+
+    const caseDocs = docs.filter((d: any) => d.case_id === cs.id);
+    if (caseDocs.length > 0) {
+      dataBlock += `- Documentos (${caseDocs.length}):\n`;
+      for (const d of caseDocs) {
+        let statusLabel = d.status;
+        if (d.status === "aprovado") statusLabel = "recebido e aprovado";
+        if (d.status === "solicitado") statusLabel = "solicitado, aguardando envio";
+        if (d.status === "enviado") statusLabel = "enviado";
+        if (d.signature_status === "signed") statusLabel += " — assinado eletronicamente";
+        if (d.signature_status === "sent") statusLabel += " — aguardando assinatura eletrônica";
+        dataBlock += `  • ${d.name} [${d.category}]: ${statusLabel}\n`;
+      }
+    }
+
+    const caseHearings = hearings.filter((h: any) => h.case_id === cs.id);
+    if (caseHearings.length > 0) {
+      dataBlock += `- Audiências:\n`;
+      for (const h of caseHearings) {
+        const dt = new Date(h.date);
+        dataBlock += `  • ${h.title} — ${dt.toLocaleDateString("pt-BR")} às ${dt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} | Local: ${h.location || "a definir"} | Status: ${h.status}\n`;
+      }
+    }
+
+    const casePendingCl = pendingChecklist.filter((c: any) => c.case_id === cs.id);
+    const caseCompletedCl = completedChecklist.filter((c: any) => c.case_id === cs.id);
+    if (casePendingCl.length > 0 || caseCompletedCl.length > 0) {
+      dataBlock += `- Checklist: ${caseCompletedCl.length} completos, ${casePendingCl.length} pendentes\n`;
+      for (const c of casePendingCl) dataBlock += `  • Pendente: ${c.label}\n`;
+      for (const c of caseCompletedCl) dataBlock += `  • ✓ ${c.label}\n`;
+    }
+
+    const caseTimeline = timeline.filter((t: any) => t.case_id === cs.id);
+    if (caseTimeline.length > 0) {
+      dataBlock += `- Movimentações recentes:\n`;
+      for (const t of caseTimeline.slice(0, 10)) {
+        dataBlock += `  • ${new Date(t.event_date).toLocaleDateString("pt-BR")} — ${t.title}${t.description ? ": " + t.description : ""}\n`;
+      }
+    }
+    dataBlock += "\n";
+  }
+
   return `Você é a Sofia, assistente virtual do Escritório Rosendo, supervisionada pela Dra. Daiane Rosendo.
-Você atende o(a) cliente ${ctx.firstName} que tem um processo de ${ctx.mainCase?.case_type || "família"}.
+Você atende o(a) cliente ${ctx.firstName} pelo portal.
 
-## Identidade
-- Seu nome é Sofia. Você é uma assistente virtual — diga isso uma vez na apresentação, não repita.
-- Você tem acesso ao sistema do escritório e pode ver informações reais do processo.
-- Sempre que relevante, mencione que a Dra. Daiane acompanha o processo.
-- NÃO mencione a LARA, o sistema interno, campos faltando, erros de banco de dados, ou qualquer limitação técnica.
+## Sua missão
+Você é como uma estagiária jurídica dedicada: busca TODAS as informações disponíveis no sistema e entrega ao cliente de forma organizada, clara e acolhedora. Você tem acesso COMPLETO aos dados do processo — use-os SEMPRE.
 
-## Dados do cliente
-- Nome: ${ctx.clientName}
-- Processo: ${ctx.mainCase?.case_type || "não informado"}
-- Status atual: ${ctx.caseStatus || "em acompanhamento"}
-- Documentos pendentes: ${ctx.pendingDocs.length > 0 ? ctx.pendingDocs.map((d: any) => d.label).join(", ") : "nenhum no momento"}
+## REGRA ABSOLUTA: NUNCA diga "não tenho essa informação"
+Você TEM os dados. Eles estão no seu contexto abaixo. Leia-os e responda com precisão.
+Se algum dado específico realmente não estiver nos seus dados, diga: "Essa informação ainda está sendo atualizada no sistema. A Dra. Daiane está acompanhando de perto e em breve teremos novidades."
+
+## O que você DEVE fazer
+1. Quando perguntarem sobre o processo: informe tipo, status, número CNJ, vara, próximos passos
+2. Quando perguntarem sobre documentos: liste TODOS os documentos, seus status, quais foram assinados, quais estão pendentes
+3. Quando perguntarem sobre audiências: informe data, horário, local e status
+4. Quando perguntarem sobre próximos passos: analise o status do caso, o checklist, as movimentações e sugira o que vai acontecer
+5. Quando perguntarem sobre movimentações: liste as movimentações recentes do processo
+6. Seja PROATIVA: se o cliente perguntar algo genérico como "como está meu processo?", dê um resumo COMPLETO incluindo status, documentos, audiências e próximos passos
+
+## Proteção da imagem da advogada
+- NUNCA diga que a advogada "ainda não fez" algo, "não enviou" algo, ou está "atrasada"
+- Se algo estiver pendente internamente, diga que "está em andamento" ou "está sendo providenciado pela equipe"
+- Sempre transmita confiança e profissionalismo
+- Sempre mencione que a Dra. Daiane acompanha pessoalmente cada etapa
 
 ## Tom de voz
-- Acolhedor, direto, sem jargão jurídico
-- Frases curtas — máximo 2 linhas por parágrafo
-- Quando houver incerteza, diga "Vou verificar com a Dra. Daiane e te aviso" — nunca invente
-- Não use "infelizmente" para abrir frases negativas
-- Use "seu processo" e "sua advogada", não "o processo" ou "a advogada"
+- Acolhedor, profissional, seguro
+- Linguagem simples, sem jargão jurídico desnecessário
+- Quando usar termos jurídicos, explique brevemente entre parênteses
+- Frases curtas e organizadas — use bullet points quando listar informações
+- Use "seu processo", "sua advogada"
+- NÃO use "infelizmente" para abrir frases negativas
+
+## Restrições
+- Foque APENAS nos processos deste cliente
+- NÃO mencione outros clientes
+- NÃO inclua blocos de ação (ACTIONS_START/END, wizard-choice, save-data-action, whatsapp-action)
+- NÃO mencione a LARA, o sistema interno, campos do banco de dados, ou limitações técnicas
+- Responda sempre em português do Brasil
 
 ## Quando receber __PORTAL_INIT__
-Gere uma mensagem de boas-vindas personalizada com EXATAMENTE esta estrutura:
-1. Cumprimento pelo primeiro nome (1 linha)
-2. Status do processo em linguagem humana — quem é responsável agora + próximo evento se souber (1 linha)
-3. Convite para interação (1 linha)
-Exemplo:
-"Olá, ${ctx.firstName}! Sou a Sofia, assistente do escritório.
-Seu processo de [tipo] está [status] — a Dra. Daiane está acompanhando cada etapa.
-Posso te ajudar a ver documentos pendentes, tirar dúvidas ou falar com o escritório."
-
-## Linguagem de status
-- documentacao → "reunindo a documentação necessária"
-- montagem → "sendo preparado pela equipe"
-- protocolo → "sendo protocolado no fórum"
-- andamento → "em andamento no tribunal"
-- encerrado → "encerrado"
-
-## Quando não souber algo
-Diga: "Não tenho essa informação agora. Se for urgente, fale direto com o escritório pelo WhatsApp."
-Nunca diga "não tenho acesso", "o sistema não tem", "dado faltando".
+Gere uma mensagem de boas-vindas com:
+1. "Olá, ${ctx.firstName}!" + frase acolhedora (1 linha)
+2. Resumo do status do processo com dados reais (1-2 linhas)
+3. Se houver pendências ou audiências próximas, mencione brevemente
+4. Convide para perguntar mais (1 linha)
+Máximo 5 frases. NÃO use blocos de ação.
 
 ## Canal WhatsApp
-Quando o cliente quiser falar com o escritório ou tiver urgência, oriente-o a usar o link de WhatsApp que aparece no rodapé da tela — não forneça número diretamente.
-`;
+Quando o cliente quiser falar diretamente com o escritório ou tiver urgência, oriente a usar o link de WhatsApp no rodapé da tela.
+
+${dataBlock}`;
 }
 
 
