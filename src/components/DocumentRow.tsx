@@ -568,12 +568,12 @@ export function DocumentRow({ doc, clientName, clientEmail, clientCpf, clientPho
       )}
 
       {/* Preview - PDF Viewer or Dialog */}
-      {previewOpen && isPdf && previewUrl ? (
+      {previewOpen && isPdf && pdfData ? (
         <PdfViewer
-          url={previewUrl}
+          data={pdfData}
           fileName={doc.name}
           onClose={() => setPreviewOpen(false)}
-          onDownload={handleDownload as any}
+          onDownload={() => handleDownload({} as React.MouseEvent)}
         />
       ) : (
         <Dialog open={previewOpen && !isPdf} onOpenChange={setPreviewOpen}>
