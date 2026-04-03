@@ -242,20 +242,26 @@ export function DocumentRow({ doc, clientName, clientEmail, clientCpf, clientPho
 
   useEffect(() => () => cleanupPreviewUrl(), [cleanupPreviewUrl]);
 
-  const handleDownload = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const handleDownload = async (e?: React.MouseEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
     const targetUrl = doc.signed_file_url || doc.file_url;
     if (!targetUrl) return;
     try {
       const url = await getSignedUrl(targetUrl);
       if (!url) throw new Error("URL inválida");
+      // Fetch as blob to force download (cross-origin safe)
+      const response = await fetch(url);
+      if (!response.ok) throw new Error("Falha no download");
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = url;
+      a.href = blobUrl;
       a.download = doc.name;
       document.body.appendChild(a);
       a.click();
       a.remove();
+      URL.revokeObjectURL(blobUrl);
     } catch {
       toast.error("Erro ao baixar arquivo");
     }
