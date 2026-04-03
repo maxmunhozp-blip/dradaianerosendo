@@ -369,6 +369,34 @@ export function DocumentRow({ doc, clientName, clientEmail, clientCpf, clientPho
               >
                 <Mail className="w-3.5 h-3.5" />
               </Button>
+              {doc.signature_status === "sent" && doc.signers && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-green-600"
+                  title="Enviar link de assinatura via WhatsApp"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const signersList = Array.isArray(doc.signers) ? doc.signers : [];
+                    const firstSigner = signersList[0] as any;
+                    const signUrl = firstSigner?.sign_url;
+                    if (!signUrl) {
+                      toast.error("Link de assinatura não disponível.");
+                      return;
+                    }
+                    const phone = clientPhone?.replace(/\D/g, "") || "";
+                    const msg = encodeURIComponent(
+                      `Olá! Segue o link para assinatura do documento "${doc.name}":\n\n${signUrl}\n\nPor favor, assine o quanto antes. Obrigado!`
+                    );
+                    const waUrl = phone
+                      ? `https://wa.me/55${phone}?text=${msg}`
+                      : `https://wa.me/?text=${msg}`;
+                    window.open(waUrl, "_blank", "noopener,noreferrer");
+                  }}
+                >
+                  <MessageCircle className="w-3.5 h-3.5" />
+                </Button>
+              )}
             </>
           )}
           {doc.file_url && doc.file_url !== "" && (!doc.signature_status || doc.signature_status === "none") && (
