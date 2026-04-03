@@ -202,10 +202,14 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(
     });
 
     useEffect(() => {
-      if (editor && initialContent) {
-        const html = initialContent.includes("<") ? initialContent : plainTextToHtml(initialContent);
-        editor.commands.setContent(html);
-      }
+      if (!editor || !initialContent) return;
+      const timer = setTimeout(() => {
+        const html = initialContent.includes("<")
+          ? initialContent
+          : plainTextToHtml(initialContent);
+        editor.commands.setContent(html, false);
+      }, 0);
+      return () => clearTimeout(timer);
     }, [editor, initialContent]);
 
     useImperativeHandle(ref, () => ({
