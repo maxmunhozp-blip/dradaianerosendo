@@ -198,9 +198,13 @@ export function DocumentRow({ doc, clientName, clientEmail, clientCpf, clientPho
     const response = await fetch(url);
     if (!response.ok) throw new Error("Não foi possível carregar o documento.");
     const blob = await response.blob();
+    setPreviewMimeType(blob.type || null);
+    // Store raw ArrayBuffer for PDF viewer
+    const arrayBuffer = await blob.arrayBuffer();
+    setPdfData(arrayBuffer);
+    // Also create object URL for image preview
     const objectUrl = URL.createObjectURL(blob);
     previewObjectUrlRef.current = objectUrl;
-    setPreviewMimeType(blob.type || null);
     return objectUrl;
   }, [cleanupPreviewUrl]);
 
