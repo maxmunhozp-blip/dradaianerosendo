@@ -39,6 +39,7 @@ import DocumentBranding from "./pages/DocumentBranding";
 import EmailSettings from "./pages/EmailSettings";
 import AdminPage from "./pages/AdminPage";
 import Solicitacoes from "@/pages/Solicitacoes";
+import AdminSolicitacoes from "@/pages/AdminSolicitacoes";
 
 const queryClient = new QueryClient();
 
