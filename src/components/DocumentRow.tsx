@@ -477,10 +477,17 @@ export function DocumentRow({ doc, clientName, clientEmail, clientCpf, clientPho
           </DialogHeader>
           <div className="flex-1 overflow-hidden">
             {isPdf && previewUrl ? (
-              <iframe src={previewUrl} className="w-full h-full border-0" title={doc.name} />
+              <iframe src={previewUrl + "#toolbar=1"} className="w-full h-full border-0" title={doc.name} />
             ) : isImage && previewUrl ? (
               <div className="w-full h-full flex items-center justify-center p-6 overflow-auto">
                 <img src={previewUrl} alt={doc.name} className="max-w-full max-h-full object-contain rounded" />
+              </div>
+            ) : previewUrl ? (
+              <div className="w-full h-full flex flex-col items-center justify-center gap-4 text-muted-foreground text-sm">
+                <p>Pré-visualização não disponível neste navegador.</p>
+                <Button variant="outline" size="sm" onClick={() => window.open(previewUrl, "_blank", "noopener,noreferrer")}>
+                  <ExternalLink className="w-3.5 h-3.5 mr-1.5" /> Abrir em nova aba
+                </Button>
               </div>
             ) : (
               <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
