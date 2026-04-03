@@ -90,6 +90,7 @@ export function DocumentRow({ doc, clientName, clientEmail, clientCpf, clientPho
   const [selectedAccountId, setSelectedAccountId] = useState("");
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewMimeType, setPreviewMimeType] = useState<string | null>(null);
+  const [pdfData, setPdfData] = useState<ArrayBuffer | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const previewObjectUrlRef = useRef<string | null>(null);
@@ -197,9 +198,13 @@ export function DocumentRow({ doc, clientName, clientEmail, clientCpf, clientPho
     const response = await fetch(url);
     if (!response.ok) throw new Error("Não foi possível carregar o documento.");
     const blob = await response.blob();
+    setPreviewMimeType(blob.type || null);
+    // Store raw ArrayBuffer for PDF viewer
+    const arrayBuffer = await blob.arrayBuffer();
+    setPdfData(arrayBuffer);
+    // Also create object URL for image preview
     const objectUrl = URL.createObjectURL(blob);
     previewObjectUrlRef.current = objectUrl;
-    setPreviewMimeType(blob.type || null);
     return objectUrl;
   }, [cleanupPreviewUrl]);
 
@@ -231,6 +236,7 @@ export function DocumentRow({ doc, clientName, clientEmail, clientCpf, clientPho
       setPreviewUrl(null);
       setPreviewMimeType(null);
       setPreviewLoading(false);
+      setPdfData(null);
     }
   }, [cleanupPreviewUrl, previewOpen]);
 
@@ -563,12 +569,12 @@ export function DocumentRow({ doc, clientName, clientEmail, clientCpf, clientPho
       )}
 
       {/* Preview - PDF Viewer or Dialog */}
-      {previewOpen && isPdf && previewUrl ? (
+      {previewOpen && isPdf && pdfData ? (
         <PdfViewer
-          url={previewUrl}
+          data={pdfData}
           fileName={doc.name}
           onClose={() => setPreviewOpen(false)}
-          onDownload={handleDownload as any}
+          onDownload={() => handleDownload({} as React.MouseEvent)}
         />
       ) : (
         <Dialog open={previewOpen && !isPdf} onOpenChange={setPreviewOpen}>
