@@ -71,8 +71,7 @@ const categoryOptions = [
 ];
 
 export function DocumentRow({ doc, clientName, clientEmail, clientCpf, clientPhone }: DocumentRowProps) {
-  const [notes, setNotes] = useState(doc.notes || "");
-  const [saving, setSaving] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
