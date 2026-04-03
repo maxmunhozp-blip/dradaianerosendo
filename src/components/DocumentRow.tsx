@@ -72,7 +72,6 @@ const categoryOptions = [
 
 export function DocumentRow({ doc, clientName, clientEmail, clientCpf, clientPhone }: DocumentRowProps) {
   const [previewOpen, setPreviewOpen] = useState(false);
-  const [previewOpen, setPreviewOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [signatureOpen, setSignatureOpen] = useState(false);
