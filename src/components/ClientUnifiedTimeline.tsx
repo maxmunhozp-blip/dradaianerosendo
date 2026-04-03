@@ -86,7 +86,7 @@ const TIMELINE_TABS = [
   { value: "geral", label: "Geral", types: null }, // null = all
   { value: "processo", label: "Processo", types: ["intimacao", "audiencia", "timeline"] },
   { value: "documentos", label: "Documentos", types: ["documento", "assinatura", "peticao"] },
-  { value: "interno", label: "Interno", types: ["mensagem", "checklist", "manual"] },
+  { value: "interno", label: "Interno", types: ["checklist", "manual"] },
 ] as const;
 
 const PAGE_SIZE = 30;
