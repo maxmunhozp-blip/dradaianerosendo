@@ -39,6 +39,7 @@ import DocumentBranding from "./pages/DocumentBranding";
 import EmailSettings from "./pages/EmailSettings";
 import AdminPage from "./pages/AdminPage";
 import Solicitacoes from "@/pages/Solicitacoes";
+import AdminSolicitacoes from "@/pages/AdminSolicitacoes";
 
 const queryClient = new QueryClient();
 
@@ -123,6 +124,7 @@ const App = () => {
                 <Route path="/settings/document-branding" element={<DocumentBranding />} />
                 <Route path="/settings/emails" element={<EmailSettings />} />
                 <Route path="/solicitacoes" element={<Solicitacoes />} />
+                <Route path="/admin/solicitacoes" element={<AdminSolicitacoes />} />
               </Route>
             </Route>
 
