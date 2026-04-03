@@ -1145,9 +1145,12 @@ Use seu conhecimento jurídico para complementar os dados do LexML com explicaç
         clientName: "cliente",
         mainCase: null,
         caseStatus: "em acompanhamento",
-        pendingDocs: [],
+        pendingChecklist: [],
+        completedChecklist: [],
         documents: [],
         allCases: [],
+        hearings: [],
+        timeline: [],
       });
       fullSystemPrompt = sofiaPrompt + "\n\n" + settingsContext + (caseContext ? "\n\n" + caseContext : "");
     } else {
