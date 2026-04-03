@@ -149,8 +149,9 @@ export function DocumentRow({ doc, clientName, clientEmail, clientCpf, clientPho
     }
   };
 
-  const isPdf = doc.file_url?.toLowerCase().endsWith(".pdf");
-  const isImage = /\.(jpg|jpeg|png|webp|gif)$/i.test(doc.file_url || "");
+  const activeFileUrl = doc.signed_file_url || doc.file_url;
+  const isPdf = activeFileUrl?.toLowerCase().endsWith(".pdf") || activeFileUrl?.includes(".pdf");
+  const isImage = /\.(jpg|jpeg|png|webp|gif)/i.test(activeFileUrl || "");
 
   // Extract storage path from full public URL
   const getStoragePath = useCallback((url: string) => {
