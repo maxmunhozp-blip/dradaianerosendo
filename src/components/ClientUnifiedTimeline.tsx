@@ -146,20 +146,7 @@ export function ClientUnifiedTimeline({ caseIds }: { caseIds: string[] }) {
 
       const unified: TimelineEvent[] = [];
 
-      // Messages (LARA chat)
-      for (const m of (msgRes.data || []) as any[]) {
-        const roleLabel = m.role === "assistant" ? "LARA" : m.role === "user" ? "Advogado" : m.role;
-        unified.push({
-          id: `msg-${m.id}`,
-          case_id: m.case_id,
-          title: roleLabel,
-          description: (m.content || "").substring(0, 120),
-          type: "mensagem",
-          status: "concluído",
-          event_date: m.created_at,
-          case_type: caseTypeMap.get(m.case_id) || "",
-        });
-      }
+      // Messages (LARA chat) — hidden from client timeline
 
       // Timeline entries
       for (const e of (tlRes.data || []) as any[]) {

@@ -342,7 +342,7 @@ export function ProcessTimeline({ caseId }: ProcessTimelineProps) {
                           </Badge>
                         </div>
                         {entry.description && (
-                          <p className="text-xs text-muted-foreground mt-1 line-clamp-3 whitespace-pre-wrap">
+                          <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2 whitespace-pre-wrap">
                             {entry.description}
                           </p>
                         )}
