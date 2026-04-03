@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Download, X, Loader2 } from "lucide-react";
+import { ZoomIn, ZoomOut, Download, X, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import * as pdfjsLib from "pdfjs-dist";
 
@@ -19,10 +19,13 @@ export function PdfViewer({ data, fileName, onClose, onDownload }: PdfViewerProp
   const [scale, setScale] = useState(1.2);
   const [thumbnails, setThumbnails] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
-  const mainCanvasRef = useRef<HTMLCanvasElement>(null);
+  const canvasRefs = useRef<Map<number, HTMLCanvasElement>>(new Map());
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const thumbsContainerRef = useRef<HTMLDivElement>(null);
+  const pageElementsRef = useRef<Map<number, HTMLDivElement>>(new Map());
+  const isScrollingToPage = useRef(false);
 
-  // Load PDF from ArrayBuffer
+  // Load PDF
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -63,32 +66,64 @@ export function PdfViewer({ data, fileName, onClose, onDownload }: PdfViewerProp
     return () => { cancelled = true; };
   }, [pdf]);
 
-  // Render current page
-  const renderPage = useCallback(async (pageNum: number) => {
-    if (!pdf || !mainCanvasRef.current) return;
-    try {
-      const page = await pdf.getPage(pageNum);
-      const viewport = page.getViewport({ scale });
-      const canvas = mainCanvasRef.current;
-      const dpr = window.devicePixelRatio || 1;
-      canvas.width = viewport.width * dpr;
-      canvas.height = viewport.height * dpr;
-      canvas.style.width = `${viewport.width}px`;
-      canvas.style.height = `${viewport.height}px`;
-      const ctx = canvas.getContext("2d")!;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      await page.render({ canvasContext: ctx, viewport }).promise;
-    } catch (err) {
-      console.error("PDF render error:", err);
+  // Render all pages
+  const renderAllPages = useCallback(async () => {
+    if (!pdf) return;
+    const dpr = window.devicePixelRatio || 1;
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const canvas = canvasRefs.current.get(i);
+      if (!canvas) continue;
+      try {
+        const page = await pdf.getPage(i);
+        const viewport = page.getViewport({ scale });
+        canvas.width = viewport.width * dpr;
+        canvas.height = viewport.height * dpr;
+        canvas.style.width = `${viewport.width}px`;
+        canvas.style.height = `${viewport.height}px`;
+        const ctx = canvas.getContext("2d")!;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        await page.render({ canvasContext: ctx, viewport }).promise;
+      } catch (err) {
+        console.error(`PDF render error page ${i}:`, err);
+      }
     }
   }, [pdf, scale]);
 
   useEffect(() => {
-    renderPage(currentPage);
-  }, [currentPage, renderPage]);
+    renderAllPages();
+  }, [renderAllPages]);
 
-  // Scroll active thumb into view
+  // Track current page on scroll
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container || totalPages === 0) return;
+
+    const handleScroll = () => {
+      if (isScrollingToPage.current) return;
+      const containerRect = container.getBoundingClientRect();
+      const containerCenter = containerRect.top + containerRect.height / 2;
+      let closestPage = 1;
+      let closestDist = Infinity;
+
+      pageElementsRef.current.forEach((el, pageNum) => {
+        const rect = el.getBoundingClientRect();
+        const pageCenter = rect.top + rect.height / 2;
+        const dist = Math.abs(pageCenter - containerCenter);
+        if (dist < closestDist) {
+          closestDist = dist;
+          closestPage = pageNum;
+        }
+      });
+
+      setCurrentPage(closestPage);
+    };
+
+    container.addEventListener("scroll", handleScroll, { passive: true });
+    return () => container.removeEventListener("scroll", handleScroll);
+  }, [totalPages]);
+
+  // Sync thumbnail highlight
   useEffect(() => {
     const container = thumbsContainerRef.current;
     if (!container) return;
@@ -97,8 +132,25 @@ export function PdfViewer({ data, fileName, onClose, onDownload }: PdfViewerProp
   }, [currentPage]);
 
   const goToPage = (page: number) => {
-    if (page >= 1 && page <= totalPages) setCurrentPage(page);
+    if (page < 1 || page > totalPages) return;
+    setCurrentPage(page);
+    const el = pageElementsRef.current.get(page);
+    if (el && scrollContainerRef.current) {
+      isScrollingToPage.current = true;
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      setTimeout(() => { isScrollingToPage.current = false; }, 600);
+    }
   };
+
+  const setCanvasRef = useCallback((pageNum: number) => (el: HTMLCanvasElement | null) => {
+    if (el) canvasRefs.current.set(pageNum, el);
+    else canvasRefs.current.delete(pageNum);
+  }, []);
+
+  const setPageRef = useCallback((pageNum: number) => (el: HTMLDivElement | null) => {
+    if (el) pageElementsRef.current.set(pageNum, el);
+    else pageElementsRef.current.delete(pageNum);
+  }, []);
 
   return (
     <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm flex flex-col">
@@ -116,15 +168,9 @@ export function PdfViewer({ data, fileName, onClose, onDownload }: PdfViewerProp
           )}
         </div>
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => goToPage(currentPage - 1)} disabled={currentPage <= 1}>
-            <ChevronLeft className="w-4 h-4" />
-          </Button>
           <span className="text-xs text-muted-foreground min-w-[60px] text-center">
             {currentPage} / {totalPages || "…"}
           </span>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => goToPage(currentPage + 1)} disabled={currentPage >= totalPages}>
-            <ChevronRight className="w-4 h-4" />
-          </Button>
           <div className="w-px h-5 bg-border mx-1" />
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setScale((s) => Math.max(0.5, s - 0.2))}>
             <ZoomOut className="w-4 h-4" />
@@ -192,33 +238,40 @@ export function PdfViewer({ data, fileName, onClose, onDownload }: PdfViewerProp
           )}
         </div>
 
-        {/* PDF canvas */}
-        <div className="flex-1 overflow-auto flex justify-center bg-muted/20 p-4">
+        {/* All pages - continuous scroll */}
+        <div ref={scrollContainerRef} className="flex-1 overflow-auto bg-muted/20">
           {loading ? (
-            <div className="flex flex-col items-center justify-center gap-3 text-muted-foreground">
+            <div className="flex flex-col items-center justify-center h-full gap-3 text-muted-foreground">
               <Loader2 className="w-8 h-8 animate-spin" />
               <span className="text-sm">Carregando documento...</span>
             </div>
           ) : (
-            <canvas
-              ref={mainCanvasRef}
-              className="shadow-lg rounded-sm"
-            />
+            <div className="flex flex-col items-center py-4 gap-4">
+              {Array.from({ length: totalPages }, (_, i) => (
+                <div
+                  key={i}
+                  ref={setPageRef(i + 1)}
+                  className="relative"
+                >
+                  <canvas
+                    ref={setCanvasRef(i + 1)}
+                    className="shadow-lg rounded-sm"
+                  />
+                  <span className="absolute bottom-2 right-3 text-[10px] text-muted-foreground bg-background/80 px-1.5 py-0.5 rounded">
+                    {i + 1}
+                  </span>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       </div>
 
       {/* Mobile page indicator */}
       <div className="flex md:hidden items-center justify-center gap-2 py-2 border-t border-border bg-muted/50">
-        <Button variant="ghost" size="sm" onClick={() => goToPage(currentPage - 1)} disabled={currentPage <= 1}>
-          <ChevronLeft className="w-4 h-4" />
-        </Button>
         <span className="text-xs text-muted-foreground">
           Página {currentPage} de {totalPages}
         </span>
-        <Button variant="ghost" size="sm" onClick={() => goToPage(currentPage + 1)} disabled={currentPage >= totalPages}>
-          <ChevronRight className="w-4 h-4" />
-        </Button>
       </div>
     </div>
   );
