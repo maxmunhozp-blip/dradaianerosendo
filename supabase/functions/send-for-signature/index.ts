@@ -101,8 +101,9 @@ Deno.serve(async (req) => {
         email: s.email,
         cpf: s.cpf?.replace(/\D/g, "") || undefined,
         auth_mode: "assinaturaTela",
-        send_automatic_email: !useSandbox,
+        send_automatic_email: true,
         lock_name: true,
+        lock_email: false,
       })),
     };
 
