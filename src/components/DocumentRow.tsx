@@ -90,6 +90,7 @@ export function DocumentRow({ doc, clientName, clientEmail, clientCpf, clientPho
   const [selectedAccountId, setSelectedAccountId] = useState("");
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewMimeType, setPreviewMimeType] = useState<string | null>(null);
+  const [pdfData, setPdfData] = useState<ArrayBuffer | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const previewObjectUrlRef = useRef<string | null>(null);
