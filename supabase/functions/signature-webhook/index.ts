@@ -163,7 +163,7 @@ Deno.serve(async (req) => {
     // Try matching by document token first
     const { data: byDocToken, error: err1 } = await supabase
       .from("documents")
-      .select("id, name, case_id, owner_id, signature_status")
+      .select("id, name, case_id, owner_id, signature_status, signed_file_url")
       .eq("signature_doc_token", docToken)
       .maybeSingle();
 
@@ -178,7 +178,7 @@ Deno.serve(async (req) => {
     if (!existingDoc && !fetchDocError) {
       const { data: bySignerToken, error: err2 } = await supabase
         .from("documents")
-        .select("id, name, case_id, owner_id, signature_status")
+        .select("id, name, case_id, owner_id, signature_status, signed_file_url")
         .filter("signers", "cs", JSON.stringify([{ token: docToken }]))
         .maybeSingle();
 
@@ -198,6 +198,13 @@ Deno.serve(async (req) => {
     }
 
     if (existingDoc.signature_status === signatureStatus) {
+      if (isSigned && existingDoc.case_id && !existingDoc.signed_file_url) {
+        try {
+          await downloadAndStoreSignedPdf(supabase, docToken, existingDoc.id, existingDoc.name, existingDoc.case_id);
+        } catch (e) {
+          console.error("[signature-webhook] Failed to backfill signed PDF on duplicate webhook:", e);
+        }
+      }
       console.log("Webhook already processed for document:", existingDoc.id);
       return new Response(JSON.stringify({ ok: true, ignored: "already_processed" }), { status: 200, headers: corsHeaders });
     }
@@ -227,8 +234,11 @@ Deno.serve(async (req) => {
 
     // Download and store signed PDF (fire-and-forget)
     if (isSigned && doc.case_id) {
-      downloadAndStoreSignedPdf(supabase, docToken, existingDoc.id, existingDoc.name, doc.case_id)
-        .catch((e) => console.error("[signature-webhook] downloadAndStoreSignedPdf error:", e));
+      try {
+        await downloadAndStoreSignedPdf(supabase, docToken, existingDoc.id, existingDoc.name, doc.case_id);
+      } catch (e) {
+        console.error("[signature-webhook] downloadAndStoreSignedPdf error:", e);
+      }
     }
 
     // Get case + client info for notification

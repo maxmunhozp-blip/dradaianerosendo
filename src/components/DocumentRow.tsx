@@ -87,8 +87,11 @@ export function DocumentRow({ doc, clientName, clientEmail, clientCpf, clientPho
   const [sendingEmail, setSendingEmail] = useState(false);
   const [emailAccounts, setEmailAccounts] = useState<{ id: string; email: string; label: string }[]>([]);
   const [selectedAccountId, setSelectedAccountId] = useState("");
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewMimeType, setPreviewMimeType] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const previewObjectUrlRef = useRef<string | null>(null);
   const updateDoc = useUpdateDocument();
   const uploadDoc = useUploadDocument();
   const deleteDoc = useDeleteDocument();
@@ -149,9 +152,19 @@ export function DocumentRow({ doc, clientName, clientEmail, clientCpf, clientPho
     }
   };
 
-  const activeFileUrl = doc.signed_file_url || doc.file_url;
-  const isPdf = activeFileUrl?.toLowerCase().endsWith(".pdf") || activeFileUrl?.includes(".pdf");
-  const isImage = /\.(jpg|jpeg|png|webp|gif)/i.test(activeFileUrl || "");
+  const activeFileUrl = previewUrl || doc.signed_file_url || doc.file_url;
+  const isPdf = previewMimeType
+    ? previewMimeType.includes("pdf")
+    : activeFileUrl?.toLowerCase().endsWith(".pdf") || activeFileUrl?.includes(".pdf");
+  const isImage = previewMimeType
+    ? previewMimeType.startsWith("image/")
+    : /\.(jpg|jpeg|png|webp|gif)/i.test(activeFileUrl || "");
+  const signersList = Array.isArray(doc.signers) ? doc.signers : [];
+  const firstSigner = signersList[0] as any;
+  const signerVerificationUrl =
+    firstSigner?.sign_url ||
+    firstSigner?.signing_link ||
+    (firstSigner?.token ? `https://app.zapsign.com.br/verificar/${firstSigner.token}` : null);
 
   // Extract storage path from full public URL
   const getStoragePath = useCallback((url: string) => {
@@ -171,12 +184,64 @@ export function DocumentRow({ doc, clientName, clientEmail, clientCpf, clientPho
     return data.signedUrl;
   }, [getStoragePath]);
 
+  const cleanupPreviewUrl = useCallback(() => {
+    if (previewObjectUrlRef.current) {
+      URL.revokeObjectURL(previewObjectUrlRef.current);
+      previewObjectUrlRef.current = null;
+    }
+  }, []);
+
+  const loadPreviewUrl = useCallback(async (url: string) => {
+    cleanupPreviewUrl();
+    const response = await fetch(url);
+    if (!response.ok) throw new Error("Não foi possível carregar o documento.");
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    previewObjectUrlRef.current = objectUrl;
+    setPreviewMimeType(blob.type || null);
+    return objectUrl;
+  }, [cleanupPreviewUrl]);
+
+  const handlePreviewOpen = useCallback(async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const targetUrl = doc.signed_file_url || doc.file_url;
+
+    if (!targetUrl) {
+      toast.error("Arquivo não disponível para visualização.");
+      return;
+    }
+
+    setPreviewLoading(true);
+    try {
+      const resolvedPreviewUrl = await loadPreviewUrl(targetUrl);
+      setPreviewUrl(resolvedPreviewUrl);
+      setPreviewOpen(true);
+    } catch (error) {
+      console.error("Erro ao abrir preview do documento:", error);
+      toast.error("Não foi possível abrir o preview deste documento.");
+    } finally {
+      setPreviewLoading(false);
+    }
+  }, [doc.file_url, doc.signed_file_url, loadPreviewUrl]);
+
+  useEffect(() => {
+    if (!previewOpen) {
+      cleanupPreviewUrl();
+      setPreviewUrl(null);
+      setPreviewMimeType(null);
+      setPreviewLoading(false);
+    }
+  }, [cleanupPreviewUrl, previewOpen]);
+
+  useEffect(() => () => cleanupPreviewUrl(), [cleanupPreviewUrl]);
+
   const handleDownload = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!doc.file_url) return;
+    const targetUrl = doc.signed_file_url || doc.file_url;
+    if (!targetUrl) return;
     try {
-      const url = await getSignedUrl(doc.file_url);
+      const url = await getSignedUrl(targetUrl);
       if (!url) throw new Error("URL inválida");
       const a = document.createElement("a");
       a.href = url;
@@ -325,17 +390,10 @@ export function DocumentRow({ doc, clientName, clientEmail, clientCpf, clientPho
                 size="icon"
                 className="h-7 w-7"
                 title="Visualizar"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  // Use public URL directly (bucket is public) — signed URLs get blocked in iframes
-                  const targetUrl = doc.signed_file_url || doc.file_url;
-                  if (targetUrl) {
-                    setPreviewUrl(targetUrl);
-                    setPreviewOpen(true);
-                  }
-                }}
+                onClick={handlePreviewOpen}
+                disabled={previewLoading}
               >
-                <Eye className="w-3.5 h-3.5" />
+                {previewLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Eye className="w-3.5 h-3.5" />}
               </Button>
               <Button
                 variant="ghost"
@@ -346,15 +404,15 @@ export function DocumentRow({ doc, clientName, clientEmail, clientCpf, clientPho
               >
                 <Download className="w-3.5 h-3.5" />
               </Button>
-              {doc.signature_status === "signed" && doc.signature_doc_token && (
+              {doc.signature_status === "signed" && signerVerificationUrl && (
                 <Button
                   variant="ghost"
                   size="icon"
                   className="h-7 w-7 text-emerald-600"
-                  title="Validar assinatura no ZapSign"
+                  title="Abrir assinatura no ZapSign"
                   onClick={(e) => {
                     e.stopPropagation();
-                    window.open(`https://app.zapsign.com.br/validar/${doc.signature_doc_token}`, "_blank", "noopener,noreferrer");
+                    window.open(signerVerificationUrl, "_blank", "noopener,noreferrer");
                   }}
                 >
                   <Scale className="w-3.5 h-3.5" />
@@ -377,8 +435,6 @@ export function DocumentRow({ doc, clientName, clientEmail, clientCpf, clientPho
                   title="Enviar link de assinatura via WhatsApp"
                   onClick={(e) => {
                     e.stopPropagation();
-                    const signersList = Array.isArray(doc.signers) ? doc.signers : [];
-                    const firstSigner = signersList[0] as any;
                     const signUrl = firstSigner?.sign_url;
                     if (!signUrl) {
                       toast.error("Link de assinatura não disponível.");
