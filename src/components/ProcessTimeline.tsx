@@ -274,7 +274,7 @@ export function ProcessTimeline({ caseId }: ProcessTimelineProps) {
       )}
 
       {/* Timeline entries */}
-      <div className="border border-border rounded-lg">
+      <div className="border border-border rounded-lg max-h-[50vh] overflow-y-auto">
         {filtered.length === 0 ? (
           <EmptyState
             icon={Clock}
@@ -293,7 +293,7 @@ export function ProcessTimeline({ caseId }: ProcessTimelineProps) {
               return (
                 <div
                   key={entry.id}
-                  className={`relative flex gap-4 px-4 py-4 ${
+                  className={`relative flex gap-3 px-3 py-2.5 ${
                     idx < filtered.length - 1 ? "border-b border-border" : ""
                   } ${entry.pinned ? "bg-amber-50/50" : ""} ${isUrgent ? "bg-red-50/30" : ""}`}
                 >
@@ -326,7 +326,7 @@ export function ProcessTimeline({ caseId }: ProcessTimelineProps) {
                           {entry.pinned && (
                             <Pin className="w-3 h-3 text-amber-500 shrink-0" />
                           )}
-                          <span className="text-sm font-medium text-foreground truncate">
+                          <span className="text-xs font-medium text-foreground truncate">
                             {entry.title}
                           </span>
                           <Badge className={`${statusStyle.color} text-[10px] px-1.5 py-0 shrink-0`}>
@@ -342,7 +342,7 @@ export function ProcessTimeline({ caseId }: ProcessTimelineProps) {
                           </Badge>
                         </div>
                         {entry.description && (
-                          <p className="text-xs text-muted-foreground mt-1 line-clamp-3 whitespace-pre-wrap">
+                          <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2 whitespace-pre-wrap">
                             {entry.description}
                           </p>
                         )}
