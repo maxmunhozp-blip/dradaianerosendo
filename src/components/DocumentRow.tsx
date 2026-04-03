@@ -71,7 +71,6 @@ const categoryOptions = [
 ];
 
 export function DocumentRow({ doc, clientName, clientEmail, clientCpf, clientPhone }: DocumentRowProps) {
-  const [expanded, setExpanded] = useState(false);
   const [notes, setNotes] = useState(doc.notes || "");
   const [saving, setSaving] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
