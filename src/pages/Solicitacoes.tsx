@@ -197,26 +197,51 @@ export default function Solicitacoes() {
       </div>
 
       {/* Gamification card */}
-      {totalTokens > 0 && (
-        <Card className="border-amber-200 bg-amber-50/50">
+      {requests.length > 0 && (
+        <Card className="border-amber-200 bg-gradient-to-r from-amber-50/80 to-orange-50/50">
           <CardContent className="p-4 flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center">
-              <Trophy className="w-6 h-6 text-amber-600" />
+            <div className="w-14 h-14 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+              <Trophy className="w-7 h-7 text-amber-600" />
             </div>
-            <div className="flex-1">
-              <div className="flex items-center gap-2">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
                 <p className="text-sm font-semibold text-foreground">Suas contribuições</p>
-                <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-amber-300 text-amber-700">
-                  <Star className="w-3 h-3 mr-0.5" />
+                <Badge variant="outline" className="text-[11px] px-2 py-0.5 border-amber-300 text-amber-700 bg-amber-100/50 font-semibold">
+                  <Star className="w-3 h-3 mr-1 fill-amber-500 text-amber-500" />
                   {totalTokens} tokens
                 </Badge>
               </div>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {confirmedCount} {confirmedCount === 1 ? "correção confirmada" : "correções confirmadas"}
-                {discountPercent > 0 && (
-                  <span className="text-amber-700 font-medium"> — {discountPercent}% de desconto desbloqueado</span>
-                )}
+              <p className="text-xs text-muted-foreground mt-1">
+                {requests.length} {requests.length === 1 ? "solicitação enviada" : "solicitações enviadas"}
+                {confirmedCount > 0 && ` · ${confirmedCount} ${confirmedCount === 1 ? "confirmada" : "confirmadas"}`}
               </p>
+              {totalTokens > 0 && (
+                <div className="mt-2 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-2 bg-amber-200/50 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-amber-400 to-orange-400 rounded-full transition-all duration-500"
+                        style={{ width: `${Math.min((totalTokens % 100), 100)}%` }}
+                      />
+                    </div>
+                    <span className="text-[10px] text-amber-700 font-medium whitespace-nowrap">
+                      {totalTokens % 100}/100
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-amber-700">
+                    {discountPercent > 0 ? (
+                      <span className="font-semibold">🎉 {discountPercent}% de desconto desbloqueado!</span>
+                    ) : (
+                      <span>Acumule 100 tokens para ganhar 5% de desconto na assinatura</span>
+                    )}
+                  </p>
+                </div>
+              )}
+              {totalTokens === 0 && requests.length > 0 && (
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Cada correção confirmada vale <span className="font-semibold text-amber-700">10 tokens</span> · 100 tokens = 5% de desconto
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>
