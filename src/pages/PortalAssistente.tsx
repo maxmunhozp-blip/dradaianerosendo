@@ -12,8 +12,11 @@ const pub = createClient(supabaseUrl, supabaseAnonKey);
 
 const CHIPS = [
   "Como está meu processo?",
+  "Quais documentos já enviei?",
+  "Tem audiência marcada?",
+  "Qual o número do meu processo?",
   "Preciso enviar algum documento?",
-  "Quando terei novidades?",
+  "Qual o próximo passo do processo?",
   "Quero falar com o escritório",
 ];
 
