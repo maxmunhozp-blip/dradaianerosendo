@@ -236,6 +236,7 @@ export function DocumentRow({ doc, clientName, clientEmail, clientCpf, clientPho
       setPreviewUrl(null);
       setPreviewMimeType(null);
       setPreviewLoading(false);
+      setPdfData(null);
     }
   }, [cleanupPreviewUrl, previewOpen]);
 
