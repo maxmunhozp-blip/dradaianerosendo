@@ -385,6 +385,12 @@ export default function CaseDetail() {
               <FileDown className="w-3.5 h-3.5 mr-1.5" />
               Gerar documentos
             </Button>
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/settings/document-branding">
+                <Palette className="w-3.5 h-3.5 mr-1.5" />
+                Formatação
+              </Link>
+            </Button>
             <Select value={caseData.status} onValueChange={handleStatusChange}>
               <SelectTrigger className="w-44 h-8 text-sm">
                 <SelectValue />
