@@ -326,17 +326,9 @@ export function DocumentRow({ doc, clientName, clientEmail, clientCpf, clientPho
 
   return (
     <div className="border-b border-border last:border-0">
-      {/* Header row */}
-      <button
-        className="flex items-center justify-between w-full py-3 text-left hover:bg-muted/30 transition-colors -mx-4 px-4"
-        onClick={() => setExpanded(!expanded)}
-      >
+      {/* Document row */}
+      <div className="flex items-center justify-between w-full py-3 -mx-4 px-4 hover:bg-muted/30 transition-colors">
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          {expanded ? (
-            <ChevronDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-          ) : (
-            <ChevronRight className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-          )}
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <p className="text-sm font-medium text-foreground truncate">{doc.name}</p>
@@ -367,11 +359,6 @@ export function DocumentRow({ doc, clientName, clientEmail, clientCpf, clientPho
               {doc.signature_status && doc.signature_status !== "none" && (
                 <SignatureStatusBadge status={doc.signature_status} />
               )}
-              {doc.notes && doc.notes.trim() && (
-                <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                  Com anotações
-                </Badge>
-              )}
             </div>
             <div className="flex items-center gap-2 mt-0.5">
               <span className="text-xs text-muted-foreground">{categoryLabels[doc.category] || doc.category}</span>
@@ -382,7 +369,7 @@ export function DocumentRow({ doc, clientName, clientEmail, clientCpf, clientPho
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-1.5 shrink-0">
           <Select value={doc.status} onValueChange={handleStatusChange}>
             <SelectTrigger className="h-6 w-auto min-w-[90px] text-[11px] border-0 bg-transparent px-1.5 gap-1 focus:ring-0 [&>svg]:w-3 [&>svg]:h-3">
               <StatusBadge status={doc.status} />
@@ -422,10 +409,7 @@ export function DocumentRow({ doc, clientName, clientEmail, clientCpf, clientPho
                   size="icon"
                   className="h-7 w-7 text-emerald-600"
                   title="Abrir assinatura no ZapSign"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    window.open(signerVerificationUrl, "_blank", "noopener,noreferrer");
-                  }}
+                  onClick={() => window.open(signerVerificationUrl, "_blank", "noopener,noreferrer")}
                 >
                   <Scale className="w-3.5 h-3.5" />
                 </Button>
@@ -435,7 +419,7 @@ export function DocumentRow({ doc, clientName, clientEmail, clientCpf, clientPho
                 size="icon"
                 className="h-7 w-7"
                 title="Enviar por e-mail"
-                onClick={(e) => { e.stopPropagation(); openEmailDialog(); }}
+                onClick={() => openEmailDialog()}
               >
                 <Mail className="w-3.5 h-3.5" />
               </Button>
@@ -445,8 +429,7 @@ export function DocumentRow({ doc, clientName, clientEmail, clientCpf, clientPho
                   size="icon"
                   className="h-7 w-7 text-green-600"
                   title="Enviar link de assinatura via WhatsApp"
-                  onClick={(e) => {
-                    e.stopPropagation();
+                  onClick={() => {
                     const signUrl = firstSigner?.sign_url;
                     if (!signUrl) {
                       toast.error("Link de assinatura não disponível.");
@@ -473,7 +456,7 @@ export function DocumentRow({ doc, clientName, clientEmail, clientCpf, clientPho
               size="icon"
               className="h-7 w-7"
               title="Enviar para assinatura"
-              onClick={(e) => { e.stopPropagation(); setSignatureOpen(true); }}
+              onClick={() => setSignatureOpen(true)}
             >
               <PenLine className="w-3.5 h-3.5" />
             </Button>
@@ -484,7 +467,7 @@ export function DocumentRow({ doc, clientName, clientEmail, clientCpf, clientPho
               size="sm"
               className="h-7 text-xs gap-1"
               title="Ver links de assinatura"
-              onClick={(e) => { e.stopPropagation(); setSignatureOpen(true); }}
+              onClick={() => setSignatureOpen(true)}
             >
               <PenLine className="w-3 h-3" />
               Ver link
@@ -495,83 +478,12 @@ export function DocumentRow({ doc, clientName, clientEmail, clientCpf, clientPho
             size="icon"
             className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
             title="Excluir"
-            onClick={(e) => { e.stopPropagation(); setDeleteOpen(true); }}
+            onClick={() => setDeleteOpen(true)}
           >
             <Trash2 className="w-3.5 h-3.5" />
           </Button>
         </div>
-      </button>
-
-      {/* Expanded content */}
-      {expanded && (
-        <div className="pb-4 pl-6 pr-0 space-y-3">
-          {/* Inline status & category selectors */}
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">Categoria:</span>
-              <Select value={doc.category} onValueChange={handleCategoryChange}>
-                <SelectTrigger className="h-7 w-[120px] text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {categoryOptions.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value} className="text-xs">
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">Status:</span>
-              <Select value={doc.status} onValueChange={handleStatusChange}>
-                <SelectTrigger className="h-7 w-[120px] text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {statusOptions.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value} className="text-xs">
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Formatting toolbar */}
-          <div className="flex items-center gap-1 border border-border rounded-t-md bg-muted/40 px-2 py-1.5">
-            <Button variant="ghost" size="icon" className="h-6 w-6" title="Negrito" onClick={() => insertFormatting("**", "**")}>
-              <Bold className="w-3 h-3" />
-            </Button>
-            <Button variant="ghost" size="icon" className="h-6 w-6" title="Itálico" onClick={() => insertFormatting("_", "_")}>
-              <Italic className="w-3 h-3" />
-            </Button>
-            <Button variant="ghost" size="icon" className="h-6 w-6" title="Lista" onClick={() => insertFormatting("\n- ", "")}>
-              <List className="w-3 h-3" />
-            </Button>
-            <div className="h-4 w-px bg-border mx-1" />
-            <input ref={fileRef} type="file" className="hidden" onChange={handleAttachment} />
-            <Button variant="ghost" size="icon" className="h-6 w-6" title="Anexar arquivo" onClick={() => fileRef.current?.click()}>
-              <Paperclip className="w-3 h-3" />
-            </Button>
-            <div className="flex-1" />
-            <Button variant="ghost" size="sm" className="h-6 text-xs px-2 gap-1" disabled={saving || notes === (doc.notes || "")} onClick={handleSaveNotes}>
-              {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
-              Salvar
-            </Button>
-          </div>
-
-          {/* Notes textarea */}
-          <textarea
-            ref={textareaRef}
-            className="w-full border border-t-0 border-border rounded-b-md p-3 text-sm min-h-[120px] resize-y bg-background focus:outline-none focus:ring-1 focus:ring-ring font-mono leading-relaxed"
-            placeholder="Anotações sobre o andamento deste documento...&#10;&#10;Use **negrito**, _itálico_ e - listas para formatar."
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-          />
-        </div>
-      )}
+      </div>
 
       {/* Preview - PDF Viewer or Dialog */}
       {previewOpen && isPdf && pdfData ? (
