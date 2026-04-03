@@ -26,7 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useUpdateDocument, useUploadDocument, useDeleteDocument } from "@/hooks/use-documents";
+import { useUpdateDocument, useDeleteDocument } from "@/hooks/use-documents";
 import { toast } from "sonner";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
