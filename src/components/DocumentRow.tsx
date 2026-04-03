@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
+import { PdfViewer } from "./PdfViewer";
 import { supabase } from "@/integrations/supabase/client";
 import { StatusBadge } from "./StatusBadge";
 import {
