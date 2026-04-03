@@ -13,6 +13,7 @@ import {
   BellRing,
   Mail,
   Palette,
+  MessageSquarePlus,
 } from "lucide-react";
 import { useIntimacaoCount } from "@/hooks/use-intimacoes";
 import { useSignedDocumentsCount } from "@/hooks/use-documents";
