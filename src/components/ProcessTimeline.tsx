@@ -274,7 +274,7 @@ export function ProcessTimeline({ caseId }: ProcessTimelineProps) {
       )}
 
       {/* Timeline entries */}
-      <div className="border border-border rounded-lg">
+      <div className="border border-border rounded-lg max-h-[50vh] overflow-y-auto">
         {filtered.length === 0 ? (
           <EmptyState
             icon={Clock}
