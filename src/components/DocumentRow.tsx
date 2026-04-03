@@ -282,45 +282,6 @@ export function DocumentRow({ doc, clientName, clientEmail, clientCpf, clientPho
     }
   };
 
-  const handleSaveNotes = async () => {
-    setSaving(true);
-    try {
-      await updateDoc.mutateAsync({ id: doc.id, notes });
-      toast.success("Anotações salvas");
-    } catch {
-      toast.error("Erro ao salvar anotações");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const insertFormatting = (prefix: string, suffix: string) => {
-    const ta = textareaRef.current;
-    if (!ta) return;
-    const start = ta.selectionStart;
-    const end = ta.selectionEnd;
-    const selected = notes.substring(start, end);
-    const newText = notes.substring(0, start) + prefix + selected + suffix + notes.substring(end);
-    setNotes(newText);
-    setTimeout(() => {
-      ta.focus();
-      ta.setSelectionRange(start + prefix.length, end + prefix.length);
-    }, 0);
-  };
-
-  const handleAttachment = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      const url = await uploadDoc.mutateAsync({ file, caseId: doc.case_id });
-      const link = `\n📎 [${file.name}](${url})`;
-      setNotes((prev) => prev + link);
-      toast.success("Anexo adicionado às anotações");
-    } catch {
-      toast.error("Erro ao enviar anexo");
-    }
-    if (fileRef.current) fileRef.current.value = "";
-  };
 
   return (
     <div className="border-b border-border last:border-0">
