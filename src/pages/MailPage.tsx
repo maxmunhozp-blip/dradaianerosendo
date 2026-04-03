@@ -466,7 +466,7 @@ export default function MailPage() {
                               {email.subject}
                             </p>
                             <p className="text-[10px] text-muted-foreground truncate mt-0.5">
-                              {stripHtml(email.body_text)?.substring(0, 80)}
+                              {stripHtml(email.body_html || email.body_text)?.substring(0, 80)}
                             </p>
                             <div className="flex items-center gap-1.5 mt-1">
                               {email.received_at && (
