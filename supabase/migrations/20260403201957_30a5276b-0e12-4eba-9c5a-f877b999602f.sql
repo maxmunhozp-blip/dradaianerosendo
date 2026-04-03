@@ -1,0 +1,2 @@
+ALTER TABLE public.case_timeline DROP CONSTRAINT case_timeline_type_check;
+ALTER TABLE public.case_timeline ADD CONSTRAINT case_timeline_type_check CHECK (type = ANY (ARRAY['manual'::text, 'automatic'::text, 'assinatura'::text]));
