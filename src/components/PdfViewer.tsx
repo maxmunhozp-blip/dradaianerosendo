@@ -6,13 +6,13 @@ import * as pdfjsLib from "pdfjs-dist";
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 
 interface PdfViewerProps {
-  url: string;
+  data: ArrayBuffer;
   fileName: string;
   onClose: () => void;
   onDownload?: () => void;
 }
 
-export function PdfViewer({ url, fileName, onClose, onDownload }: PdfViewerProps) {
+export function PdfViewer({ data, fileName, onClose, onDownload }: PdfViewerProps) {
   const [pdf, setPdf] = useState<pdfjsLib.PDFDocumentProxy | null>(null);
   const [totalPages, setTotalPages] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
@@ -22,22 +22,23 @@ export function PdfViewer({ url, fileName, onClose, onDownload }: PdfViewerProps
   const mainCanvasRef = useRef<HTMLCanvasElement>(null);
   const thumbsContainerRef = useRef<HTMLDivElement>(null);
 
-  // Load PDF
+  // Load PDF from ArrayBuffer
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    const loadingTask = pdfjsLib.getDocument(url);
+    const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(data) });
     loadingTask.promise.then((pdfDoc) => {
       if (cancelled) return;
       setPdf(pdfDoc);
       setTotalPages(pdfDoc.numPages);
       setCurrentPage(1);
       setLoading(false);
-    }).catch(() => {
+    }).catch((err) => {
+      console.error("PDF load error:", err);
       if (!cancelled) setLoading(false);
     });
     return () => { cancelled = true; loadingTask.destroy(); };
-  }, [url]);
+  }, [data]);
 
   // Generate thumbnails
   useEffect(() => {
@@ -65,14 +66,22 @@ export function PdfViewer({ url, fileName, onClose, onDownload }: PdfViewerProps
   // Render current page
   const renderPage = useCallback(async (pageNum: number) => {
     if (!pdf || !mainCanvasRef.current) return;
-    const page = await pdf.getPage(pageNum);
-    const viewport = page.getViewport({ scale });
-    const canvas = mainCanvasRef.current;
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
-    const ctx = canvas.getContext("2d")!;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    await page.render({ canvasContext: ctx, viewport }).promise;
+    try {
+      const page = await pdf.getPage(pageNum);
+      const viewport = page.getViewport({ scale });
+      const canvas = mainCanvasRef.current;
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = viewport.width * dpr;
+      canvas.height = viewport.height * dpr;
+      canvas.style.width = `${viewport.width}px`;
+      canvas.style.height = `${viewport.height}px`;
+      const ctx = canvas.getContext("2d")!;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      await page.render({ canvasContext: ctx, viewport }).promise;
+    } catch (err) {
+      console.error("PDF render error:", err);
+    }
   }, [pdf, scale]);
 
   useEffect(() => {
@@ -100,14 +109,19 @@ export function PdfViewer({ url, fileName, onClose, onDownload }: PdfViewerProps
             <X className="w-4 h-4" />
           </Button>
           <span className="text-sm font-medium truncate">{fileName}</span>
-          <span className="text-xs text-muted-foreground shrink-0">
-            {currentPage} / {totalPages || "..."}
-          </span>
+          {totalPages > 0 && (
+            <span className="text-xs text-muted-foreground shrink-0">
+              {totalPages} {totalPages === 1 ? "página" : "páginas"}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => goToPage(currentPage - 1)} disabled={currentPage <= 1}>
             <ChevronLeft className="w-4 h-4" />
           </Button>
+          <span className="text-xs text-muted-foreground min-w-[60px] text-center">
+            {currentPage} / {totalPages || "…"}
+          </span>
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => goToPage(currentPage + 1)} disabled={currentPage >= totalPages}>
             <ChevronRight className="w-4 h-4" />
           </Button>
@@ -122,8 +136,9 @@ export function PdfViewer({ url, fileName, onClose, onDownload }: PdfViewerProps
           {onDownload && (
             <>
               <div className="w-px h-5 bg-border mx-1" />
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onDownload}>
-                <Download className="w-4 h-4" />
+              <Button variant="outline" size="sm" className="h-8 gap-1.5" onClick={onDownload}>
+                <Download className="w-3.5 h-3.5" />
+                Baixar
               </Button>
             </>
           )}
@@ -135,7 +150,7 @@ export function PdfViewer({ url, fileName, onClose, onDownload }: PdfViewerProps
         {/* Thumbnails sidebar */}
         <div
           ref={thumbsContainerRef}
-          className="w-36 border-r border-border bg-muted/30 overflow-y-auto shrink-0 p-2 space-y-2 hidden md:block"
+          className="w-[140px] border-r border-border bg-muted/30 overflow-y-auto shrink-0 p-2 space-y-2 hidden md:block"
         >
           {loading ? (
             <div className="flex items-center justify-center py-8">
@@ -147,7 +162,7 @@ export function PdfViewer({ url, fileName, onClose, onDownload }: PdfViewerProps
                 key={idx}
                 data-page={idx + 1}
                 onClick={() => goToPage(idx + 1)}
-                className={`w-full rounded-md overflow-hidden border-2 transition-all ${
+                className={`w-full rounded overflow-hidden border-2 transition-all ${
                   currentPage === idx + 1
                     ? "border-primary ring-2 ring-primary/20"
                     : "border-transparent hover:border-muted-foreground/30"
@@ -165,7 +180,7 @@ export function PdfViewer({ url, fileName, onClose, onDownload }: PdfViewerProps
                 key={i}
                 data-page={i + 1}
                 onClick={() => goToPage(i + 1)}
-                className={`w-full h-24 rounded-md border-2 flex items-center justify-center text-xs text-muted-foreground transition-all ${
+                className={`w-full h-24 rounded border-2 flex items-center justify-center text-xs text-muted-foreground transition-all ${
                   currentPage === i + 1
                     ? "border-primary bg-primary/5"
                     : "border-border hover:border-muted-foreground/30"
@@ -187,8 +202,7 @@ export function PdfViewer({ url, fileName, onClose, onDownload }: PdfViewerProps
           ) : (
             <canvas
               ref={mainCanvasRef}
-              className="shadow-lg rounded bg-white max-w-full"
-              style={{ height: "auto" }}
+              className="shadow-lg rounded-sm"
             />
           )}
         </div>
