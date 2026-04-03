@@ -85,12 +85,11 @@ export function SignatureModal({
       });
 
       if (error) {
-        console.error("Invoke error:", error);
-        let errorMessage = "Erro ao chamar a função de assinatura";
+        let errorMessage = "Erro ao enviar para assinatura.";
         try {
           const body = await (error as any).context?.json?.();
           if (body?.error) errorMessage = body.error;
-          else if (error.message) errorMessage = error.message;
+          else errorMessage = error.message || errorMessage;
         } catch {
           errorMessage = error.message || errorMessage;
         }

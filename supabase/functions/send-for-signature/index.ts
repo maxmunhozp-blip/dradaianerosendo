@@ -118,9 +118,16 @@ Deno.serve(async (req) => {
 
     if (!zapRes.ok) {
       const errText = await zapRes.text();
-      console.error("[send-for-signature] ZapSign API error:", zapRes.status, errText);
+      console.error(
+        "[send-for-signature] ZapSign API error",
+        "status:", zapRes.status,
+        "body:", errText.substring(0, 500),
+        "token_prefix:", apiToken.substring(0, 8)
+      );
       return new Response(
-        JSON.stringify({ error: "Erro na API ZapSign: " + errText }),
+        JSON.stringify({
+          error: `Erro na API ZapSign (${zapRes.status}): ${errText.substring(0, 200)}. Verifique o token em Configurações → ZapSign.`,
+        }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
