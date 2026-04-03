@@ -157,14 +157,38 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ ok: true, ignored: "unsupported_status" }), { status: 200, headers: corsHeaders });
     }
 
-    const { data: existingDoc, error: fetchDocError } = await supabase
+    let existingDoc: any = null;
+    let fetchDocError: any = null;
+
+    // Try matching by document token first
+    const { data: byDocToken, error: err1 } = await supabase
       .from("documents")
       .select("id, name, case_id, owner_id, signature_status")
       .eq("signature_doc_token", docToken)
       .maybeSingle();
 
+    if (err1) {
+      console.error("Failed to fetch document by token:", err1);
+      fetchDocError = err1;
+    } else {
+      existingDoc = byDocToken;
+    }
+
+    // If not found, try matching by signer token inside the signers JSONB
+    if (!existingDoc && !fetchDocError) {
+      const { data: bySignerToken, error: err2 } = await supabase
+        .from("documents")
+        .select("id, name, case_id, owner_id, signature_status")
+        .filter("signers", "cs", JSON.stringify([{ token: docToken }]))
+        .maybeSingle();
+
+      if (!err2 && bySignerToken) {
+        console.log("Document found by signer token fallback:", bySignerToken.id);
+        existingDoc = bySignerToken;
+      }
+    }
+
     if (fetchDocError) {
-      console.error("Failed to fetch document by token:", fetchDocError);
       return new Response(JSON.stringify({ ok: true, ignored: "fetch_error" }), { status: 200, headers: corsHeaders });
     }
 

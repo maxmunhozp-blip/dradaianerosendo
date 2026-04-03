@@ -47,9 +47,16 @@ Deno.serve(async (req) => {
     // Step 2 — Get document and download PDF
     const { data: doc, error: docError } = await supabase
       .from("documents")
-      .select("file_url, name")
+      .select("file_url, name, signature_status, signature_doc_token")
       .eq("id", document_id)
       .single();
+
+    if (!docError && doc?.signature_status === "sent" && doc?.signature_doc_token) {
+      return new Response(
+        JSON.stringify({ error: "Este documento já foi enviado para assinatura. Aguarde a assinatura do cliente ou cancele antes de reenviar." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     if (docError || !doc?.file_url) {
       return new Response(
