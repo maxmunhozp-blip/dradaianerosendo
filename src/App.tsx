@@ -124,6 +124,7 @@ const App = () => {
                 <Route path="/settings/document-branding" element={<DocumentBranding />} />
                 <Route path="/settings/emails" element={<EmailSettings />} />
                 <Route path="/solicitacoes" element={<Solicitacoes />} />
+                <Route path="/admin/solicitacoes" element={<AdminSolicitacoes />} />
               </Route>
             </Route>
 

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
@@ -14,6 +14,7 @@ import { EmptyState } from "@/components/EmptyState";
 import {
   Sparkles, Bug, Lightbulb, Wrench, Loader2, Upload, X, Copy,
   ChevronDown, ChevronUp, Brain, Send, ImageIcon, Clock,
+  CheckCircle2, Trophy, Star, ThumbsUp,
 } from "lucide-react";
 
 const TYPE_OPTIONS = [
@@ -65,6 +66,7 @@ export default function Solicitacoes() {
   const [interpreting, setInterpreting] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState<string | null>(null);
 
   const { data: requests = [], isLoading } = useQuery({
     queryKey: ["feature-requests"],
@@ -79,13 +81,15 @@ export default function Solicitacoes() {
     enabled: !!user,
   });
 
+  const totalTokens = requests.reduce((sum: number, r: any) => sum + (r.tokens_awarded || 0), 0);
+  const confirmedCount = requests.filter((r: any) => r.confirmed_at).length;
+  const discountPercent = Math.floor(totalTokens / 100) * 5;
+
   const handleImageAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     const remaining = 3 - images.length;
     const toAdd = files.slice(0, remaining);
-    if (files.length > remaining) {
-      toast.error("Máximo de 3 imagens");
-    }
+    if (files.length > remaining) toast.error("Máximo de 3 imagens");
     setImages((prev) => [...prev, ...toAdd]);
     toAdd.forEach((f) => {
       const reader = new FileReader();
@@ -129,7 +133,6 @@ export default function Solicitacoes() {
     if (!user) return;
     setSubmitting(true);
     try {
-      // Upload images
       const imageUrls: string[] = [];
       for (const file of images) {
         const ext = file.name.split(".").pop();
@@ -167,7 +170,22 @@ export default function Solicitacoes() {
     }
   };
 
-  const typeConfig = TYPE_OPTIONS.find((t) => t.value === type)!;
+  const handleConfirm = async (id: string) => {
+    setConfirming(id);
+    try {
+      const { error } = await supabase
+        .from("feature_requests")
+        .update({ confirmed_at: new Date().toISOString() })
+        .eq("id", id);
+      if (error) throw error;
+      toast.success("Correção confirmada! Obrigado pela contribuição.");
+      queryClient.invalidateQueries({ queryKey: ["feature-requests"] });
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao confirmar");
+    } finally {
+      setConfirming(null);
+    }
+  };
 
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-3xl mx-auto">
@@ -177,6 +195,32 @@ export default function Solicitacoes() {
           Envie pedidos de funcionalidades, ajustes ou reporte bugs.
         </p>
       </div>
+
+      {/* Gamification card */}
+      {totalTokens > 0 && (
+        <Card className="border-amber-200 bg-amber-50/50">
+          <CardContent className="p-4 flex items-center gap-4">
+            <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center">
+              <Trophy className="w-6 h-6 text-amber-600" />
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-semibold text-foreground">Suas contribuições</p>
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-amber-300 text-amber-700">
+                  <Star className="w-3 h-3 mr-0.5" />
+                  {totalTokens} tokens
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {confirmedCount} {confirmedCount === 1 ? "correção confirmada" : "correções confirmadas"}
+                {discountPercent > 0 && (
+                  <span className="text-amber-700 font-medium"> — {discountPercent}% de desconto desbloqueado</span>
+                )}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Form */}
       <Card>
@@ -253,7 +297,6 @@ export default function Solicitacoes() {
             </div>
           </div>
 
-          {/* AI Interpret button */}
           <div className="flex gap-2">
             <Button
               variant="outline"
@@ -267,7 +310,6 @@ export default function Solicitacoes() {
             </Button>
           </div>
 
-          {/* AI Result */}
           {aiResult && (
             <Card className="bg-muted/30 border-primary/20">
               <CardContent className="p-4 space-y-3">
@@ -340,8 +382,10 @@ export default function Solicitacoes() {
           requests.map((req: any) => {
             const expanded = expandedId === req.id;
             const typeConf = TYPE_OPTIONS.find((t) => t.value === req.type);
+            const isConcluido = req.status === "concluido";
+            const isConfirmed = !!req.confirmed_at;
             return (
-              <Card key={req.id} className="overflow-hidden">
+              <Card key={req.id} className={`overflow-hidden ${isConfirmed ? "border-green-200" : ""}`}>
                 <button
                   onClick={() => setExpandedId(expanded ? null : req.id)}
                   className="w-full text-left p-4 flex items-start gap-3 hover:bg-muted/30 transition-colors"
@@ -360,6 +404,18 @@ export default function Solicitacoes() {
                       {req.priority && req.priority !== "normal" && (
                         <Badge variant="outline" className="text-[10px] px-1.5 py-0">
                           {PRIORITY_LABELS[req.priority] || req.priority}
+                        </Badge>
+                      )}
+                      {isConfirmed && (
+                        <Badge className="text-[10px] px-1.5 py-0 bg-green-100 text-green-800">
+                          <CheckCircle2 className="w-3 h-3 mr-0.5" />
+                          Confirmado
+                        </Badge>
+                      )}
+                      {req.tokens_awarded > 0 && (
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-amber-300 text-amber-700">
+                          <Star className="w-3 h-3 mr-0.5" />
+                          +{req.tokens_awarded}
                         </Badge>
                       )}
                     </div>
@@ -405,6 +461,41 @@ export default function Solicitacoes() {
                       <div className="bg-muted/50 rounded p-3">
                         <p className="text-[11px] text-muted-foreground mb-0.5">Resposta da equipe</p>
                         <p className="text-xs text-foreground whitespace-pre-wrap">{req.admin_response}</p>
+                      </div>
+                    )}
+
+                    {/* Confirm fix button */}
+                    {isConcluido && !isConfirmed && (
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                        <p className="text-xs text-green-800 mb-2">
+                          Esta solicitação foi marcada como concluída. Confirme se tudo está funcionando como esperado.
+                        </p>
+                        <Button
+                          size="sm"
+                          className="gap-1.5 text-xs h-7 bg-green-600 hover:bg-green-700"
+                          onClick={() => handleConfirm(req.id)}
+                          disabled={confirming === req.id}
+                        >
+                          {confirming === req.id ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <ThumbsUp className="w-3 h-3" />
+                          )}
+                          Confirmar correção
+                        </Button>
+                      </div>
+                    )}
+
+                    {isConfirmed && (
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-green-600" />
+                        <div>
+                          <p className="text-xs font-medium text-green-800">Correção confirmada</p>
+                          <p className="text-[11px] text-green-600">
+                            Confirmado em {new Date(req.confirmed_at).toLocaleDateString("pt-BR")}
+                            {req.tokens_awarded > 0 && ` — +${req.tokens_awarded} tokens ganhos`}
+                          </p>
+                        </div>
                       </div>
                     )}
                   </div>
