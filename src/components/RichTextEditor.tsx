@@ -207,7 +207,7 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(
         const html = initialContent.includes("<")
           ? initialContent
           : plainTextToHtml(initialContent);
-        editor.commands.setContent(html, false);
+        editor.commands.setContent(html, { emitUpdate: false });
       }, 0);
       return () => clearTimeout(timer);
     }, [editor, initialContent]);
