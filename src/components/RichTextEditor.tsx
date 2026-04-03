@@ -163,6 +163,7 @@ const ToolbarButton = ({
     variant={active ? "default" : "ghost"}
     size="sm"
     className="h-7 w-7 p-0"
+    onMouseDown={(e) => e.preventDefault()}
     onClick={onClick}
     title={title}
   >
