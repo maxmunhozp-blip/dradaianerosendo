@@ -124,6 +124,8 @@ const FONTS = [
   { label: "Garamond", value: "Garamond" },
 ];
 
+const LEGAL_HEADER_RE = /^[A-ZÁÉÍÓÚÃÕÂÊÔÇÀÜ][A-ZÁÉÍÓÚÃÕÂÊÔÇÀÜ\s\-–—.,()]*$/;
+
 function plainTextToHtml(text: string): string {
   const lines = text.split("\n");
   let html = "";
@@ -133,13 +135,17 @@ function plainTextToHtml(text: string): string {
       html += "<p></p>";
       continue;
     }
-    if (
-      (trimmed === trimmed.toUpperCase() && trimmed.length < 80 && trimmed.length > 2 && !trimmed.startsWith("---")) ||
-      trimmed.match(/^(PROCURAÇÃO|OUTORGANTE|OUTORGADA|PODERES|FINALIDADE|DO DIREITO|DA TUTELA|DOS PEDIDOS|DOS FATOS)/)
-    ) {
-      html += `<h2><strong>${trimmed}</strong></h2>`;
-    } else if (trimmed === "---" || trimmed === "___") {
+    if (trimmed === "---" || trimmed === "___") {
       html += "<hr />";
+      continue;
+    }
+    const isHeader =
+      LEGAL_HEADER_RE.test(trimmed) &&
+      trimmed.length > 3 &&
+      trimmed.length < 70 &&
+      !/\d/.test(trimmed);
+    if (isHeader) {
+      html += `<h2>${trimmed}</h2>`;
     } else {
       html += `<p>${trimmed}</p>`;
     }
