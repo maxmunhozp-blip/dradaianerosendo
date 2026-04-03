@@ -38,6 +38,7 @@ import LaraSkills from "./pages/LaraSkills";
 import DocumentBranding from "./pages/DocumentBranding";
 import EmailSettings from "./pages/EmailSettings";
 import AdminPage from "./pages/AdminPage";
+import Solicitacoes from "@/pages/Solicitacoes";
 
 const queryClient = new QueryClient();
 
@@ -121,6 +122,7 @@ const App = () => {
                 <Route path="/settings/lara-skills" element={<LaraSkills />} />
                 <Route path="/settings/document-branding" element={<DocumentBranding />} />
                 <Route path="/settings/emails" element={<EmailSettings />} />
+                <Route path="/solicitacoes" element={<Solicitacoes />} />
               </Route>
             </Route>
 

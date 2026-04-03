@@ -13,6 +13,7 @@ import {
   BellRing,
   Mail,
   Palette,
+  MessageSquarePlus,
 } from "lucide-react";
 import { useIntimacaoCount } from "@/hooks/use-intimacoes";
 import { useSignedDocumentsCount } from "@/hooks/use-documents";
@@ -51,6 +52,7 @@ const navItems: NavItem[] = [
   { title: "LARA", url: "/lara", icon: Bot },
   { title: "Templates", url: "/templates", icon: FileStack, permission: "can_edit_documents" },
   { title: "Formatação", url: "/settings/document-branding", icon: Palette, permission: "can_access_settings" },
+  { title: "Solicitações", url: "/solicitacoes", icon: MessageSquarePlus },
   { title: "Administrador", url: "/admin", icon: ShieldCheck, permission: "can_access_settings" },
 ];
 
