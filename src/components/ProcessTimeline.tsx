@@ -293,7 +293,7 @@ export function ProcessTimeline({ caseId }: ProcessTimelineProps) {
               return (
                 <div
                   key={entry.id}
-                  className={`relative flex gap-4 px-4 py-4 ${
+                  className={`relative flex gap-3 px-3 py-2.5 ${
                     idx < filtered.length - 1 ? "border-b border-border" : ""
                   } ${entry.pinned ? "bg-amber-50/50" : ""} ${isUrgent ? "bg-red-50/30" : ""}`}
                 >
