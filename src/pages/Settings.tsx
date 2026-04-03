@@ -447,6 +447,7 @@ function SignatureSettings({ value, onChange, onSave }: { value: string; onChang
           </div>
         )}
       </div>
+      <div className="bg-muted/50 rounded-md p-3 text-xs text-muted-foreground space-y-2">
           <p className="font-medium text-foreground">Configure o webhook no ZapSign:</p>
           <div className="flex items-center gap-2">
             <code className="flex-1 bg-background border rounded px-2 py-1.5 text-[11px] font-mono break-all">
