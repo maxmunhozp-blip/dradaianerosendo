@@ -3,8 +3,8 @@ import { PdfViewer } from "./PdfViewer";
 import { supabase } from "@/integrations/supabase/client";
 import { StatusBadge } from "./StatusBadge";
 import {
-  Download, Scale, ChevronDown, ChevronRight,
-  Bold, Italic, List, Paperclip, Save, Loader2, Eye,
+  Download, Scale,
+  Loader2, Eye,
   CheckCircle2, AlertCircle, Trash2, PenLine, Mail, ExternalLink, MessageCircle,
 } from "lucide-react";
 import { SignatureModal, SignatureStatusBadge } from "@/components/SignatureModal";
