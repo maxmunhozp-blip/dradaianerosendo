@@ -38,6 +38,7 @@ import LaraSkills from "./pages/LaraSkills";
 import DocumentBranding from "./pages/DocumentBranding";
 import EmailSettings from "./pages/EmailSettings";
 import AdminPage from "./pages/AdminPage";
+import Solicitacoes from "@/pages/Solicitacoes";
 
 const queryClient = new QueryClient();
 
