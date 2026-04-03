@@ -346,6 +346,20 @@ export function DocumentRow({ doc, clientName, clientEmail, clientCpf, clientPho
               >
                 <Download className="w-3.5 h-3.5" />
               </Button>
+              {doc.signature_status === "signed" && doc.signature_doc_token && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-emerald-600"
+                  title="Validar assinatura no ZapSign"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    window.open(`https://app.zapsign.com.br/validar/${doc.signature_doc_token}`, "_blank", "noopener,noreferrer");
+                  }}
+                >
+                  <Scale className="w-3.5 h-3.5" />
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="icon"
