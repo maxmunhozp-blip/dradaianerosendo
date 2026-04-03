@@ -325,13 +325,12 @@ export function DocumentRow({ doc, clientName, clientEmail, clientCpf, clientPho
                 size="icon"
                 className="h-7 w-7"
                 title="Visualizar"
-                onClick={async (e) => {
+                onClick={(e) => {
                   e.stopPropagation();
-                  // Prioridade: PDF assinado salvo no storage > PDF original
+                  // Use public URL directly (bucket is public) — signed URLs get blocked in iframes
                   const targetUrl = doc.signed_file_url || doc.file_url;
                   if (targetUrl) {
-                    const url = await getSignedUrl(targetUrl);
-                    setPreviewUrl(url);
+                    setPreviewUrl(targetUrl);
                     setPreviewOpen(true);
                   }
                 }}
