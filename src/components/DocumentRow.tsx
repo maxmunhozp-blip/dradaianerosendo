@@ -324,7 +324,25 @@ export function DocumentRow({ doc, clientName, clientEmail, clientCpf, clientPho
                 size="icon"
                 className="h-7 w-7"
                 title="Visualizar"
-                onClick={async (e) => { e.stopPropagation(); if (doc.file_url) { const url = await getSignedUrl(doc.file_url); setPreviewUrl(url); setPreviewOpen(true); } }}
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  if (doc.signed_file_url) {
+                    const url = await getSignedUrl(doc.signed_file_url);
+                    setPreviewUrl(url);
+                    setPreviewOpen(true);
+                    return;
+                  }
+                  if (doc.signature_status === "signed" && doc.signature_doc_token) {
+                    window.open(`https://app.zapsign.com.br/validar/${doc.signature_doc_token}`, "_blank", "noopener,noreferrer");
+                    toast.info("Abrindo documento assinado no ZapSign...");
+                    return;
+                  }
+                  if (doc.file_url) {
+                    const url = await getSignedUrl(doc.file_url);
+                    setPreviewUrl(url);
+                    setPreviewOpen(true);
+                  }
+                }}
               >
                 <Eye className="w-3.5 h-3.5" />
               </Button>
