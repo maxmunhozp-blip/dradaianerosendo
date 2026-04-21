@@ -192,8 +192,8 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(
         Underline,
         TextStyle,
         FontFamily,
-        Indent,
-      ],
+        Indent as any,
+      ] as any,
       content: "",
       editorProps: {
         attributes: {
