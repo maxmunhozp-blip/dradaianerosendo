@@ -10,7 +10,15 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "check:deps": "node scripts/check-tiptap-dedupe.mjs",
+    "prebuild": "node scripts/check-tiptap-dedupe.mjs"
+  },
+  "overrides": {
+    "@tiptap/core": "^3.22.0"
+  },
+  "resolutions": {
+    "@tiptap/core": "^3.22.0"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
