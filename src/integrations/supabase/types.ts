@@ -1112,6 +1112,39 @@ export type Database = {
         }
         Relationships: []
       }
+      webhook_verification_log: {
+        Row: {
+          created_at: string
+          id: string
+          payload_excerpt: string | null
+          reason: string | null
+          remote_ip: string | null
+          signature_header: string | null
+          source: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          payload_excerpt?: string | null
+          reason?: string | null
+          remote_ip?: string | null
+          signature_header?: string | null
+          source: string
+          status: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          payload_excerpt?: string | null
+          reason?: string | null
+          remote_ip?: string | null
+          signature_header?: string | null
+          source?: string
+          status?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
