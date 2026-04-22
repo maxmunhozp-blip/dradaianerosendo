@@ -115,11 +115,49 @@ const lockfiles = scanLockfiles();
 
 let failed = false;
 
+/** Pick the highest semver-ish version as the recommended pin. */
+function pickPin(versions) {
+  if (versions.length === 0) return null;
+  const parse = (v) => v.split(/[.\-+]/).map((p) => (/^\d+$/.test(p) ? Number(p) : p));
+  return [...versions].sort((a, b) => {
+    const pa = parse(a), pb = parse(b);
+    for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+      const x = pa[i] ?? 0, y = pb[i] ?? 0;
+      if (x === y) continue;
+      if (typeof x === "number" && typeof y === "number") return y - x;
+      return String(y).localeCompare(String(x));
+    }
+    return 0;
+  })[0];
+}
+
+/** Find which parent package brought in a nested copy. */
+function parentOf(installPath) {
+  // .../node_modules/<parent>/node_modules/@tiptap/core/package.json
+  const m = installPath.match(/node_modules\/((?:@[^/]+\/)?[^/]+)\/node_modules\/@tiptap\/core\/package\.json$/);
+  return m ? m[1] : "<root>";
+}
+
+const allVersions = new Set(installedVersions);
+for (const lf of lockfiles) lf.versions.forEach((v) => allVersions.add(v));
+
 if (installed.length === 0) {
   console.log(yellow(`! No installed copy of ${PKG} found in node_modules (run install first).`));
 } else {
-  console.log(`Installed copies: ${installed.length}`);
-  for (const i of installed) console.log(dim(`  - ${i.version}  ${i.path}`));
+  // Group offenders by version
+  const byVersion = new Map();
+  for (const i of installed) {
+    if (!byVersion.has(i.version)) byVersion.set(i.version, []);
+    byVersion.get(i.version).push(i.path);
+  }
+  console.log(`Installed copies: ${installed.length} (versions: ${installedVersions.join(", ")})`);
+  for (const [v, paths] of byVersion) {
+    console.log(`  ${yellow(v)} — ${paths.length} copy(ies):`);
+    for (const p of paths) {
+      const rel = p.replace(ROOT + "/", "");
+      console.log(dim(`    via ${parentOf(p)}  →  ${rel}`));
+    }
+  }
   if (installedVersions.length > 1) {
     console.error(red(`✗ Multiple versions of ${PKG} resolved: ${installedVersions.join(", ")}`));
     failed = true;
@@ -139,10 +177,20 @@ for (const lf of lockfiles) {
 }
 
 if (failed) {
-  console.error(red("\nFix:"));
-  console.error("  1. Ensure package.json has an `overrides` (npm) and `resolutions` (bun/yarn) entry pinning @tiptap/core.");
-  console.error("  2. Delete node_modules and the lockfile, then reinstall.");
-  console.error("  3. Re-run `npm run check:deps`.");
+  const pin = pickPin([...allVersions]) || "3.0.0";
+  console.error(red("\n━━━ Fix required ━━━"));
+  console.error(`Recommended pin: ${green(pin)} (highest version detected)\n`);
+
+  console.error("1) Add to package.json (npm/pnpm):");
+  console.error(dim(JSON.stringify({ overrides: { "@tiptap/core": pin } }, null, 2)));
+
+  console.error("\n2) Add to package.json (bun/yarn):");
+  console.error(dim(JSON.stringify({ resolutions: { "@tiptap/core": pin } }, null, 2)));
+
+  console.error("\n3) Reinstall:");
+  console.error(dim("   rm -rf node_modules bun.lock package-lock.json"));
+  console.error(dim("   bun install   # or: npm install"));
+  console.error(dim("   npm run check:deps"));
   process.exit(1);
 }
 
